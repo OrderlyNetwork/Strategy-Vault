@@ -7,7 +7,7 @@ pragma experimental ABIEncoderV2;
 import {Test} from "forge-std/Test.sol";
 import {StrategyVault} from "../contracts/ProtocolVault.sol";
 import {IVaultCrossChainManager} from "../contracts/interfaces/IVaultCrossChainManager.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 contract TestStrategyVault is Test {
     StrategyVault vault;
