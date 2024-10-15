@@ -22,7 +22,6 @@
     "typescript": ">=4.5.0"
   },
   "dependencies": {
-    "@layerzerolabs/oapp-evm": "^0.0.4",
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "hardhat-shorthand": "^1.0.0",
