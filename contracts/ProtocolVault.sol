@@ -12,12 +12,12 @@ import {DepositData, VaultType, PayloadType, StrategyVaultCCMessage} from "./lib
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
-contract StrategyVault is Ownable2StepUpgradeable, UUPSUpgradeable {
+contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeTransferLib for ERC20;
 
     uint256 public ledgerChainId;
     address public orderlyDexVault;
-    address public crossChainManagerAddress;
+    address public crossChainManager;
 
     bytes32 public brokerHash;
 
@@ -40,15 +40,16 @@ contract StrategyVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         address newImplementation
     ) internal override onlyOwner {}
 
-    function initialize() external initializer {
+    function initialize(address _crossChainManager) external initializer {
         __Ownable2Step_init();
         __UUPSUpgradeable_init();
 
+        crossChainManager = _crossChainManager;
         ledgerChainId = 291;
     }
 
     function testIncrementCounter() external {
-        IVaultCrossChainManager(crossChainManagerAddress).testCounter();
+        IVaultCrossChainManager(crossChainManager).testCounter();
     }
 
     function deposit(address token, address to, uint256 amount) external {
@@ -86,7 +87,7 @@ contract StrategyVault is Ownable2StepUpgradeable, UUPSUpgradeable {
             });
 
         //cross-chain message
-        IVaultCrossChainManager(crossChainManagerAddress).vaultSendToLedger(
+        IVaultCrossChainManager(crossChainManager).vaultSendToLedger(
             strategyVaultCCMessage
         );
     }

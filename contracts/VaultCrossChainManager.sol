@@ -4,6 +4,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {OptionsBuilder} from "./layerzero-v2-upgradable/oapp/libs/OptionsBuilder.sol";
 import {OAppUpgradeable, Origin, MessagingFee} from "./layerzero-v2-upgradable/oapp/OAppUpgradeable.sol";
 import {DepositData} from "./lib/Struct.sol";
+import {console} from "forge-std/console.sol";
 
 contract VaultCrossChainManager is OAppUpgradeable {
     error InvalidPayloadType();
@@ -18,9 +19,9 @@ contract VaultCrossChainManager is OAppUpgradeable {
         _disableInitializers();
     }
 
-    function initialize() external initializer {
-        __UUPSUpgradeable_init();
-
+    function initialize(address _endpoint, address _delegate) external initializer {
+        __initializeOApp(_endpoint, _delegate);
+        console.log("asfasfasfgasgas");
         LEDGER_EID = 30213;
     }
 

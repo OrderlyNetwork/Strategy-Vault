@@ -3,34 +3,62 @@ pragma solidity ^0.8.24;
 pragma solidity >=0.6.2 <0.9.0;
 
 pragma experimental ABIEncoderV2;
-
+import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {Test} from "forge-std/Test.sol";
-import {StrategyVault} from "../contracts/ProtocolVault.sol";
-import {IVaultCrossChainManager} from "../contracts/interfaces/IVaultCrossChainManager.sol";
+import {ProtocolVault} from "../contracts/ProtocolVault.sol";
+import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 
-contract TestStrategyVault is Test {
-    StrategyVault vault;
-    IVaultCrossChainManager mockCrossChainManager;
+// Mock ERC20 token contract
+contract MockERC20 is ERC20 {
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) ERC20(name, symbol, decimals) {}
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
+
+contract TestProtocolVault is TestHelperOz5 {
+    using OptionsBuilder for bytes;
+
+    uint32 private aEid = 1;
+    uint32 private bEid = 2;
+
+    ProtocolVault protocolVault;
+    VaultCrossChainManager aVaultCrossChainManager;
+    VaultCrossChainManager bVaultCrossChainManager;
+
     ERC20 mockToken;
 
-    function setUp() public {
-        // Deploy the StrategyVault contract
-        vault = new StrategyVault();
-        vault.initialize();
-
-        // Deploy a mock IVaultCrossChainManager contract
-        //mockCrossChainManager = IVaultCrossChainManager(address(new MockCrossChainManager()));
-        // vault.setCrossChainManagerAddress(address(mockCrossChainManager));
-
-        // // Deploy a mock ERC20 token
-        // mockToken = new MockERC20("Mock Token", "MTK", 18);
+    function setUp() public virtual override {
+        // Call the base setup function from the TestHelperOz5 contract
+        super.setUp();
+        // Initialize 2 endpoints, using UltraLightNode as the library type
+        setUpEndpoints(2, LibraryType.UltraLightNode);
+        address[] memory uas = setupOApps(
+            type(VaultCrossChainManager).creationCode,
+            1,
+            2
+        );
+        
+        //aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
+        //bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
+        
+        // Deploy the ProtocolVault contract
+        // protocolVault = new ProtocolVault();
+        // protocolVault.initialize(address(aVaultCrossChainManager));
     }
 
-    // function testInitialize() public {
-    //     // Check initial state
-    //     assertEq(vault.ledgerChainId(), 291);
-    // }
+    function testInitialize() public view {
+        // Check initial state
+        //assertEq(protocolVault.ledgerChainId(), 291);
+        assertEq(aVaultCrossChainManager.LEDGER_EID(), 30213);
+    }
 
     // function testIncrementCounter() public {
     //     // Call testIncrementCounter function
@@ -53,16 +81,4 @@ contract TestStrategyVault is Test {
     //     // Validate the deposit
     //     // Add assertions to check the state changes
     // }
-}
-
-
-// Mock ERC20 token contract
-contract MockERC20 is ERC20 {
-    constructor(string memory name, string memory symbol, uint8 decimals)
-        ERC20(name, symbol, decimals)
-    {}
-
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
-    }
 }
