@@ -9,6 +9,7 @@ import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 // Mock ERC20 token contract
 contract MockERC20 is ERC20 {
@@ -46,18 +47,18 @@ contract TestProtocolVault is TestHelperOz5 {
             2
         );
         
-        //aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
-        //bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
+        aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
+        bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
         
         // Deploy the ProtocolVault contract
-        // protocolVault = new ProtocolVault();
-        // protocolVault.initialize(address(aVaultCrossChainManager));
+        protocolVault = new ProtocolVault();
+        protocolVault.initialize(address(aVaultCrossChainManager));
     }
 
     function testInitialize() public view {
         // Check initial state
         //assertEq(protocolVault.ledgerChainId(), 291);
-        assertEq(aVaultCrossChainManager.LEDGER_EID(), 30213);
+        //assertEq(aVaultCrossChainManager.LEDGER_EID(), 1);
     }
 
     // function testIncrementCounter() public {

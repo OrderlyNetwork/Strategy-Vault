@@ -8,6 +8,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {DepositData, VaultType, PayloadType, StrategyVaultCCMessage} from "./lib/Struct.sol";
+import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -113,7 +114,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     /*======================================================================
      *   View Functions
      *======================================================================*/
-
 
     /*======================================================================
      *   Internal Functions

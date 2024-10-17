@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {OptionsBuilder} from "./layerzero-v2-upgradable/oapp/libs/OptionsBuilder.sol";
-import {OAppUpgradeable, Origin, MessagingFee} from "./layerzero-v2-upgradable/oapp/OAppUpgradeable.sol";
+
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ILayerZeroEndpointV2} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
+import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+
 import {DepositData} from "./lib/Struct.sol";
 import {console} from "forge-std/console.sol";
 
-contract VaultCrossChainManager is OAppUpgradeable {
+contract VaultCrossChainManager is OApp {
     error InvalidPayloadType();
 
     using OptionsBuilder for bytes;
@@ -14,15 +17,11 @@ contract VaultCrossChainManager is OAppUpgradeable {
     uint32 public LEDGER_EID;
     address public ledger;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(address _endpoint, address _delegate) external initializer {
-        __initializeOApp(_endpoint, _delegate);
-        console.log("asfasfasfgasgas");
-        LEDGER_EID = 30213;
+    constructor(
+        address endpoint,
+        address delegate
+    ) OApp(endpoint, delegate) Ownable(msg.sender) {
+        LEDGER_EID = ILayerZeroEndpointV2(endpoint).eid();
     }
 
     function testCounter() external {
