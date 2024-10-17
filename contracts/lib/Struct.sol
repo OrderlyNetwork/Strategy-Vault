@@ -62,8 +62,10 @@ struct DepositData {
 
 struct WithdrawData {
     VaultType vaultType;
+    uint256 withdrawNonce; // withdraw nonce
     uint256 amount;
     uint256 amountUnderStrategyProvider;
+    uint256 pendingAmount;
     address vault;
     address sender;
     address receiver;

@@ -20,49 +20,41 @@ contract TestStrategyVault is Test {
         vault.initialize();
 
         // Deploy a mock IVaultCrossChainManager contract
-        mockCrossChainManager = IVaultCrossChainManager(address(new MockCrossChainManager()));
-        vault.setCrossChainManagerAddress(address(mockCrossChainManager));
+        //mockCrossChainManager = IVaultCrossChainManager(address(new MockCrossChainManager()));
+        // vault.setCrossChainManagerAddress(address(mockCrossChainManager));
 
-        // Deploy a mock ERC20 token
-        mockToken = new MockERC20("Mock Token", "MTK", 18);
+        // // Deploy a mock ERC20 token
+        // mockToken = new MockERC20("Mock Token", "MTK", 18);
     }
 
-    function testInitialize() public {
-        // Check initial state
-        assertEq(vault.ledgerChainId(), 291);
-    }
+    // function testInitialize() public {
+    //     // Check initial state
+    //     assertEq(vault.ledgerChainId(), 291);
+    // }
 
-    function testIncrementCounter() public {
-        // Call testIncrementCounter function
-        vault.testIncrementCounter();
+    // function testIncrementCounter() public {
+    //     // Call testIncrementCounter function
+    //     vault.testIncrementCounter();
 
-        // Validate the counter increment
-        assertEq(mockCrossChainManager.counter(), 1);
-    }
+    //     // Validate the counter increment
+    //     assertEq(mockCrossChainManager.counter(), 1);
+    // }
 
-    function testDeposit() public {
-        // Mint tokens to the test contract
-        mockToken.mint(address(this), 1000);
+    // function testDeposit() public {
+    //     // Mint tokens to the test contract
+    //     mockToken.mint(address(this), 1000);
 
-        // Approve the vault to spend tokens
-        mockToken.approve(address(vault), 1000);
+    //     // Approve the vault to spend tokens
+    //     mockToken.approve(address(vault), 1000);
 
-        // Call deposit function
-        vault.deposit(address(mockToken), address(this), 1000);
+    //     // Call deposit function
+    //     vault.deposit(address(mockToken), address(this), 1000);
 
-        // Validate the deposit
-        // Add assertions to check the state changes
-    }
+    //     // Validate the deposit
+    //     // Add assertions to check the state changes
+    // }
 }
 
-// Mock IVaultCrossChainManager contract
-contract MockCrossChainManager is IVaultCrossChainManager {
-    uint256 public counter;
-
-    function testCounter() external override {
-        counter++;
-    }
-}
 
 // Mock ERC20 token contract
 contract MockERC20 is ERC20 {

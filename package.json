@@ -22,9 +22,13 @@
     "typescript": ">=4.5.0"
   },
   "dependencies": {
+    "@layerzerolabs/lz-evm-messagelib-v2": "^3.0.3",
+    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.3",
+    "@layerzerolabs/oapp-evm": "^0.0.4",
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "hardhat-shorthand": "^1.0.0",
+    "solidity-bytes-utils": "^0.8.2",
     "solmate": "^6.2.0"
   }
 }

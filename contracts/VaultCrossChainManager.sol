@@ -1,25 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OptionsBuilder} from "./layerzero-v2-upgradable/oapp/libs/OptionsBuilder.sol";
+import {OAppUpgradeable, Origin, MessagingFee} from "./layerzero-v2-upgradable/oapp/OAppUpgradeable.sol";
+import {DepositData} from "./lib/Struct.sol";
 
-import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-import {DepositData} from "../lib/Struct.sol";
-
-contract VaultCrossChainManager is UUPSUpgradeable {
+contract VaultCrossChainManager is OAppUpgradeable {
     error InvalidPayloadType();
 
-    uint256 public LEDGER_EID;
+    using OptionsBuilder for bytes;
+
+    uint32 public LEDGER_EID;
     address public ledger;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {}
 
     function initialize() external initializer {
         __UUPSUpgradeable_init();
@@ -32,16 +29,11 @@ contract VaultCrossChainManager is UUPSUpgradeable {
             .newOptions()
             .addExecutorLzReceiveOption(50000, 0);
 
-        MessagingFee memory messageFee = _quote(
-            LEDGER_EID,
-            strategyVaultCCMessage.payload,
-            options,
-            false
-        );
+        MessagingFee memory messageFee = _quote(LEDGER_EID, "", options, false);
 
         _lzSend(
             LEDGER_EID,
-            strategyVaultCCMessage.payload,
+            "",
             options,
             // Fee in native gas and ZRO token.
             messageFee,
@@ -109,4 +101,11 @@ contract VaultCrossChainManager is UUPSUpgradeable {
     //         revert InvalidPayloadType();
     //     }
     // }
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32 /*_guid*/,
+        bytes calldata _message,
+        address /*_executor*/,
+        bytes calldata /*_extraData*/
+    ) internal virtual override {}
 }
