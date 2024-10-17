@@ -2,14 +2,14 @@ pragma solidity ^0.8.24;
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.2 <0.9.0;
 
-pragma experimental ABIEncoderV2;
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {Test} from "forge-std/Test.sol";
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {console} from "forge-std/console.sol";
 
 // Mock ERC20 token contract
 contract MockERC20 is ERC20 {
@@ -46,19 +46,20 @@ contract TestProtocolVault is TestHelperOz5 {
             1,
             2
         );
-        
+
         aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
         bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
-        
+
         // Deploy the ProtocolVault contract
-        protocolVault = new ProtocolVault();
-        protocolVault.initialize(address(aVaultCrossChainManager));
+        address protocolVaultImpl = address(new ProtocolVault());
+        address proxy = address(new ERC1967Proxy(protocolVaultImpl, abi.encodeWithSelector(ProtocolVault.initialize.selector, address(aVaultCrossChainManager))));
+        protocolVault = ProtocolVault(proxy);
     }
 
     function testInitialize() public view {
         // Check initial state
-        //assertEq(protocolVault.ledgerChainId(), 291);
-        //assertEq(aVaultCrossChainManager.LEDGER_EID(), 1);
+        assertEq(protocolVault.ledgerChainId(), 291);
+        assertEq(aVaultCrossChainManager.LEDGER_EID(), 1);
     }
 
     // function testIncrementCounter() public {

@@ -32,6 +32,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     // mapping(address => uint256) userToDepositAmount;
     // mapping(address => StrategyParams) strategies;
     // mapping(address => bool) isActiveSigner;
+    
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
