@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 // oz imports
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -44,7 +44,7 @@ contract VaultCrossChainManager is OApp {
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(50000, 0);
+            .addExecutorLzReceiveOption(200000, 0);
 
         bytes memory lzMessage = encodeLzMsg(
             message.payloadType,

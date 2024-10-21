@@ -97,7 +97,7 @@ contract Base is TestHelperOz5 {
     function getEstimateFee() public view returns (uint256) {
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(50000, 0);
+            .addExecutorLzReceiveOption(200000, 0);
 
         (uint256 nativeFee, ) = aVaultCrossChainManager.quote(
             ledgerEid,

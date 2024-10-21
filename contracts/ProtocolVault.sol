@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -13,25 +13,36 @@ import {console} from "forge-std/console.sol";
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
+/**
+ * todo
+ *  - if different token, using another contract
+ *  -
+ */
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
+    
     using SafeERC20 for IERC20;
 
     uint256 public ledgerChainId;
+
     address public orderlyDexVault;
     address public crossChainManager;
 
     bytes32 public brokerHash;
-
+    
     // uint256 miniumDepositForUser;
     // uint256 miniumDepositForSP;
     // uint256 capUserNumber;
     // uint256 fee;
     // address feeRecipient;
     //VaultState vaultState;
+    mapping(bytes32 => uint256) public isAllowedToken;
 
     // mapping(address => uint256) userToDepositAmount;
     // mapping(address => StrategyParams) strategies;
     // mapping(address => bool) isActiveSigner;
+
+    error InvalidDepositAmount();
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -56,12 +67,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         address to,
         uint256 amount
     ) external payable {
-        //calculate idex
         bytes32 vaultId = keccak256(
             abi.encodePacked(brokerHash, address(this))
         );
-
         bytes32 accountId = keccak256(abi.encodePacked(to, brokerHash));
+
         //_validateDeposit(depositData);
 
         // transfer token to this contract
@@ -115,25 +125,21 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
      *   View Functions
      *======================================================================*/
 
-    /*======================================================================
-     *   Internal Functions
-     *======================================================================*/
+    //--------------------------------------INTERNAL--------------------------------------------
+    function _validateDeposit(
+        uint256 amount
+    ) internal view {
+        // check if tokenHash and brokerHash are allowed
+        // if (!isAllowedToken[data.token]) revert TokenNotAllowed();
+        // if (!isAllowedBroker[data.brokerHash]) revert BrokerNotAllowed();
+        // // check if accountId = keccak256(abi.encodePacked(brokerHash, receiver))
+        // if (!Utils.validateAccountId(data.accountId, data.brokerHash, receiver))
+        //     revert AccountIdInvalid();
+        // check if tokenAmount > 0
+        if (amount == 0) revert InvalidDepositAmount();
+    }
 
-    /// @notice The function to validate deposit data
-    // function _validateDeposit(
-    //     VaultTypes.VaultDepositFE calldata data
-    // ) internal view {
-    //     // check if tokenHash and brokerHash are allowed
-    //     if (!allowedTokenSet.contains(data.tokenHash)) revert TokenNotAllowed();
-    //     if (!allowedBrokerSet.contains(data.brokerHash))
-    //         revert BrokerNotAllowed();
-    //     // check if accountId = keccak256(abi.encodePacked(brokerHash, receiver))
-    //     if (!Utils.validateAccountId(data.accountId, data.brokerHash, receiver))
-    //         revert AccountIdInvalid();
-    //     // check if tokenAmount > 0
-    //     if (data.tokenAmount == 0) revert ZeroDeposit();
-    //     //  check vault type
-    // }
+  
 
     //--------------------------------------CONFIG--------------------------------------------
     function setLedgerChainId(uint256 _ledgerChainId) external onlyOwner {

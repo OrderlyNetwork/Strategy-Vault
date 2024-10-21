@@ -34,7 +34,7 @@ contract TestProtocolVault is Base {
         assertEq(bVaultCrossChainManager.dstEid(), 1);
     }
 
-    function testDeposit() public {
+    function testProtocolDeposit() public {
         uint256 nativeFee = getEstimateFee();
         // Call deposit function
         protocolVault.deposit{value: nativeFee}(
@@ -48,5 +48,7 @@ contract TestProtocolVault is Base {
             addressToBytes32(address(bVaultCrossChainManager))
         );
     }
+
+    // function testUserVaultDeposit public {}
 
 }

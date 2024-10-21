@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Account, DepositData, StrategyVault, StrategyProvider, UploadUserShare} from "./lib/Struct.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
+import {Account, DepositData, StrategyVault, StrategyProvider, UserDepositInfo} from "./lib/Struct.sol";
 
 import {console} from "forge-std/console.sol";
 
 /*todo
     - modifier
+    - is necessary to verify in vaultDeposit
 
 */
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
+    using Math for uint256;
+
+    uint256 public totalShares;
     address public crossChainManagerAddress;
 
     mapping(bytes32 => StrategyVault) public strategyVaultById;
@@ -35,6 +41,9 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     //     );
     //     _;
     // }
+
+    error InsufficientBalance();
+    error AlreadyAllocatedShare();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -62,32 +71,63 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     // }
 
     function vaultDeposit(DepositData memory depositData) external {
-        console.log("come to ledger");
+        console.log("welcome to vaultDeposit!");
         //update vault and account balance
-        // strategyVaultById[depositData.vaultId].balance += amount;
-        // accountById[depositData.accountId].balance += amount;
+        strategyVaultById[depositData.vaultId].balance += depositData.amount;
+        accountById[depositData.accountId].balance += depositData.amount;
     }
 
-    // function allocateUserShare(
-    //     UploadUserShare[] memory uploadUserShare,
-    //     uint256 NAV
-    // ) external {
-    //     //validate user balance greater than depositAmount
-    //     //validate user unAllocatedBalance greater than depositAmount
-    //     if (
-    //         accountById[uploadUserShare.accountId].balance <
-    //         uploadUserShare.depositAmount ||
-    //         accountById[uploadUserShare.accountId].unAllocatedBalance <
-    //         uploadUserShare.depositAmount
-    //     ) {
-    //         revert InsufficientBalance();
-    //     }
+    function allocateUserShare(
+        UserDepositInfo[] memory userDepositInfos,
+        uint256 totalValue
+    ) external {
+        //iterate over userShareUpload
+        for (uint256 i = 0; i < userDepositInfos.length; i++) {
+            bytes32 accountId = userDepositInfos[i].accountId;
+            uint256 depositAmount = userDepositInfos[i].depositAmount;
+            //validate user balance greater than depositAmount
+            if (accountById[accountId].balance < depositAmount) {
+                revert InsufficientBalance();
+            }
 
-    //     //update user shareAmount
-    //     for (uint i = 0; i < uploadUserShare.length; i++) {
-    //         //user calculation
-    //     }
-    // }
+            if (
+                accountById[accountId].balance <
+                depositAmount + accountById[accountId].allocatedBalance
+            ) {
+                revert AlreadyAllocatedShare();
+            }
+
+            //calculate shareAmount of user
+            uint256 userShare = _convertToShares(
+                depositAmount,
+                totalValue,
+                Math.Rounding.Floor
+            );
+
+            accountById[accountId].share += userShare;
+            totalShares += userShare;
+        }
+    }
+
+    /**
+     * @dev Internal conversion function (from assets amount to shares) with support for rounding direction.
+     */
+    function _convertToShares(
+        uint256 amount,
+        uint256 totalValue,
+        Math.Rounding rounding
+    ) internal view virtual returns (uint256) {
+        return
+            amount.mulDiv(
+                totalShares + 10 ** _decimalsOffset(),
+                totalValue + 1,
+                rounding
+            );
+    }
+
+    function _decimalsOffset() internal view virtual returns (uint8) {
+        return 0;
+    }
 
     // function allocateFundsToStrategyProviders(
     //     address[] calldata strategyProviders,

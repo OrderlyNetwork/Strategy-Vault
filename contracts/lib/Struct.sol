@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 enum VaultType {
     PROTOCOL,
     USER
@@ -19,11 +19,9 @@ enum PayloadType {
 }
 
 struct Account {
-    address userAddress;
     uint256 balance;
-    uint256 unAllocatedBalance;
-    uint256 shareAmount;
-    
+    uint256 allocatedBalance;
+    uint256 share;
 }
 
 struct StrategyVaultCCMessage {
@@ -32,10 +30,12 @@ struct StrategyVaultCCMessage {
     /// @dev payload is the data to be sent
     bytes payload;
 }
-struct UploadUserShare {
+
+struct UserDepositInfo {
     bytes32 accountId;
     uint256 depositAmount;
 }
+
 /*======================================================================
  *   Deposit
  *======================================================================*/
