@@ -43,14 +43,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
 
     function initialize(address _crossChainManager) external initializer {
         __Ownable2Step_init();
+        __Ownable_init(msg.sender); //owner() initialized to msg.sender
+
         __UUPSUpgradeable_init();
 
         crossChainManager = _crossChainManager;
         ledgerChainId = 291;
-    }
-
-    function testIncrementCounter() external {
-        IVaultCrossChainManager(crossChainManager).testCounter();
     }
 
     function deposit(
@@ -141,10 +139,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     function setLedgerChainId(uint256 _ledgerChainId) external onlyOwner {
         ledgerChainId = _ledgerChainId;
     }
+
     function setOrderlyDexVault(address _orderlyDexVault) external onlyOwner {
         orderlyDexVault = _orderlyDexVault;
     }
-    function setCrossChainManager(address _crossChainManager) external onlyOwner {
+
+    function setCrossChainManager(
+        address _crossChainManager
+    ) external onlyOwner {
         crossChainManager = _crossChainManager;
     }
 }

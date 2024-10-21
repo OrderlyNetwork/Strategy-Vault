@@ -12,6 +12,7 @@ import {OApp, Origin, MessagingFee} from "@layerzerolabs/lz-evm-oapp-v2/contract
 import {DepositData, StrategyVaultCCMessage, PayloadType} from "./lib/Struct.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
+
 import {console} from "forge-std/console.sol";
 
 /**
@@ -35,21 +36,6 @@ contract VaultCrossChainManager is OApp {
         address delegate
     ) OApp(endpoint, delegate) Ownable(msg.sender) {
         eid = ILayerZeroEndpointV2(endpoint).eid();
-    }
-
-    function testCounter() external payable {
-        bytes memory options = OptionsBuilder
-            .newOptions()
-            .addExecutorLzReceiveOption(50000, 0);
-
-        MessagingFee memory messageFee = _quote(dstEid, "", options, false);
-        _lzSend(
-            dstEid,
-            "",
-            options,
-            messageFee, // Fee in native gas and ZRO token.
-            payable(msg.sender) // Refund address in case of failed source message.
-        );
     }
 
     function vaultSendToLedger(
@@ -126,9 +112,7 @@ contract VaultCrossChainManager is OApp {
         svLedger = _svLedger;
     }
 
-    /*======================================================================================
-     *                                      VIEW
-     *=====================================================================================*/
+    //--------------------------------------VIEW--------------------------------------------
 
     function quote(
         uint32 _dstEid,

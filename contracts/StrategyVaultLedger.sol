@@ -7,13 +7,11 @@ import {Account, DepositData, StrategyVault, StrategyProvider, UploadUserShare} 
 
 import {console} from "forge-std/console.sol";
 
-
 /*todo
     - modifier
 
 */
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
-
     address public crossChainManagerAddress;
 
     mapping(bytes32 => StrategyVault) public strategyVaultById;
@@ -47,11 +45,11 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
         address newImplementation
     ) internal override onlyOwner {}
 
-    function initialize(address _crossChainManagerAddress) external initializer {
+    function initialize() external initializer {
         __Ownable2Step_init();
-        __UUPSUpgradeable_init();
+        __Ownable_init(msg.sender); //owner() initialized to msg.sender
 
-        crossChainManagerAddress = _crossChainManagerAddress;
+        __UUPSUpgradeable_init();
     }
 
     // function receiveMessageFromStrategyVault(
@@ -63,9 +61,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     //     }
     // }
 
-    function vaultDeposit(
-        DepositData memory depositData
-    ) external {
+    function vaultDeposit(DepositData memory depositData) external {
         console.log("come to ledger");
         //update vault and account balance
         // strategyVaultById[depositData.vaultId].balance += amount;
@@ -251,4 +247,11 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     // }
 
     // function uploadShare(UserInfo[] memory userInfo, TVL) external {}
+
+    //--------------------------------------CONFIG--------------------------------------------
+    function setCrossChainManagerAddress(
+        address _crossChainManagerAddress
+    ) external onlyOwner {
+        crossChainManagerAddress = _crossChainManagerAddress;
+    }
 }
