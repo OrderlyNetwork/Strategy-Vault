@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {DepositData, VaultType, PayloadType, StrategyVaultCCMessage} from "./lib/Struct.sol";
@@ -14,7 +14,7 @@ import {console} from "forge-std/console.sol";
 // import "hardhat/console.sol";
 
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
-    using SafeTransferLib for ERC20;
+    using SafeERC20 for IERC20;
 
     uint256 public ledgerChainId;
     address public orderlyDexVault;
@@ -32,7 +32,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     // mapping(address => uint256) userToDepositAmount;
     // mapping(address => StrategyParams) strategies;
     // mapping(address => bool) isActiveSigner;
-    
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -54,7 +53,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         IVaultCrossChainManager(crossChainManager).testCounter();
     }
 
-    function deposit(address token, address to, uint256 amount) external {
+    function deposit(
+        address token,
+        address to,
+        uint256 amount
+    ) external payable {
         //calculate idex
         bytes32 vaultId = keccak256(
             abi.encodePacked(brokerHash, address(this))
@@ -64,7 +67,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         //_validateDeposit(depositData);
 
         // transfer token to this contract
-        ERC20(token).safeTransfer(to, amount);
+        IERC20(token).safeTransferFrom(msg.sender, to, amount);
 
         //construct DepositData cross chain message
         DepositData memory depositData = DepositData({
@@ -81,17 +84,15 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
             brokerHash: brokerHash
         });
 
-        StrategyVaultCCMessage
-            memory strategyVaultCCMessage = StrategyVaultCCMessage({
-                dstChainId: ledgerChainId,
-                payloadType: PayloadType.DEPOSIT,
-                payload: abi.encode(depositData)
-            });
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: uint8(PayloadType.DEPOSIT),
+            payload: abi.encode(depositData)
+        });
 
         //cross-chain message
-        IVaultCrossChainManager(crossChainManager).vaultSendToLedger(
-            strategyVaultCCMessage
-        );
+        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{
+            value: msg.value
+        }(message);
     }
 
     /******ledger Call *********/
@@ -135,4 +136,15 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     //     if (data.tokenAmount == 0) revert ZeroDeposit();
     //     //  check vault type
     // }
+
+    //--------------------------------------CONFIG--------------------------------------------
+    function setLedgerChainId(uint256 _ledgerChainId) external onlyOwner {
+        ledgerChainId = _ledgerChainId;
+    }
+    function setOrderlyDexVault(address _orderlyDexVault) external onlyOwner {
+        orderlyDexVault = _orderlyDexVault;
+    }
+    function setCrossChainManager(address _crossChainManager) external onlyOwner {
+        crossChainManager = _crossChainManager;
+    }
 }

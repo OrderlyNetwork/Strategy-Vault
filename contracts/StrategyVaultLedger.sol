@@ -5,13 +5,16 @@ import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/acces
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Account, DepositData, StrategyVault, StrategyProvider, UploadUserShare} from "./lib/Struct.sol";
 
-// Uncomment this line to use console.log
-// import "hardhat/console.sol";
+import {console} from "forge-std/console.sol";
 
+
+/*todo
+    - modifier
+
+*/
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
-    // address protocolVault;
-    // address userVault;
-    uint256 public testCounter;
+
+    address public crossChainManagerAddress;
 
     mapping(bytes32 => StrategyVault) public strategyVaultById;
     mapping(bytes32 => StrategyProvider) public strategyProviderById;
@@ -44,13 +47,11 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
         address newImplementation
     ) internal override onlyOwner {}
 
-    function initialize() external initializer {
+    function initialize(address _crossChainManagerAddress) external initializer {
         __Ownable2Step_init();
         __UUPSUpgradeable_init();
-    }
 
-    function testIncrementCounter() external {
-        testCounter++;
+        crossChainManagerAddress = _crossChainManagerAddress;
     }
 
     // function receiveMessageFromStrategyVault(
@@ -62,19 +63,14 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     //     }
     // }
 
-    // function vaultDeposit(
-    //     DepositData memory depositData
-    // ) external onlyVaultCrossChainManager {
-    //     //update vault and account balance
-    //     strategyVaultById[depositData.vaultId].balance += amount;
-    //     accountById[depositData.accountId].balance += amount;
-
-    //     //if user vault, update strategy provider balance
-    //     if (vaultType == VaultType.USER) {
-    //         strategyProviderById[depositData.strategyProviderId]
-    //             .balance += amount;
-    //     }
-    // }
+    function vaultDeposit(
+        DepositData memory depositData
+    ) external {
+        console.log("come to ledger");
+        //update vault and account balance
+        // strategyVaultById[depositData.vaultId].balance += amount;
+        // accountById[depositData.accountId].balance += amount;
+    }
 
     // function allocateUserShare(
     //     UploadUserShare[] memory uploadUserShare,

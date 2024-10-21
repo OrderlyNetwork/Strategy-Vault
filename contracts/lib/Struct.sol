@@ -27,10 +27,8 @@ struct Account {
 }
 
 struct StrategyVaultCCMessage {
-    /// @dev the source chain id, the sender can omit this field
-    uint256 dstChainId;
     /// @dev payloadType is the type of the payload
-    PayloadType payloadType;
+    uint8 payloadType;
     /// @dev payload is the data to be sent
     bytes payload;
 }
