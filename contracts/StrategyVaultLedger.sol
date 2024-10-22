@@ -75,6 +75,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
         //update vault and account balance
         strategyVaultById[depositData.vaultId].balance += depositData.amount;
         accountById[depositData.accountId].balance += depositData.amount;
+
     }
 
     function allocateUserShare(

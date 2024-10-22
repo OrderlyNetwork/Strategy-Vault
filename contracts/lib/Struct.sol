@@ -36,6 +36,12 @@ struct UserDepositInfo {
     uint256 depositAmount;
 }
 
+struct UserVaultInfo {
+    address owner;
+    uint256 balance;
+    bool isActive;
+}
+
 /*======================================================================
  *   Deposit
  *======================================================================*/
