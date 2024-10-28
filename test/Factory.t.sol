@@ -12,7 +12,7 @@ contract Create3FactoryTest is Test {
     ProtocolVault protocolVault;
     address vaultCrossChainManager = address(0x123);
     bytes32 salt = keccak256(abi.encodePacked("test_salt"));
-
+    
     function setUp() public {
         factory = new ContractFactory();
     }
