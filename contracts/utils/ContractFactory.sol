@@ -8,10 +8,7 @@ import {CREATE3} from "solady/src/utils/CREATE3.sol";
 /// @notice Enables deploying contracts using CREATE3. Each deployer (msg.sender) has
 /// its own namespace for deployed addresses.
 contract ContractFactory {
-    function deploy(
-        bytes32 salt,
-        bytes memory creationCode
-    ) external payable returns (address) {
+    function deploy(bytes32 salt, bytes memory creationCode) external payable returns (address) {
         // hash salt with the deployer address to give each deployer its own namespace
         salt = keccak256(abi.encodePacked(msg.sender, salt));
         return CREATE3.deployDeterministic(creationCode, salt);
@@ -29,12 +26,7 @@ contract ContractFactory {
         address deployedContract;
 
         assembly {
-            deployedContract := create2(
-                0,
-                add(creationCode, 0x20),
-                mload(creationCode),
-                salt
-            )
+            deployedContract := create2(0, add(creationCode, 0x20), mload(creationCode), salt)
             if iszero(deployedContract) {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())

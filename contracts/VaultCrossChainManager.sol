@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 // oz imports
+
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 // lz imports
@@ -21,7 +22,6 @@ import {console} from "forge-std/console.sol";
  * - lz send require vault equal quote fee
  *
  */
-
 contract VaultCrossChainManager is OApp {
     error InvalidPayloadType();
 
@@ -31,32 +31,16 @@ contract VaultCrossChainManager is OApp {
     uint32 public dstEid;
     address public svLedger;
 
-    constructor(
-        address endpoint,
-        address delegate
-    ) OApp(endpoint, delegate) Ownable(msg.sender) {
+    constructor(address endpoint, address delegate) OApp(endpoint, delegate) Ownable(msg.sender) {
         eid = ILayerZeroEndpointV2(endpoint).eid();
     }
 
-    function vaultSendToLedger(
-        StrategyVaultCCMessage memory message
-    ) external payable {
+    function vaultSendToLedger(StrategyVaultCCMessage memory message) external payable {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
 
-        bytes memory options = OptionsBuilder
-            .newOptions()
-            .addExecutorLzReceiveOption(200000, 0);
+        bytes memory lzMessage = encodeLzMsg(message.payloadType, message.payload);
 
-        bytes memory lzMessage = encodeLzMsg(
-            message.payloadType,
-            message.payload
-        );
-
-        MessagingFee memory messageFee = _quote(
-            dstEid,
-            lzMessage,
-            options,
-            false
-        );
+        MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
         _lzSend(
             dstEid,
             lzMessage,
@@ -87,9 +71,9 @@ contract VaultCrossChainManager is OApp {
 
     function _lzReceive(
         Origin calldata _origin,
-        bytes32 /*_guid*/,
+        bytes32, /*_guid*/
         bytes calldata _message,
-        address /*_executor*/,
+        address, /*_executor*/
         bytes calldata /*_extraData*/
     ) internal virtual override {
         //Decode the payload by payloadType
@@ -108,40 +92,30 @@ contract VaultCrossChainManager is OApp {
     function setDstEid(uint32 _dstEid) external onlyOwner {
         dstEid = _dstEid;
     }
+
     function setSvLedger(address _svLedger) external onlyOwner {
         svLedger = _svLedger;
     }
 
     //--------------------------------------VIEW--------------------------------------------
 
-    function quote(
-        uint32 _dstEid,
-        bytes memory _message,
-        bytes memory _options,
-        bool _payInLzToken
-    ) public view returns (uint256 nativeFee, uint256 lzTokenFee) {
+    function quote(uint32 _dstEid, bytes memory _message, bytes memory _options, bool _payInLzToken)
+        public
+        view
+        returns (uint256 nativeFee, uint256 lzTokenFee)
+    {
         //        bytes memory options = combineOptions(_eid, _type, _options);
-        MessagingFee memory fee = _quote(
-            _dstEid,
-            _message,
-            _options,
-            _payInLzToken
-        );
+        MessagingFee memory fee = _quote(_dstEid, _message, _options, _payInLzToken);
         return (fee.nativeFee, fee.lzTokenFee);
     }
 
     //--------------------------------------INTERNAL--------------------------------------------
 
-    function encodeLzMsg(
-        uint8 msgType,
-        bytes memory payload
-    ) internal pure returns (bytes memory) {
+    function encodeLzMsg(uint8 msgType, bytes memory payload) internal pure returns (bytes memory) {
         return abi.encodePacked(uint8(msgType), payload);
     }
 
-    function decodeLzMsg(
-        bytes calldata message
-    ) internal pure returns (uint8 msgType, bytes memory payload) {
+    function decodeLzMsg(bytes calldata message) internal pure returns (uint8 msgType, bytes memory payload) {
         //decode msg type and payload
         uint8 MSG_TYPE_OFFSET = 1;
         msgType = uint8(bytes1(message[:MSG_TYPE_OFFSET]));

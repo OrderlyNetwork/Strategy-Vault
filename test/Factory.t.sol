@@ -12,7 +12,7 @@ contract Create3FactoryTest is Test {
     ProtocolVault protocolVault;
     address vaultCrossChainManager = address(0x123);
     bytes32 salt = keccak256(abi.encodePacked("test_salt"));
-    
+
     function setUp() public {
         factory = new ContractFactory();
     }
@@ -24,10 +24,7 @@ contract Create3FactoryTest is Test {
             type(ERC1967Proxy).creationCode,
             abi.encode(
                 protocolVaultImpl,
-                abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector,
-                    address(vaultCrossChainManager)
-                )
+                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(vaultCrossChainManager))
             )
         );
         address deployedAddress = factory.deploy(salt, bytecode);
@@ -44,10 +41,7 @@ contract Create3FactoryTest is Test {
             type(ERC1967Proxy).creationCode,
             abi.encode(
                 protocolVaultImpl,
-                abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector,
-                    address(vaultCrossChainManager)
-                )
+                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(vaultCrossChainManager))
             )
         );
         bytes memory bytecodeB = abi.encodePacked(
@@ -73,10 +67,7 @@ contract Create3FactoryTest is Test {
             type(ERC1967Proxy).creationCode,
             abi.encode(
                 protocolVaultImpl,
-                abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector,
-                    address(vaultCrossChainManager)
-                )
+                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(vaultCrossChainManager))
             )
         );
         address deployedAddress = factory.deployByCreate2(salt, bytecode);

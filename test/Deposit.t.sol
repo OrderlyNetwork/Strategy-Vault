@@ -12,15 +12,9 @@ contract TestProtocolVault is Base {
     function testInitialize() public view {
         // Check initial state
         assertEq(protocolVault.ledgerChainId(), 291);
-        assertEq(
-            protocolVault.crossChainManager(),
-            address(aVaultCrossChainManager)
-        );
+        assertEq(protocolVault.crossChainManager(), address(aVaultCrossChainManager));
 
-        assertEq(
-            svLedger.crossChainManagerAddress(),
-            address(bVaultCrossChainManager)
-        );
+        assertEq(svLedger.crossChainManagerAddress(), address(bVaultCrossChainManager));
 
         assertEq(bVaultCrossChainManager.svLedger(), address(svLedger));
 
@@ -33,18 +27,10 @@ contract TestProtocolVault is Base {
     function testProtocolDeposit() public {
         uint256 nativeFee = getEstimateFee();
         // Call deposit function
-        protocolVault.deposit{value: nativeFee}(
-            address(mockToken),
-            user,
-            100e6
-        );
+        protocolVault.deposit{value: nativeFee}(address(mockToken), user, 100e6);
 
-        verifyPackets(
-            ledgerEid,
-            addressToBytes32(address(bVaultCrossChainManager))
-        );
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
     }
 
     // function testUserVaultDeposit public {}
-
 }

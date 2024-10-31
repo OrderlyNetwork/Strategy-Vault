@@ -14,9 +14,9 @@ import {console} from "forge-std/console.sol";
 // import "hardhat/console.sol";
 
 /**
- // todo
+ * // todo
  *  - if different token, using another contract
- *  - 
+ *  -
  */
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
@@ -48,9 +48,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function initialize(address _crossChainManager) external initializer {
         __Ownable2Step_init();
@@ -62,14 +60,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         ledgerChainId = 291;
     }
 
-    function deposit(
-        address token,
-        address to,
-        uint256 amount
-    ) external payable {
-        bytes32 vaultId = keccak256(
-            abi.encodePacked(brokerHash, address(this))
-        );
+    function deposit(address token, address to, uint256 amount) external payable {
+        bytes32 vaultId = keccak256(abi.encodePacked(brokerHash, address(this)));
         bytes32 accountId = keccak256(abi.encodePacked(to, brokerHash));
 
         //_validateDeposit(depositData);
@@ -92,18 +84,16 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
             brokerHash: brokerHash
         });
 
-        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: uint8(PayloadType.DEPOSIT),
-            payload: abi.encode(depositData)
-        });
+        StrategyVaultCCMessage memory message =
+            StrategyVaultCCMessage({payloadType: uint8(PayloadType.DEPOSIT), payload: abi.encode(depositData)});
 
         //cross-chain message
-        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{
-            value: msg.value
-        }(message);
+        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
     }
 
-    /******ledger Call *********/
+    /**
+     * ledger Call ********
+     */
     // function depositToOrderlyDex() external {
     //     //call dex vault
 
@@ -134,9 +124,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         orderlyDexVault = _orderlyDexVault;
     }
 
-    function setCrossChainManager(
-        address _crossChainManager
-    ) external onlyOwner {
+    function setCrossChainManager(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;
     }
 

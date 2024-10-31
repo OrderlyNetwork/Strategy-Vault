@@ -33,9 +33,7 @@ contract UserVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function initialize(address _crossChainManager) external initializer {
         __Ownable2Step_init();
@@ -47,13 +45,8 @@ contract UserVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         ledgerChainId = 291;
     }
 
-    function createUserVault(
-        uint256 initialAmount,
-        bytes32 brokerHash
-    ) external {
-        bytes32 vaultId = keccak256(
-            abi.encodePacked(address(this), msg.sender, brokerHash)
-        );
+    function createUserVault(uint256 initialAmount, bytes32 brokerHash) external {
+        bytes32 vaultId = keccak256(abi.encodePacked(address(this), msg.sender, brokerHash));
 
         //validate only one actice user vault
         if (userVaultbyId[vaultId].isActive) {
@@ -69,27 +62,20 @@ contract UserVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         }
 
         //initialize vault
-        userVaultbyId[vaultId] = UserVaultInfo({
-            owner: msg.sender,
-            balance: initialAmount,
-            isActive: true
-        });
+        userVaultbyId[vaultId] = UserVaultInfo({owner: msg.sender, balance: initialAmount, isActive: true});
 
         emit VaultCreated(vaultId, msg.sender);
     }
 
-    /******User Call *********/
-    function deposit(
-        address token,
-        address to,
-        address vaultOwner,
-        uint256 amount,
-        bytes32 brokerHash
-    ) external payable{
+    /**
+     * User Call ********
+     */
+    function deposit(address token, address to, address vaultOwner, uint256 amount, bytes32 brokerHash)
+        external
+        payable
+    {
         //calculate or validate id
-        bytes32 vaultId = keccak256(
-            abi.encodePacked(address(this), vaultOwner, brokerHash)
-        );
+        bytes32 vaultId = keccak256(abi.encodePacked(address(this), vaultOwner, brokerHash));
 
         bytes32 accountId = keccak256(abi.encodePacked(to, brokerHash));
         //_validateDeposit(depositData);
@@ -112,18 +98,16 @@ contract UserVault is Ownable2StepUpgradeable, UUPSUpgradeable {
             brokerHash: brokerHash
         });
 
-        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: uint8(PayloadType.DEPOSIT),
-            payload: abi.encode(depositData)
-        });
+        StrategyVaultCCMessage memory message =
+            StrategyVaultCCMessage({payloadType: uint8(PayloadType.DEPOSIT), payload: abi.encode(depositData)});
 
         //cross-chain message
-        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{
-            value: msg.value
-        }(message);
+        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
     }
 
-    /******ledger Call *********/
+    /**
+     * ledger Call ********
+     */
     // function depositToOrderlyDex() external {
     //     //call dex vault
     //     // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
@@ -137,15 +121,11 @@ contract UserVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     // }
 
     //--------------------------------------CONFIG--------------------------------------------
-    function setMinInitialDeposit(
-        uint256 _minInitialDeposit
-    ) external onlyOwner {
+    function setMinInitialDeposit(uint256 _minInitialDeposit) external onlyOwner {
         minInitialDeposit = _minInitialDeposit;
     }
 
-    function setCrossChainManager(
-        address _crossChainManager
-    ) external onlyOwner {
+    function setCrossChainManager(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;
     }
 

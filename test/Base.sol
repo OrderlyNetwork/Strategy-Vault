@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
+
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -13,11 +14,7 @@ import {StrategyVaultCCMessage, DepositData, PayloadType, VaultType} from "../co
 
 // Mock ERC20 token contract
 contract MockERC20 is ERC20 {
-    constructor(
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) ERC20(name, symbol) {}
+    constructor(string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol) {}
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
@@ -45,24 +42,13 @@ contract Base is TestHelperOz5 {
         vm.deal(user, 100 ether);
         // Deploy the StrategyVaultLedger contract
         address svLedgerImpl = address(new StrategyVaultLedger());
-        address svLedgerProxy = address(
-            new ERC1967Proxy(
-                svLedgerImpl,
-                abi.encodeWithSelector(
-                    StrategyVaultLedger.initialize.selector,
-                    ""
-                )
-            )
-        );
+        address svLedgerProxy =
+            address(new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(StrategyVaultLedger.initialize.selector, "")));
         svLedger = StrategyVaultLedger(svLedgerProxy);
 
         // Initialize 2 endpoints, using UltraLightNode as the library type
         setUpEndpoints(2, LibraryType.UltraLightNode);
-        address[] memory uas = setupOApps(
-            type(VaultCrossChainManager).creationCode,
-            1,
-            2
-        );
+        address[] memory uas = setupOApps(type(VaultCrossChainManager).creationCode, 1, 2);
         // Deploy the VaultCrossChainManager contract
         aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
         bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
@@ -78,10 +64,7 @@ contract Base is TestHelperOz5 {
         address proxy = address(
             new ERC1967Proxy(
                 protocolVaultImpl,
-                abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector,
-                    address(aVaultCrossChainManager)
-                )
+                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(aVaultCrossChainManager))
             )
         );
         protocolVault = ProtocolVault(proxy);
@@ -95,16 +78,9 @@ contract Base is TestHelperOz5 {
     }
 
     function getEstimateFee() public view returns (uint256) {
-        bytes memory options = OptionsBuilder
-            .newOptions()
-            .addExecutorLzReceiveOption(200000, 0);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
 
-        (uint256 nativeFee, ) = aVaultCrossChainManager.quote(
-            ledgerEid,
-            buildCCMessage(),
-            options,
-            false
-        );
+        (uint256 nativeFee,) = aVaultCrossChainManager.quote(ledgerEid, buildCCMessage(), options, false);
         return nativeFee;
     }
 
@@ -124,29 +100,19 @@ contract Base is TestHelperOz5 {
             vault: address(protocolVault),
             vaultId: vaultId,
             accountId: accountId,
-            strategyProviderId: keccak256(
-                abi.encodePacked(address(protocolVault))
-            ),
+            strategyProviderId: keccak256(abi.encodePacked(address(protocolVault))),
             brokerHash: bytes32(0)
         });
 
-        bytes memory lzMessage = encodeLzMsg(
-            uint8(PayloadType.DEPOSIT),
-            abi.encode(depositData)
-        );
+        bytes memory lzMessage = encodeLzMsg(uint8(PayloadType.DEPOSIT), abi.encode(depositData));
         return lzMessage;
     }
 
-    function encodeLzMsg(
-        uint8 msgType,
-        bytes memory payload
-    ) internal pure returns (bytes memory) {
+    function encodeLzMsg(uint8 msgType, bytes memory payload) internal pure returns (bytes memory) {
         return abi.encodePacked(uint8(msgType), payload);
     }
 
-    function decodeLzMsg(
-        bytes calldata message
-    ) internal pure returns (uint8 msgType, bytes memory payload) {
+    function decodeLzMsg(bytes calldata message) internal pure returns (uint8 msgType, bytes memory payload) {
         //decode msg type and payload
         uint8 MSG_TYPE_OFFSET = 1;
         msgType = uint8(bytes1(message[:MSG_TYPE_OFFSET]));

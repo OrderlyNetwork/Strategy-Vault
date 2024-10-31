@@ -50,9 +50,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function initialize() external initializer {
         __Ownable2Step_init();
@@ -75,13 +73,9 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
         //update vault and account balance
         strategyVaultById[depositData.vaultId].balance += depositData.amount;
         accountById[depositData.accountId].balance += depositData.amount;
-
     }
 
-    function allocateUserShare(
-        UserDepositInfo[] memory userDepositInfos,
-        uint256 totalValue
-    ) external {
+    function allocateUserShare(UserDepositInfo[] memory userDepositInfos, uint256 totalValue) external {
         //iterate over userShareUpload
         for (uint256 i = 0; i < userDepositInfos.length; i++) {
             bytes32 accountId = userDepositInfos[i].accountId;
@@ -91,19 +85,12 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
                 revert InsufficientBalance();
             }
 
-            if (
-                accountById[accountId].balance <
-                depositAmount + accountById[accountId].allocatedBalance
-            ) {
+            if (accountById[accountId].balance < depositAmount + accountById[accountId].allocatedBalance) {
                 revert AlreadyAllocatedShare();
             }
 
             //calculate shareAmount of user
-            uint256 userShare = _convertToShares(
-                depositAmount,
-                totalValue,
-                Math.Rounding.Floor
-            );
+            uint256 userShare = _convertToShares(depositAmount, totalValue, Math.Rounding.Floor);
 
             accountById[accountId].share += userShare;
             totalShares += userShare;
@@ -113,17 +100,13 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     /**
      * @dev Internal conversion function (from assets amount to shares) with support for rounding direction.
      */
-    function _convertToShares(
-        uint256 amount,
-        uint256 totalValue,
-        Math.Rounding rounding
-    ) internal view virtual returns (uint256) {
-        return
-            amount.mulDiv(
-                totalShares + 10 ** _decimalsOffset(),
-                totalValue + 1,
-                rounding
-            );
+    function _convertToShares(uint256 amount, uint256 totalValue, Math.Rounding rounding)
+        internal
+        view
+        virtual
+        returns (uint256)
+    {
+        return amount.mulDiv(totalShares + 10 ** _decimalsOffset(), totalValue + 1, rounding);
     }
 
     function _decimalsOffset() internal view virtual returns (uint8) {
@@ -290,9 +273,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     // function uploadShare(UserInfo[] memory userInfo, TVL) external {}
 
     //--------------------------------------CONFIG--------------------------------------------
-    function setCrossChainManagerAddress(
-        address _crossChainManagerAddress
-    ) external onlyOwner {
+    function setCrossChainManagerAddress(address _crossChainManagerAddress) external onlyOwner {
         crossChainManagerAddress = _crossChainManagerAddress;
     }
 }
