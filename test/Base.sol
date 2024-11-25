@@ -10,8 +10,8 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {StrategyVaultLedger} from "../contracts/StrategyVaultLedger.sol";
-import {StrategyVaultCCMessage, DepositData, PayloadType, VaultType} from "../contracts/lib/Struct.sol";
-
+import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
+import {StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 // Mock ERC20 token contract
 contract MockERC20 is ERC20 {
     constructor(string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol) {}
@@ -90,22 +90,22 @@ contract Base is TestHelperOz5 {
 
         bytes32 accountId = keccak256(abi.encodePacked(user, vaultId));
 
-        DepositData memory depositData = DepositData({
-            vaultType: VaultType.PROTOCOL,
-            amount: 100e6,
-            depositNonce: 0,
-            token: address(mockToken),
-            receiver: user,
-            strategyProvider: address(0),
-            vault: address(protocolVault),
-            vaultId: vaultId,
-            accountId: accountId,
-            strategyProviderId: keccak256(abi.encodePacked(address(protocolVault))),
-            brokerHash: bytes32(0)
-        });
+        // DepositData memory depositData = DepositData({
+        //     vaultType: VaultType.PROTOCOL,
+        //     amount: 100e6,
+        //     depositNonce: 0,
+        //     token: address(mockToken),
+        //     receiver: user,
+        //     strategyProvider: address(0),
+        //     vault: address(protocolVault),
+        //     vaultId: vaultId,
+        //     accountId: accountId,
+        //     strategyProviderId: keccak256(abi.encodePacked(address(protocolVault))),
+        //     brokerHash: bytes32(0)
+        // });
 
-        bytes memory lzMessage = encodeLzMsg(uint8(PayloadType.DEPOSIT), abi.encode(depositData));
-        return lzMessage;
+        //bytes memory lzMessage = encodeLzMsg(uint8(PayloadType.DEPOSIT), abi.encode(depositData));
+        //return lzMessage;
     }
 
     function encodeLzMsg(uint8 msgType, bytes memory payload) internal pure returns (bytes memory) {
