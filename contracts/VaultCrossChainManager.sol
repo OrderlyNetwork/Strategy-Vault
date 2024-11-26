@@ -10,10 +10,9 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 import {OApp, Origin, MessagingFee} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
 
 // dev imports
-import {DepositData, StrategyVaultCCMessage, PayloadType} from "./lib/Struct.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
-
+import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {console} from "forge-std/console.sol";
 
 /**
@@ -52,22 +51,22 @@ contract VaultCrossChainManager is OApp {
         );
     }
 
-    // function ledgerSendToVault(
-    //     StrategyVaultCCMessage memory strategyVaultCCMessage
-    // ) internal {
-    //     // Encodes the message before invoking _lzSend.
-    //     // Replace with whatever data you want to send!
-    //     bytes memory payload = svMessage.payload;
-    //     _lzSend(
-    //         LEDGER_ID,
-    //         payload,
-    //         options,
-    //         // Fee in native gas and ZRO token.
-    //         MessagingFee(msg.value, 0),
-    //         // Refund address in case of failed source message.
-    //         payable(msg.sender)
-    //     );
-    // }
+    function ledgerSendToVault(
+        StrategyVaultCCMessage memory strategyVaultCCMessage
+    ) internal {
+        // Encodes the message before invoking _lzSend.
+        // Replace with whatever data you want to send!
+        // bytes memory payload = svMessage.payload;
+        // _lzSend(
+        //     strategyVaultCCMessage.chainId,
+        //     payload,
+        //     options,
+        //     // Fee in native gas and ZRO token.
+        //     MessagingFee(msg.value, 0),
+        //     // Refund address in case of failed source message.
+        //     payable(msg.sender)
+        // );
+    }
 
     function _lzReceive(
         Origin calldata _origin,
@@ -77,14 +76,14 @@ contract VaultCrossChainManager is OApp {
         bytes calldata /*_extraData*/
     ) internal virtual override {
         //Decode the payload by payloadType
-        (uint8 payloadType, bytes memory payload) = decodeLzMsg(_message);
-        if (payloadType == uint8(PayloadType.DEPOSIT)) {
-            DepositData memory depositData = abi.decode(payload, (DepositData));
-            //call ledger vaultDeposit function
-            IStrategyVaultLedger(svLedger).vaultDeposit(depositData);
-        } else {
-            revert InvalidPayloadType();
-        }
+        // (uint8 payloadType, bytes memory payload) = decodeLzMsg(_message);
+        // if (payloadType == uint8(PayloadType.LP_DEPOSIT)) {
+        //     DepositData memory depositData = abi.decode(payload, (DepositData));
+        //     //call ledger vaultDeposit function
+        //     IStrategyVaultLedger(svLedger).accountDeposit(depositData);
+        // } else {
+        //     revert InvalidPayloadType();
+        // }
     }
 
     //--------------------------------------CONFIG--------------------------------------------

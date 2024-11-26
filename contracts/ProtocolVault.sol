@@ -6,8 +6,12 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
-import {DepositData, VaultType, PayloadType, StrategyVaultCCMessage} from "./lib/Struct.sol";
-
+import {
+    VaultType,
+    PayloadType,
+    OperationParams
+} from "./lib/types/VaultStruct.sol";
+import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
@@ -26,14 +30,15 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     address public orderlyDexVault;
     address public crossChainManager;
 
-    bytes32 public brokerHash;
-
-    // uint256 miniumDepositForUser;
+    uint256 public nonce;
+    //uint256 miniumDepositForUser;
     // uint256 miniumDepositForSP;
     // uint256 capUserNumber;
     // uint256 fee;
     // address feeRecipient;
     //VaultState vaultState;
+
+    mapping(bytes32 => uint256) public unclaimedAssets;
     mapping(bytes32 => bool) public isAllowedToken;
     mapping(bytes32 => bool) public isAllowedBroker;
 
@@ -48,6 +53,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         _disableInitializers();
     }
 
+    modifier onlyAllowedStrategyProvider() {
+        _;
+    }
+
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function initialize(address _crossChainManager) external initializer {
@@ -59,53 +68,66 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         crossChainManager = _crossChainManager;
         ledgerChainId = 291;
     }
+    /*=========================================================================================
+    *                                       EXTERNAL
+    *=========================================================================================*/
 
-    function deposit(address token, address to, uint256 amount) external payable {
-        bytes32 vaultId = keccak256(abi.encodePacked(brokerHash, address(this)));
-        bytes32 accountId = keccak256(abi.encodePacked(to, brokerHash));
-
-        //_validateDeposit(depositData);
-
+    function executeOperation(OperationParams memory operationParams) external payable {
+        // if (operationParams.operationType == OperationType.LP_DEPOSIT) {
+        //     bytes32 vaultId = keccak256(abi.encodePacked(operationParams.brokerHash, address(this)));
+        //     bytes32 accountId = keccak256(abi.encodePacked(msg.sender, operationParams.brokerHash));
+        // } else if (operationParams.operationType == OperationType.SP_DEPOSIT) {
+        //     //check if strategyProvider is allowed
+        //     bytes32 strategyProviderId =
+        //         keccak256(abi.encodePacked(address(this), msg.sender, operationParams.brokerHash));
+        // } else if (operationParams.operationType == OperationType.LP_WITHDRAW) {
+        //     //check if strategyProvider is allowed
+        //     bytes32 strategyProviderId =
+        //         keccak256(abi.encodePacked(address(this), msg.sender, operationParams.brokerHash));
+        // } else if (operationParams.operationType == OperationType.SP_WITHDRAW) {
+        //     //check if strategyProvider is allowed
+        //     bytes32 strategyProviderId =
+        //         keccak256(abi.encodePacked(address(this), msg.sender, operationParams.brokerHash));
+        // }
         // transfer token to this contract
-        IERC20(token).safeTransferFrom(msg.sender, to, amount);
-
+        //IERC20(token).safeTransferFrom(msg.sender, msg.sender, assets);
         //construct DepositData cross chain message
-        DepositData memory depositData = DepositData({
-            vaultType: VaultType.PROTOCOL,
-            amount: amount,
-            depositNonce: 0,
-            token: token,
-            receiver: to,
-            strategyProvider: address(0),
-            vault: address(this),
-            vaultId: vaultId,
-            accountId: accountId,
-            strategyProviderId: keccak256(abi.encodePacked(address(this))),
-            brokerHash: brokerHash
-        });
+        // DepositData memory depositData = DepositData({
+        //     vaultType: VaultType.PROTOCOL,
+        //     amount: amount,
+        //     depositNonce: 0,
+        //     token: token,
+        //     receiver: to,
+        //     strategyProvider: address(0),
+        //     vault: address(this),
+        //     vaultId: vaultId,
+        //     accountId: accountId,
+        //     strategyProviderId: keccak256(abi.encodePacked(address(this))),
+        //     brokerHash: brokerHash
+        // });
 
-        StrategyVaultCCMessage memory message =
-            StrategyVaultCCMessage({payloadType: uint8(PayloadType.DEPOSIT), payload: abi.encode(depositData)});
-
-        //cross-chain message
-        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+        // StrategyVaultCCMessage memory message =
+        //     StrategyVaultCCMessage({payloadType: uint8(PayloadType.DEPOSIT), payload: abi.encode(depositData)});
+        // //cross-chain message
+        // IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
     }
 
-    /**
-     * ledger Call ********
-     */
-    // function depositToOrderlyDex() external {
-    //     //call dex vault
+        
+    
+    function depositToOrderleDex() external {
+        //check vault ID
+       // bytes32 vaultId = keccak256(abi.encodePacked(strategyExecution.brokerHash, address(this)));
 
-    //     // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
-    //     //     .VaultDepositFE({
-    //     //         accountId: //SP id
-    //     //         brokerHash:
-    //     //         tokenHash:
-    //     //         tokenAmount:
-    //     //     });
-    //     IDexVault(orderlyDexVault).deposit();
-    // }
+        // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
+        //     .VaultDepositFE({
+        //         accountId: //SP id
+        //         brokerHash:
+        //         tokenHash:
+        //         tokenAmount:
+        //     });
+        //cal dex
+        //     IDexVault(orderlyDexVault).deposit();
+    }
 
     /*======================================================================
      *   Config Functions
