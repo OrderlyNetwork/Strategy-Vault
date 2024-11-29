@@ -13,8 +13,13 @@ contract Create3FactoryTest is Test {
     address vaultCrossChainManager = address(0x123);
     bytes32 salt = keccak256(abi.encodePacked("test_salt"));
 
+    address owner = address(0x01);
+    address manager = address(0x02);
+
+    error NoAccess();
+    
     function setUp() public {
-        factory = new ContractFactory();
+        factory = new ContractFactory(owner);
     }
 
     function testDeployProtocolVaultContractByCreate3() public {
@@ -27,7 +32,23 @@ contract Create3FactoryTest is Test {
                 abi.encodeWithSelector(ProtocolVault.initialize.selector, address(vaultCrossChainManager))
             )
         );
+        //owner deploy
+        vm.startPrank(owner);
         address deployedAddress = factory.deploy(salt, bytecode);
+        protocolVault = ProtocolVault(deployedAddress);
+
+        assertEq(protocolVault.ledgerChainId(), 291);
+        assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
+
+        //manager deploy
+        address[] memory managers = new address[](1);
+        managers[0] = manager;
+        factory.setManagers(managers, true);
+        vm.stopPrank();
+
+        salt = keccak256(abi.encodePacked("test_salt_manager"));
+        vm.prank(manager);
+        deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
 
         assertEq(protocolVault.ledgerChainId(), 291);
@@ -60,7 +81,7 @@ contract Create3FactoryTest is Test {
         //factory.deploy(salt, bytecodeB);
     }
 
-    function testDeployProtocolVaultContractByCreate2() public {
+    function testRevertDeployWithNoAccess() public {
         address protocolVaultImpl = address(new ProtocolVault());
 
         bytes memory bytecode = abi.encodePacked(
@@ -70,11 +91,9 @@ contract Create3FactoryTest is Test {
                 abi.encodeWithSelector(ProtocolVault.initialize.selector, address(vaultCrossChainManager))
             )
         );
-        address deployedAddress = factory.deployByCreate2(salt, bytecode);
-        protocolVault = ProtocolVault(deployedAddress);
-
-        assertEq(protocolVault.ledgerChainId(), 291);
-        assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
+        //expect to fail with reason NoAccess()
+        vm.expectRevert(NoAccess.selector);
+        factory.deploy(salt, bytecode);
     }
 }
 
