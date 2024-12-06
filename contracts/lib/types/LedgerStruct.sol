@@ -19,13 +19,12 @@ struct Account {
     uint256 pendingShares;
     ///@dev assets that waitting to be transferred to PV
     uint256 enableClaimedAssets;
-    ///@dev assets that user can claim on all chains
-    uint256 unClaimedAssets;
 }
 
 struct StrategyFund {
     ///@dev keccak256(vault address, sp address, brokerHash))
     bytes32 strategyProviderId;
+    ///@dev pending state during a period
     PendingState pendingState;
     ///@dev fund assets after performance fee
     uint256 fundAssetsAfterFee;
@@ -37,9 +36,9 @@ struct StrategyFund {
     uint256 mainShares;
     ///@dev strategy provider shares in fund
     uint256 strategyProviderShares;
-    ///@dev fund assets
+    ///@dev fund total assets
     uint256 totalAssets;
-    ///@dev fund shares
+    ///@dev fund total shares
     uint256 totalShares;
     ///@dev high water mark
     uint256 hwm;
@@ -49,9 +48,9 @@ struct PendingState {
     ///@dev pending performance fee during a period
     uint256 pendingPerformanceFee;
     ///@dev pending fund assets during a period
-    uint256 pendingFundAssets;
+    uint256 pendingTotalAssets;
     ///@dev pending fund shares during a period
-    uint256 pendingFundShares;
+    uint256 pendingTotalShares;
     ///@dev pending main shares during a period
     uint256 pendingMainShares;
     ///@dev pending strategy provider shares during a period
@@ -60,29 +59,51 @@ struct PendingState {
 
 //--------------------------------------Ledger Update--------------------------------------------
 
-struct UpdateLedgerParams {
-    uint256 nonce;
-    UserOperation[] userOperations;
-    StrategyProviderOperation[] strategyProviderOperations;
-}
-
-struct StrategyFundAssets {
+struct UpdateStrategyFundAssetsParams {
+    ///@dev keccak256(vault address, sp address, brokerHash))
     bytes32 strategyProviderId;
+    ///@dev fund assets after a period
     uint256 totalAssets;
 }
 
-struct UserOperation {
-    bytes32 accountId;
-    uint256 depositAssets;
-    uint256 withdrawShares;
+struct UpdateLedgerParams {
+    OperationType operationType;
+    Operation operation;
 }
 
-struct StrategyProviderOperation {
-    bytes32 strategyProviderId;
-    uint256 depositAssets;
-    uint256 withdrawShares;
+enum OperationType {
+    LP_DEPOSIT,
+    LP_WITHDRAW,
+    SP_DEPOSIT,
+    SP_WITHDRAW
 }
+
+struct Operation {
+    /// @dev account ID or strategy provider ID
+    bytes32 id;
+    /// @dev operation assets
+    uint256 nonce;
+    /// @dev deposit assets or withdraw share
+    uint256 amount;
+}
+
 //--------------------------------------Ledger Check--------------------------------------------
+///@notice Event for handle operation
+struct OperationRes {
+    /// @dev account ID or strategy provider ID
+    bytes32 id;
+    /// @dev operation assets
+    uint256 nonce;
+    /// @dev deposit shares or withdraw assets by computed
+    uint256 amount;
+}
+///@notice Event for handle fund allocation
+
+struct AllocateFundRes {
+    uint256 totalAssets;
+    uint256 totalShares;
+    uint256 mainShares;
+}
 
 struct AccountState {
     bytes32 accountId;
@@ -93,14 +114,9 @@ struct StrategyFundState {
     bytes32 strategyProviderId;
     uint256 totalShares;
     uint256 totalAssets;
+    uint256 mainShares;
     uint256 strategyProviderShares;
     uint256 hwm;
-}
-
-struct PeriodState {
-    AccountState[] accountState;
-    StrategyFundState[] strategyProviderState;
-    uint256 mainshares;
 }
 //--------------------------------------Ledger Settle--------------------------------------------
 
@@ -139,7 +155,7 @@ struct AssetsDistribution {
     uint256 assets;
 }
 
-struct FundTransferParams {
+struct StrategyExecutionParams {
     ///@dev total assets to be transferred
     uint256 totalAssets;
     BasicInfo basicInfo;
@@ -150,11 +166,14 @@ struct FundTransferParams {
 struct StrategyExecution {
     BasicInfo basicInfo;
     uint256 chainId;
-    uint256 assets;
+    uint256 amount;
 }
 //--------------------------------------User Claim--------------------------------------------
 
 struct UpdateUserClaim {
     bytes32 accountId;
     uint256 claimAssets;
+    uint256 requestId;
 }
+
+ 

@@ -6,23 +6,28 @@ import {console} from "forge-std/console.sol";
 import {
     Account,
     StrategyFund,
-    StrategyFundAssets,
-    FundTransferParams,
+    UpdateStrategyFundAssetsParams,
+    StrategyExecutionParams,
     BasicInfo,
+    PendingState,
     StrategyExecution,
-    StrategyProviderOperation,
+    Operation,
+    OperationType,
+    OperationRes,
     UpdateLedgerParams,
-    PeriodState,
-    UserOperation,
     AssetsDistribution,
+    AccountState,
     UpdateUserClaim,
+    AllocateFundRes,
     SettleType,
+    StrategyFundState,
     SettleParams
 } from "../contracts/StrategyVaultLedger.sol";
 
 contract StrategyVaultLedgerTest is Base {
     uint256 shareDecimal = 1e6;
     uint256 assetDecimal = 1e6;
+    uint256 priceDecimal = 1e6;
 
     address public userA = address(0x1);
     address public userB = address(0x2);
@@ -31,10 +36,12 @@ contract StrategyVaultLedgerTest is Base {
 
     bytes32 spA_id = keccak256(abi.encodePacked(spA));
     bytes32 spB_id = keccak256(abi.encodePacked(spB));
+    bytes32 userA_id = keccak256(abi.encodePacked(userA));
+    bytes32 userB_id = keccak256(abi.encodePacked(userB));
 
     bytes32[] public spIds;
 
-    function setUp() override public {
+    function setUp() public override {
         super.setUp();
 
         spIds.push(spA_id);
@@ -56,9 +63,114 @@ contract StrategyVaultLedgerTest is Base {
         uint256[] memory spSharesInFund = new uint256[](2);
         spSharesInFund[0] = 1 * shareDecimal;
         spSharesInFund[1] = 1 * shareDecimal;
-        svLedger.initializeStrategyFund(mainshares, spIds, mainSharesInFund, spSharesInFund, StrategyFundsAssets);
+        //initialize
+        svLedger.initializeStrategyFund(
+            mainshares, spIds, mainSharesInFund, spSharesInFund, StrategyFundsAssets, 1000 * priceDecimal
+        );
+        bytes32[] memory accountIds = new bytes32[](1);
+        bytes32[] memory strategyProviderIds = new bytes32[](2);
+        accountIds[0] = userA_id;
 
-        consoleState();
+        strategyProviderIds[0] = spA_id;
+        strategyProviderIds[1] = spB_id;
+
+        uint256 initVault = 1000000 * assetDecimal;
+        svLedger.setAccountState(userA_id, initVault, initVault, initVault);
+        svLedger.setSPUnallocatedAssets(strategyProviderIds, initVault);
+        svLedger.setSPUnallocatedShares(strategyProviderIds, initVault);
+        consolePendingState();
+
+        //Period 1
+
+        console.log("=============Start Period 1=====================");
+        vm.startPrank(operator);
+        uint256 periodId;
+
+        UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](2);
+        {
+            strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 1000 * assetDecimal);
+            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
+            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+            uint256 depositAmount = 500 * assetDecimal;
+            uint256 withdrawShare = 6 * shareDecimal / 10; //0.6 shares
+            uint256 spDepositAmount = 800 * assetDecimal;
+
+            Operation memory newOperation_1 = Operation({id: userA_id, nonce: 0, amount: depositAmount});
+            Operation memory newOperation_2 = Operation({id: userA_id, nonce: 1, amount: withdrawShare});
+            Operation memory newOperation_3 = Operation({id: spB_id, nonce: 2, amount: spDepositAmount});
+
+            //initialize UpdateLedgerParams dymnamic arrary
+            UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
+
+            updateLedgerParams[0] =
+                UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+            updateLedgerParams[1] =
+                UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: newOperation_2});
+            updateLedgerParams[2] =
+                UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_3});
+
+            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, "0x");
+            svLedger.allocatToFunds(spIds);
+            console.log("=============Period 1 Pending=====================");
+
+            consolePendingState();
+            svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            svLedger.settleAccounts(periodId, accountIds);
+            console.log("=============After Period 1=====================");
+            consoleState();
+        }
+
+        //Period 2
+        console.log("=============Start Period 2=====================");
+        {
+            //initialize
+            strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 5000 * assetDecimal);
+            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1250 * assetDecimal);
+            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+            svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            svLedger.settleAccounts(periodId, accountIds);
+            console.log("=============After Period 2=====================");
+            consoleState();
+        }
+        //Period 3
+        console.log("=============Start Period 3=====================");
+        {
+            //initialize
+            // strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 5000 * assetDecimal);
+            // strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1250 * assetDecimal);
+            // svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+            // console.log("=============Period 3 Pending=====================");
+            // svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            // svLedger.settleAccounts(periodId, accountIds);
+            // console.log("=============After Period 3=====================");
+            // consoleState();
+        }
+    }
+
+    function consolePendingState() public view {
+        StrategyFund memory strategyFundA = svLedger.getStrategyFund(spA_id);
+        StrategyFund memory strategyFundB = svLedger.getStrategyFund(spB_id);
+
+        console.log("Total Assets A: %d", strategyFundA.pendingState.pendingTotalAssets);
+        console.log("Total Assets B: %d", strategyFundB.pendingState.pendingTotalAssets);
+
+        console.log("Total Main Shares: %d", svLedger.pendingMainShares());
+        console.log("Main Share in Fund A: %d", strategyFundA.pendingState.pendingMainShares);
+        console.log("Main Share in Fund B: %d", strategyFundB.pendingState.pendingMainShares);
+
+        console.log("SP A shares in Fund A: %d", strategyFundA.pendingState.pendingStrategyProviderShares);
+        console.log("SP B shares in Fund B: %d", strategyFundB.pendingState.pendingStrategyProviderShares);
+
+        console.log("Total Shares A: %d", strategyFundA.pendingState.pendingTotalShares);
+        console.log("Total Shares B: %d", strategyFundB.pendingState.pendingTotalShares);
+
+        uint256[] memory hwms = new uint256[](spIds.length);
+
+        hwms = svLedger.getFundHWM(spIds);
+
+        console.log("HWM A: %d", hwms[0]);
+        console.log("HWM B: %d", hwms[1]);
     }
 
     function consoleState() public view {

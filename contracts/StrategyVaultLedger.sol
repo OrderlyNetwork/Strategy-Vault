@@ -8,55 +8,54 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {
     Account,
     StrategyFund,
-    StrategyFundAssets,
-    FundTransferParams,
+    UpdateStrategyFundAssetsParams,
+    StrategyExecutionParams,
     BasicInfo,
+    PendingState,
     StrategyExecution,
-    StrategyProviderOperation,
+    Operation,
+    OperationType,
+    OperationRes,
     UpdateLedgerParams,
-    PeriodState,
-    UserOperation,
     AssetsDistribution,
+    AccountState,
     UpdateUserClaim,
+    AllocateFundRes,
     SettleType,
+    StrategyFundState,
     SettleParams
 } from "./lib/types/LedgerStruct.sol";
 
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
+import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
+import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {console} from "forge-std/console.sol";
+//todo 1. sig verify 2. constant 3. admin access
 
-/*todo
-    - modifier
-    - is necessary to verify in vaultDeposit
-
-*/
-contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
+contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
     using Math for uint256;
 
-    uint256 public priceDecimal = 6;
-    uint256 public shareDecimal = 6;
-    uint256 public assetsDecimal = 6;
+    uint256 public priceDecimal;
+    uint256 public shareDecimal;
+    uint256 public assetsDecimal;
 
-    uint256 public pendingDepositMainshares;
-    uint256 public pendingWithdrawMainshares;
     uint256 public pendingMainShares;
-    uint256 public pendingMainAssetsAfterFee;
-    uint256 public pendingDepositAssets;
-    uint256 public pendingWithdrawAssets;
+    uint256 public pendingLpDepositAssets;
+    uint256 public pendingLpWithdrawShares;
 
-    uint256 public mainAssets;
     uint256 public mainShares;
+    uint256 public mainAssetsAfterFee;
 
-    uint256 public nonce;
     uint256 public latestPeriodId;
 
     address public crossChainManagerAddress;
+    address public operatorAddress;
 
     /// @dev fee rate of each strategy fund
     mapping(uint256 => uint256) public feeRateOfFund;
     /// @dev allowed strategy provider
-    mapping(bytes32 => bool) public isAllowedStraegyProvider;
+    mapping(bytes32 => bool) public isAllowedStrategyProvider;
     /// @dev strategy fund information by strategy provider id
     mapping(bytes32 => StrategyFund) public strategyFundById;
     /// @dev account information by account id
@@ -65,31 +64,20 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     mapping(uint256 => bool) public isOpHandeled;
 
     /// @notice Require only operator can call
-    // modifier onlyOperator() {
-    //     // Update: operatorManagerZipAddress is also allowed to call
-    //     require(
-    //         msg.sender != operatorAddress &&
-    //             msg.sender != operatorManagerZipAddress,
-    //         OnlyOperatorCanCall()
-    //     );
-    //     _;
-    // }
-    // modifier onlyVaultCrossChainManager() {
-    //     require(
-    //         msg.sender == crossChainManagerAddress,
-    //         OnlyVaultCrossChainManagerCanCall()
-    //     );
-    //     _;
-    // }
+    modifier onlyOperator() {
+        if (msg.sender != operatorAddress) {
+            revert InvalidCaller();
+        }
+        _;
+    }
+    /// @notice Require only crossChainManager can call
 
-    error InsufficientBalance();
-    error AlreadyAllocatedShare();
-
-    event AccountDeposit(OperationData operationData);
-    event AccountWithdraw(OperationData operation, uint256 chainId);
-    event SPDeposit(OperationData operationData);
-    event SPWithdraw();
-    event SettleSuccess(PeriodState periodState);
+    modifier onlyVaultCrossChainManager() {
+        if (msg.sender != crossChainManagerAddress) {
+            revert InvalidCaller();
+        }
+        _;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -98,297 +86,407 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    function initialize() external initializer {
+    function initialize(address owner) external initializer {
         __Ownable2Step_init();
-        __Ownable_init(msg.sender); //owner() initialized to msg.sender
+        __Ownable_init(owner);
 
         __UUPSUpgradeable_init();
-    }
 
-    // function receiveMessageFromStrategyVault(
-    //     StrategyVaultMessage memory message
-    // ) external onlyVaultCrossChainManager {
-    //     if (message.payloadType == PayloadType.DEPOSIT) {
-    //         DepositData depositData = abi.decode(message.payload);
-    //         _vaultDeposit();
-    //     }
-    // }
+        priceDecimal = 6;
+        shareDecimal = 6;
+        assetsDecimal = 6;
+    }
 
     /*=========================================================================================
     *                                       EXTERNAL
     *=========================================================================================*/
 
     //--------------------------------------FROM VAULT-----------------------------------------
-    function accountDeposit(OperationData memory operationData, uint256 chainId) external {
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData)
+        external
+        onlyVaultCrossChainManager
+    {
         bytes32 accountId = operationData.accountId;
-
-        accountById[accountId].unAllocatedAssets += operationData.amount;
-        accountById[accountId].assets += operationData.amount;
-
-        //emit AccountDeposit(operationData, chainId);
-    }
-
-    function strategyProviderDeposit(OperationData memory operationData) external {
         bytes32 spId = operationData.strategyProviderId;
 
-        //check sp id is allowed
-        if (!isAllowedStraegyProvider[spId]) {
-            revert("StrategyProviderNotAllowed");
-        }
-    }
-
-    function accountWithdraw(OperationData memory operationData, uint256 chainId) external {
-        bytes32 accountId = operationData.accountId;
         Account storage account = accountById[accountId];
+        StrategyFund storage strategyFund = strategyFundById[spId];
 
-        if (operationData.amount > account.shares - account.frozenShares) {
-            revert();
+        if (payloadType == PayloadType.LP_DEPOSIT) {
+            account.unAllocatedAssets += operationData.amount;
+            account.assets += operationData.amount;
+        } else if (payloadType == PayloadType.LP_WITHDRAW) {
+            if (operationData.amount + account.frozenShares > account.shares) {
+                revert NotEnoughWithdrawShare();
+            }
+            account.frozenShares += operationData.amount;
+        } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
+            //check sp id is allowed
+            if (!isAllowedStrategyProvider[spId]) {
+                revert NotAllowedStrategyProvider();
+            }
+            if (payloadType == PayloadType.SP_DEPOSIT) {
+                strategyFund.unAllocatedAssets += operationData.amount;
+            } else {
+                if (operationData.amount + strategyFund.frozenShares > strategyFund.totalShares) {
+                    revert NotEnoughWithdrawShare();
+                }
+                strategyFund.frozenShares += operationData.amount;
+            }
+        } else {
+            revert InvalidPayloadType();
         }
 
-        accountById[accountId].frozenShares += operationData.amount;
-
-        emit AccountWithdraw(operationData, chainId);
+        emit OperationHandled(payloadType, chainId, operationData);
     }
-
-    function strategyProviderWithdraw(OperationData memory operationData, uint256 chainId) external {}
 
     //--------------------------------------FROM BE--------------------------------------------
-    //only for test
-    function initializeStrategyFund(
-        uint256 _mainShares,
-        bytes32[] memory spIds,
-        uint256[] memory mainSharesInFund,
-        uint256[] memory spSharesInFund,
-        uint256[] memory fundAssets
-    ) external {
-        mainShares = _mainShares;
-        for (uint256 i = 0; i < spIds.length; i++) {
-            strategyFundById[spIds[i]].strategyProviderId = spIds[i];
-            strategyFundById[spIds[i]].mainShares = mainSharesInFund[i];
-            strategyFundById[spIds[i]].strategyProviderShares = spSharesInFund[i];
-            strategyFundById[spIds[i]].totalAssets = fundAssets[i];
-            strategyFundById[spIds[i]].totalShares = mainSharesInFund[i] + spSharesInFund[i];
-            strategyFundById[spIds[i]].hwm = fundAssets[i] * 10 ** 6 / (mainSharesInFund[i] + spSharesInFund[i]);
-        }
-        
-        feeRateOfFund[0] = 10;
-        feeRateOfFund[1] = 20;
-    }
+    function updateStrategyFundAssets(
+        uint256 periodId,
+        UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
+        bytes memory signature
+    ) external onlyOperator {
+        _check(periodId);
 
-    function updateStrategyFundAssets(uint256 periodId, StrategyFundAssets[] calldata strategyFundAssets) external {
-        if (periodId != latestPeriodId) {
-            revert("Invalid periodId");
-        }
-        uint256 mainAssetsAfterFee;
-
+        uint256 assetsAfterFee;
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
-            bytes32 strategyProviderId = strategyFundAssets[i].strategyProviderId;
-            uint256 fundAssets = strategyFundAssets[i].totalAssets;
+            //gas optimization
+            StrategyFund storage strategyFund = strategyFundById[strategyFundAssets[i].strategyProviderId];
+            PendingState storage pendingState = strategyFund.pendingState;
 
-            StrategyFund storage strategyFund = strategyFundById[strategyProviderId];
+            uint256 fundAssets = strategyFundAssets[i].totalAssets;
+            uint256 fundShares = strategyFund.totalShares;
 
             //Performance Fee
-            uint256 performanceFee = (
-                fundAssets * 10 ** priceDecimal / strategyFund.totalShares - strategyFund.hwm
-            ) * strategyFund.totalShares * feeRateOfFund[i] / 100 / 10 ** priceDecimal;
-            uint256 fundAssetsAferFee = fundAssets - performanceFee;
+            uint256 performanceFee;
+            uint256 feeShares;
+            uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
+            // console.log("assetPerShare", assetPerShare);
+            // console.log("strategyFund.hwm", strategyFund.hwm);
+            if (assetPerShare > strategyFund.hwm) {
+                performanceFee =
+                    (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[i] / 100 / 10 ** priceDecimal;
+                console.log("performanceFee", performanceFee);
+                feeShares =
+                    _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
+                console.log("feeShares", feeShares);
+                strategyFund.pendingState.pendingPerformanceFee = performanceFee;
+            }
 
-            uint256 feeShares = _convertToShares(
-                performanceFee,
-                strategyFund.fundAssetsAfterFee,
-                strategyFund.totalShares,
-                Math.Rounding.Floor
-            );
-            //Update pending state
-            strategyFund.pendingState.pendingPerformanceFee = performanceFee;
-            strategyFund.pendingState.pendingFundAssets = fundAssets;
+            //Update pending stateå
+            strategyFund.pendingState.pendingTotalAssets = fundAssets;
             strategyFund.fundAssetsAfterFee = fundAssets - performanceFee;
-            strategyFund.pendingState.pendingStrategyProviderShares += feeShares;
-
-            mainAssetsAfterFee += strategyFund.mainShares * fundAssetsAferFee / strategyFund.totalShares;
+            pendingState.pendingStrategyProviderShares += feeShares;
+            pendingState.pendingTotalShares = fundShares + feeShares;
+            assetsAfterFee += strategyFund.mainShares * (fundAssets - performanceFee) / strategyFund.totalShares;
         }
 
-        pendingMainAssetsAfterFee = mainAssetsAfterFee;
+        mainAssetsAfterFee = assetsAfterFee;
+        //console.log("mainAssetsAfterFee", mainAssetsAfterFee);
+
+        //emit event
+        PendingState[] memory pendingStates = new PendingState[](strategyFundAssets.length);
+        for (uint256 i = 0; i < strategyFundAssets.length; i++) {
+            pendingStates[i] = strategyFundById[strategyFundAssets[i].strategyProviderId].pendingState;
+        }
+        emit StrategyFundAssetsUpdate(periodId, mainAssetsAfterFee, pendingStates);
     }
 
-    function updateAccountAndStrategyFund(uint256 periodId, UpdateLedgerParams calldata updateUserLedgerParams)
+    function updateLPAndStrategyFund(
+        uint256 periodId,
+        UpdateLedgerParams[] calldata updateUserLedgerParams,
+        bytes memory signature
+    ) external onlyOperator {
+        _check(periodId);
+
+        OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
+        uint256 amount;
+        for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
+            Operation memory operation = updateUserLedgerParams[i].operation;
+            OperationType operationType = updateUserLedgerParams[i].operationType;
+            if (operationType == OperationType.LP_DEPOSIT) {
+                //handle LP deposit
+                amount = _handleLpDeposit(operation.id, operation.amount);
+            } else if (operationType == OperationType.LP_WITHDRAW) {
+                //handle LP withdraw
+                amount = _handleLpWithdraw(operation.id, operation.amount);
+            } else if (operationType == OperationType.SP_DEPOSIT) {
+                //handle SP deposit
+                amount = _handleSPDeposit(operation.id, operation.amount);
+            } else if (operationType == OperationType.SP_WITHDRAW) {
+                //handle SP withdraw
+                amount = _handleSpWithdraw(operation.id, operation.amount);
+            } else {
+                revert InvalidOpType();
+            }
+            operationRes[i] = OperationRes({id: operation.id, nonce: operation.nonce, amount: amount});
+            isOpHandeled[operation.nonce] = true;
+        }
+
+        //emit event
+        emit LPAndStrategyFundUpdated(periodId, pendingMainShares, operationRes);
+    }
+
+    function allocatToFunds(bytes32[] calldata strategyProviderIds) external onlyOperator {
+        StrategyFund storage strategyFund;
+        uint256 totalMainAssetsInFund;
+
+        if (strategyProviderIds.length == 1) {
+            strategyFund = strategyFundById[strategyProviderIds[0]];
+
+            //deposit
+            uint256 distributeDepositShares = _convertToShares(
+                pendingLpDepositAssets, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor
+            );
+            strategyFund.pendingState.pendingTotalAssets += pendingLpDepositAssets;
+            strategyFund.pendingState.pendingTotalShares += distributeDepositShares;
+            strategyFund.pendingState.pendingMainShares += distributeDepositShares;
+
+            //withdraws
+            uint256 withdrawAssets =
+                _convertToAssets(pendingLpWithdrawShares, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+            strategyFund.pendingState.pendingTotalAssets -= withdrawAssets;
+            strategyFund.pendingState.pendingMainShares -= pendingLpWithdrawShares;
+            strategyFund.pendingState.pendingTotalShares -= pendingLpWithdrawShares;
+        } else {
+            for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+                strategyFund = strategyFundById[strategyProviderIds[i]];
+                totalMainAssetsInFund += _convertToAssets(
+                    strategyFund.mainShares,
+                    strategyFund.fundAssetsAfterFee,
+                    strategyFund.totalShares,
+                    Math.Rounding.Floor
+                );
+            }
+
+            //allocate deposit
+            if (pendingLpDepositAssets > 0) {
+                for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+                    strategyFund = strategyFundById[strategyProviderIds[i]];
+
+                    uint256 mainAssetsInFund = _convertToAssets(
+                        strategyFund.mainShares,
+                        strategyFund.fundAssetsAfterFee,
+                        strategyFund.totalShares,
+                        Math.Rounding.Floor
+                    );
+                    uint256 distributeAssets =
+                        pendingLpDepositAssets.mulDiv(mainAssetsInFund, totalMainAssetsInFund, Math.Rounding.Floor);
+
+                    uint256 distributeShares = _convertToShares(
+                        distributeAssets, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor
+                    );
+                    strategyFund.pendingState.pendingTotalAssets += distributeAssets;
+                    strategyFund.pendingState.pendingTotalShares += distributeShares;
+                    strategyFund.pendingState.pendingMainShares += distributeShares;
+                }
+            }
+            //allocate withdraw
+            if (pendingLpWithdrawShares > 0) {
+                uint256 withdrawAssets =
+                    _convertToAssets(pendingLpWithdrawShares, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+
+                for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+                    strategyFund = strategyFundById[strategyProviderIds[i]];
+
+                    uint256 mainAssetsInFund = _convertToAssets(
+                        strategyFund.mainShares,
+                        strategyFund.fundAssetsAfterFee,
+                        strategyFund.totalShares,
+                        Math.Rounding.Floor
+                    );
+                    uint256 distributeAssets =
+                        withdrawAssets.mulDiv(mainAssetsInFund, totalMainAssetsInFund, Math.Rounding.Ceil);
+                    uint256 distributeShares = _convertToShares(
+                        distributeAssets, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor
+                    );
+                    strategyFund.pendingState.pendingTotalAssets -= distributeAssets;
+                    strategyFund.pendingState.pendingMainShares -= distributeShares;
+                    strategyFund.pendingState.pendingTotalShares -= distributeShares;
+                }
+            }
+        }
+
+        //emit event
+        AllocateFundRes[] memory allocateFundRes = new AllocateFundRes[](strategyProviderIds.length);
+        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+            strategyFund = strategyFundById[strategyProviderIds[i]];
+            allocateFundRes[i] = AllocateFundRes({
+                totalAssets: strategyFund.pendingState.pendingTotalAssets,
+                totalShares: strategyFund.pendingState.pendingTotalShares,
+                mainShares: strategyFund.pendingState.pendingMainShares
+            });
+        }
+        emit FundAllocated(strategyProviderIds, allocateFundRes);
+    }
+
+    function settleMainAndStrategyFunds(uint256 periodId, bytes32[] calldata strategyProviderIds)
         external
+        onlyOperator
     {
-        if (periodId != latestPeriodId) {
-            revert("Invalid periodId");
+        _check(periodId);
+
+        //settle MAIN
+        mainShares = pendingMainShares;
+        StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
+
+        //settle strategy fund
+        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+            StrategyFund storage strategyFund = strategyFundById[strategyProviderIds[i]];
+
+            //hwm must be updated
+            strategyFund.hwm = _calculateHWM(strategyProviderIds[i]);
+
+            strategyFund.totalShares = strategyFund.pendingState.pendingTotalShares;
+            strategyFund.totalAssets = strategyFund.pendingState.pendingTotalAssets;
+            strategyFund.mainShares = strategyFund.pendingState.pendingMainShares;
+            strategyFund.strategyProviderShares = strategyFund.pendingState.pendingStrategyProviderShares;
+
+            //emit event
+            strategyFundStates[i] = StrategyFundState({
+                strategyProviderId: strategyProviderIds[i],
+                totalShares: strategyFund.totalShares,
+                totalAssets: strategyFund.totalAssets,
+                mainShares: strategyFund.mainShares,
+                strategyProviderShares: strategyFund.strategyProviderShares,
+                hwm: strategyFund.hwm
+            });
         }
 
-        // //User Operation
-        // if (updateUserLedgerParams.userOperations.length != 0) {
-        //     for (uint256 i = 0; i < updateUserLedgerParams.userOperations.length; i++) {
-        //         UserOperation memory userOperation = updateUserLedgerParams.userOperations[i];
-
-        //         bytes32 accountId = userOperation.accountId;
-        //         Account storage account = accountById[accountId];
-
-        //         //check
-        //         if (userOperation.depositAssets > 0) {
-        //             //deposit
-        //             if (userOperation.depositAssets > account.unAllocatedAssets) {
-        //                 revert();
-        //             }
-        //             uint256 depositShares = userOperation.depositAssets * mainShares / pendingMainAssetsAfterFee;
-        //             account.pendingShares += depositShares;
-        //             pendingMainShares += depositShares;
-        //             // account.pendingDepositShares += depositShares;
-        //             // pendingDepositMainshares += depositShares;
-        //         } else if (userOperation.withdrawShares > 0) {
-        //             //withdraw
-        //             if (userOperation.withdrawShares > account.unAllocatedShares) {
-        //                 revert();
-        //             }
-
-        //             account.pendingShares -= userOperation.withdrawShares;
-        //             pendingMainShares -= userOperation.withdrawShares;
-        //         }
-        //     }
-        // }
-
-        // //SP Operation
-        // for (uint256 i = 0; i < updateUserLedgerParams.strategyProviderOperations.length; i++) {
-        //     StrategyProviderOperation memory spOperation = updateUserLedgerParams.strategyProviderOperations[i];
-
-        //     bytes32 spId = spOperation.strategyProviderId;
-        //     StrategyFund storage strategyFund = strategyFundById[spId];
-
-        //     if (spOperation.depositAssets > 0) {
-        //         //deposit
-        //         if (spOperation.depositAssets > strategyFund.unAllocatedAssets) {
-        //             revert();
-        //         }
-        //         uint256 spDepositShares =
-        //             spOperation.depositAssets * strategyFund.fundShares / strategyFund.fundAssetsAfterFee;
-        //         strategyFund.pendingFundShares += spDepositShares;
-        //         strategyFund.pendingStrategyProviderShares += spDepositShares;
-        //         strategyFund.pendingFundAssets += spOperation.depositAssets;
-        //     }
-
-        //     if (spOperation.withdrawShares > 0) {
-        //         //withdraw
-        //         if (spOperation.withdrawShares > strategyFund.unAllocatedShares) {
-        //             revert();
-        //         }
-        //         uint256 spWithdrawAmount =
-        //             spOperation.withdrawShares * strategyFund.fundAssetsAfterFee / strategyFund.fundShares;
-        //         strategyFund.pendingFundShares -= spOperation.withdrawShares;
-        //         strategyFund.pendingStrategyProviderShares -= spOperation.withdrawShares;
-        //         strategyFund.pendingFundAssets -= spWithdrawAmount;
-        //     }
-        // }
+        emit MainAndStrategyFundsSettled(periodId, mainShares, strategyFundStates);
     }
 
-    function allocatedFunds(bytes32[] calldata strategyProviderIds) external {
-        //allocate funds to strategyFund
+    function settleAccounts(uint256 periodId, bytes32[] calldata accountIds) external onlyOperator {
+        _check(periodId);
+        AccountState[] memory accountStates = new AccountState[](accountIds.length);
+        for (uint256 i = 0; i < accountIds.length; i++) {
+            Account storage account = accountById[accountIds[i]];
+            account.shares = account.pendingShares;
 
-        //Allocation
-        // if (pendingDepositAssets > pendingWithdrawAssets) {
-        //     //deposit
-        //     for (uint256 i = 0; i < updateUserLedgerParams.strategyProviderInfos.length; i++) {
-        //         StrategyProviderOperation memory spOperation = updateUserLedgerParams.strategyProviderInfos[i];
-        //         bytes32 spId = spOperation.strategyProviderId;
-        //         StrategyFund storage strategyFund = strategyFundById[spId];
+            //for event
+            accountStates[i] = AccountState({accountId: accountIds[i], shares: account.shares});
+        }
 
-        //         uint256 allocatedAssets;
-        //         strategyFund.pendingFundAssets += allocatedAssets;
-        //         strategyFund.pendingFundShares +=
-        //             allocatedAssets * strategyFund.shares / strategyFund.pendingAssetsAfterFee;
-        //     }
-        //     //withdraw
-        //     for (uint256 i = 0; i < updateUserLedgerParams.strategyProviderInfos.length; i++) {}
-        // }
+        emit AccountSettled(periodId, accountStates);
     }
 
-    // function updateStrategyFundHwm(bytes32[] calldata strategyProviderIds) external {
-    //     for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-    //         StrategyFund storage strategyFund = strategyFundById[strategyProviderIds[i]];
+    function updatePeriodId() external onlyOperator {
+        latestPeriodId++;
 
-    //         if (strategyFund.pendingPerformanceFee > 0) {
-    //             strategyFund.hwm = strategyFund.fundAssetsAfterFee * 10 ** priceDecimal / strategyFund.fundShares;
-    //         } else {
-    //             //New issued shares greater than 0
-    //             // if (strategyFundById[spIds[i]].totalShares > strategyFundsTemTotalShares[i]) {
-    //             //     //uint256 newSharePriceAfterFee = strategyFundsAssetsAfterFee[i] / strategyFundsTemTotalShares[i];
-    //             //     //console.log("newSharePriceAfterFee",newSharePriceAfterFee);
-    //             //     uint256 newTotalIssuedShares =
-    //             //         strategyFundById[spIds[i]].totalShares - strategyFundsTemTotalShares[i];
-    //             //     console.log("newTotalIssuedShares", newTotalIssuedShares);
-    //             //     // console.log(
-    //             //     //     "fenmu:",
-    //             //     //     strategyFundById[spIds[i]].hwm / 10 ** priceDecimal * strategyFundsTemTotalShares[i]
-    //             //     //         + newTotalIssuedShares * strategyFundsAssetsAfterFee[i] / strategyFundsTemTotalShares[i]
-    //             //     // );
-    //             //     // console.log("fenzi:", strategyFundById[spIds[i]].totalShares);
-    //             //     //calculate new hwm
-    //             //     strategyFundById[spIds[i]].hwm = (
-    //             //         (
-    //             //             strategyFundById[spIds[i]].hwm * strategyFundsTemTotalShares[i] / 10 ** priceDecimal
-    //             //                 + newTotalIssuedShares * strategyFundsAssetsAfterFee[i] / strategyFundsTemTotalShares[i]
-    //             //         )
-    //             //     ) * 10 ** 6 / strategyFundById[spIds[i]].totalShares;
-    //         }
-    //         //else hwm doesn't change
-    //         //          （ 785714285 *  3.5  + 15244425 * 285714285 ） / 17744425
-    //     }
-    // }
+        emit PeriodIdUpdated(latestPeriodId);
+    }
 
-    function settle(uint256 periodId, SettleParams memory settleParams) external {}
-
-    function transferToOrderlyDex(uint256 periodId, FundTransferParams calldata fundTransferParams) external {
+    function executeStrategy(
+        uint256 periodId,
+        StrategyExecutionParams memory strategyExecutionParams,
+        bytes calldata signature
+    ) external onlyOperator {
         uint256 totalTransferredAssets;
 
-        for (uint256 i = 0; i < fundTransferParams.assetsDistributions.length; i++) {
-            totalTransferredAssets += fundTransferParams.assetsDistributions[i].assets;
+        for (uint256 i = 0; i < strategyExecutionParams.assetsDistributions.length; i++) {
+            totalTransferredAssets += strategyExecutionParams.assetsDistributions[i].assets;
         }
-        if (totalTransferredAssets != fundTransferParams.totalAssets) {
-            revert("Invalid totalAssets");
+        if (totalTransferredAssets != strategyExecutionParams.totalAssets) {
+            revert InvalidTotalAssets();
         }
 
-        for (uint256 i = 0; i < fundTransferParams.assetsDistributions.length; i++) {
+        for (uint256 i = 0; i < strategyExecutionParams.assetsDistributions.length; i++) {
             //contruct StrategyExecution
-            // StrategyExecution memory strategyExecution = StrategyExecution({
-            //     basicInfo: BasicInfo({
-            //         vaultType: VaultType.USER,
-            //         periodId: periodId,
-            //         vaultId: keccak256(abi.encodePacked(vault, keccak256(abi.encodePacked(broker)))),
-            //         tokenHash: tokenHash,
-            //         brokerHash: keccak256(abi.encodePacked(broker))
-            //     }),
-            //     chainId: chainId,
-            //     assets: assets
-            // });
+            StrategyExecution memory strategyExecution = StrategyExecution({
+                basicInfo: BasicInfo({
+                    vaultType: VaultType.USER,
+                    periodId: periodId,
+                    vaultId: strategyExecutionParams.basicInfo.vaultId,
+                    tokenHash: strategyExecutionParams.basicInfo.tokenHash,
+                    brokerHash: strategyExecutionParams.basicInfo.brokerHash
+                }),
+                chainId: strategyExecutionParams.assetsDistributions[i].chainId,
+                amount: strategyExecutionParams.assetsDistributions[i].assets
+            });
         }
+
+        emit StrategyExecuted(periodId, totalTransferredAssets);
     }
 
-    function updateAccountUnclaimed(uint256 periodId, UpdateUserClaim[] calldata updateUserClaim) external {}
+    function updateUnclaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims, bytes memory signature)
+        external
+        onlyOperator
+    {
 
+        // StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+        //     payloadType: uint8(payloadType),
+        //     chainId: block.chainid,
+        //     payload: abi.encode(periodId,updateUserClaims)
+        // });
+        //cross-chain message
+        //IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+    }
     //--------------------------------------CONFIG--------------------------------------------
+
     function setFeeRate(bytes32[] calldata strategyProviderIds) external {}
 
     function setCrossChainManagerAddress(address _crossChainManagerAddress) external onlyOwner {
         crossChainManagerAddress = _crossChainManagerAddress;
+
+        emit CrossChainManagerAddressSet(_crossChainManagerAddress);
+    }
+
+    /// @notice Set the address of Strategy Provider
+    /// @param spId Strategy Provider Id
+    function setAllowedStrategyProvider(bytes32 spId, bool knob) external onlyOwner {
+        isAllowedStrategyProvider[spId] = knob;
+
+        emit AllowedStrategyProviderSet(spId, knob);
+    }
+
+    /// @notice Set the address of operatorManager contract
+    /// @param _operatorAddress new operatorManagerAddress
+    function setOperatorManager(address _operatorAddress) public onlyOwner {
+        operatorAddress = _operatorAddress;
+
+        emit OperatorManagerSet(_operatorAddress);
     }
 
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
-    function checkState(uint256 periodId, bytes32[] calldata strategyProviderIds, bytes32[] calldata accountIds)
+
+    function checkMainAndStrategyFund(uint256 periodId, bytes32[] calldata strategyProviderIds)
         external
-        returns (PeriodState memory periodState)
+        view
+        returns (StrategyFundState[] memory)
     {
-        /*
-            check peridoId
-            For each account:
-                 shares + pendingDepositShares -  pendingWithdrawShares
-            For each strategyFund:
+        _check(periodId);
+        StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
 
-            For mainshares:
+        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+            StrategyFund storage strategyFund = strategyFundById[strategyProviderIds[i]];
 
-        */
+            uint256 hwm = _calculateHWM(strategyProviderIds[i]);
+            strategyFundStates[i] = StrategyFundState({
+                strategyProviderId: strategyProviderIds[i],
+                totalShares: strategyFund.totalShares,
+                totalAssets: strategyFund.totalAssets,
+                mainShares: strategyFund.mainShares,
+                strategyProviderShares: strategyFund.strategyProviderShares,
+                hwm: hwm
+            });
+        }
+        return strategyFundStates;
+    }
+
+    function checkAccounts(uint256 periodId, bytes32[] calldata accountIds)
+        external
+        view
+        returns (AccountState[] memory)
+    {
+        _check(periodId);
+        AccountState[] memory accountStates = new AccountState[](accountIds.length);
+        for (uint256 i = 0; i < accountIds.length; i++) {
+            Account storage account = accountById[accountIds[i]];
+            accountStates[i] = AccountState({accountId: accountIds[i], shares: account.shares});
+        }
+        return accountStates;
     }
 
     function convertToShares(uint256 amount, uint256 _totalAssets, uint256 _toatlShares)
@@ -413,10 +511,120 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
     /*=========================================================================================
     *                                       INTERNAL
     *=========================================================================================*/
+
+    function _check(uint256 periodId) internal view {
+        if (periodId != latestPeriodId) {
+            revert InvalidPeriodId();
+        }
+    }
+
+    function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
+        Account storage account = accountById[accountId];
+
+        if (amount > account.unAllocatedAssets) {
+            revert NotEnoughLPDeposit();
+        }
+
+        uint256 depositShares = _convertToShares(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+        //effect
+        account.pendingShares += depositShares;
+        account.unAllocatedAssets -= amount;
+
+        pendingMainShares += depositShares;
+        pendingLpDepositAssets += amount;
+
+        console.log("depositShares", depositShares);
+        console.log("after depoist mainshares", pendingMainShares);
+        return depositShares;
+    }
+
+    function _handleLpWithdraw(bytes32 accountId, uint256 amount) internal returns (uint256) {
+        Account storage account = accountById[accountId];
+
+        if (amount > account.frozenShares) {
+            revert NotEnoughWithdrawShare();
+        }
+
+        //effect
+        uint256 withdrawAssets = _convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+
+        account.pendingShares -= amount;
+        account.frozenShares -= amount;
+        pendingMainShares -= amount;
+        pendingLpWithdrawShares += amount;
+
+        console.log("after withdrw mainshares", pendingMainShares);
+        return withdrawAssets;
+    }
+
+    function _handleSPDeposit(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
+        //gas optimization
+        StrategyFund storage strategyFund = strategyFundById[strategyProviderId];
+        PendingState storage pendingState = strategyFund.pendingState;
+        if (amount > strategyFund.unAllocatedAssets) {
+            revert NotEnoughSPDeposit();
+        }
+        //console.log("SP deposit amount", amount);
+        console.log("strategyFund.fundAssetsAfterFee", strategyFund.fundAssetsAfterFee);
+        uint256 depositShares =
+            _convertToShares(amount, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor);
+
+        pendingState.pendingTotalShares += depositShares;
+        pendingState.pendingStrategyProviderShares += depositShares;
+        pendingState.pendingTotalAssets += amount;
+        strategyFund.unAllocatedAssets -= amount;
+        console.log("deposit SP Shares", depositShares);
+        return depositShares;
+    }
+
+    function _handleSpWithdraw(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
+        //gas optimization
+        StrategyFund storage strategyFund = strategyFundById[strategyProviderId];
+        PendingState storage pendingState = strategyFund.pendingState;
+
+        if (amount > strategyFund.frozenShares) {
+            revert NotEnoughWithdrawShare();
+        }
+        uint256 spWithdrawAmount =
+            _convertToAssets(amount, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor);
+
+        //effect
+        pendingState.pendingTotalShares -= amount;
+        pendingState.pendingStrategyProviderShares -= amount;
+        pendingState.pendingTotalAssets -= spWithdrawAmount;
+        strategyFund.frozenShares -= amount;
+        return spWithdrawAmount;
+    }
+
+    function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
+        StrategyFund memory strategyFund;
+
+        strategyFund = strategyFundById[strategyProviderId];
+        uint256 hwm = strategyFund.hwm;
+        uint256 totalShares = strategyFund.totalShares;
+
+        if (strategyFund.pendingState.pendingPerformanceFee > 0) {
+            hwm = strategyFund.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
+        } else {
+            uint256 pendingTotalShares = strategyFund.pendingState.pendingTotalShares;
+            //New issued shares greater than 0
+            if (pendingTotalShares > totalShares) {
+                uint256 newTotalIssuedShares = pendingTotalShares - totalShares;
+                //calculate new hwm
+                hwm = (
+                    (
+                        strategyFund.hwm * totalShares / 10 ** priceDecimal
+                            + newTotalIssuedShares * strategyFund.fundAssetsAfterFee / totalShares
+                    )
+                ) * 10 ** priceDecimal / pendingTotalShares;
+            }
+        }
+        return hwm;
+    }
+
     /**
      * @dev Internal conversion function (from assets amount to shares) with support for rounding direction.
      */
-
     function _convertToShares(uint256 amount, uint256 _totalAssets, uint256 _toatlShares, Math.Rounding rounding)
         internal
         view
@@ -441,6 +649,4 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable {
             ? shares.mulDiv(10 ** assetsDecimal, 10 ** shareDecimal, rounding)
             : shares.mulDiv(_totalAssets, _toatlShares, rounding);
     }
-
-    function _distributionAssetsToFunds() internal view returns (uint256[] memory) {}
 }
