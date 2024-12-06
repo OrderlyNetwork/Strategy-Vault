@@ -33,7 +33,11 @@ contract MockSVLedger is StrategyVaultLedger {
     }
 
     function getFundHWM(bytes32[] calldata strategyProviderIds) external view returns (uint256[] memory) {
-        return _calculateHWM(strategyProviderIds);
+        uint256[] memory hwms = new uint256[](2);
+        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+            hwms[i] = _calculateHWM(strategyProviderIds[i]);
+        }
+        return hwms;
     }
 
     function setAccountState(bytes32 accountId, uint256 unAllocatedAssets, uint256 frozenShares, uint256 pendingShares)

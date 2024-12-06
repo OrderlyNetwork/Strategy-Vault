@@ -112,19 +112,17 @@ contract StrategyVaultLedgerTest is Base {
 
             svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, "0x");
             svLedger.allocatToFunds(spIds);
-            console.log("=============Period 1 Pending=====================");
-
-            consolePendingState();
             svLedger.settleMainAndStrategyFunds(periodId, spIds);
             svLedger.settleAccounts(periodId, accountIds);
             console.log("=============After Period 1=====================");
             consoleState();
+            svLedger.updatePeriodId();
         }
-
         //Period 2
         console.log("=============Start Period 2=====================");
         {
             //initialize
+            periodId++;
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 5000 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1250 * assetDecimal);
             svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
@@ -132,19 +130,115 @@ contract StrategyVaultLedgerTest is Base {
             svLedger.settleAccounts(periodId, accountIds);
             console.log("=============After Period 2=====================");
             consoleState();
+            svLedger.updatePeriodId();
         }
         //Period 3
         console.log("=============Start Period 3=====================");
         {
             //initialize
-            // strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 5000 * assetDecimal);
-            // strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1250 * assetDecimal);
-            // svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
-            // console.log("=============Period 3 Pending=====================");
-            // svLedger.settleMainAndStrategyFunds(periodId, spIds);
-            // svLedger.settleAccounts(periodId, accountIds);
-            // console.log("=============After Period 3=====================");
-            // consoleState();
+            periodId++;
+
+            strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 750 * assetDecimal);
+            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+
+            uint256 depositAmount = 10000 * assetDecimal;
+            uint256 withdrawShare = 1 * shareDecimal;
+            Operation memory newOperation_1 = Operation({id: userA_id, nonce: 3, amount: depositAmount});
+            Operation memory newOperation_2 = Operation({id: spB_id, nonce: 4, amount: withdrawShare});
+
+            UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](2);
+            updateLedgerParams[0] =
+                UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+            updateLedgerParams[1] =
+                UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: newOperation_2});
+            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, "0x");
+            svLedger.allocatToFunds(spIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            svLedger.settleAccounts(periodId, accountIds);
+            console.log("=============After Period 3=====================");
+            consoleState();
+            svLedger.updatePeriodId();
+        }
+        {
+            //Period 4
+            periodId++;
+            console.log("=============Start Period 4=====================");
+            strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 5000 * assetDecimal);
+            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+
+            uint256 withdrawShare = 8 * shareDecimal;
+            Operation memory newOperation_1 = Operation({id: userA_id, nonce: 5, amount: withdrawShare});
+            UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
+            updateLedgerParams[0] =
+                UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: newOperation_1});
+
+            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, "0x");
+            svLedger.allocatToFunds(spIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            svLedger.settleAccounts(periodId, accountIds);
+            console.log("=============After Period 4=====================");
+            consoleState();
+            svLedger.updatePeriodId();
+        }
+        {
+            //Period 5
+            periodId++;
+            console.log("=============Start Period 5=====================");
+            strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 10750 * assetDecimal);
+            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+
+            svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            svLedger.settleAccounts(periodId, accountIds);
+            console.log("=============After Period 5=====================");
+            consoleState();
+            svLedger.updatePeriodId();
+        }
+        {
+            //Period 6
+            periodId++;
+            console.log("=============Start Period 6=====================");
+            strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 6000 * assetDecimal);
+            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+
+            uint256 depositAssets = 10000 * assetDecimal;
+            Operation memory newOperation_1 = Operation({id: spA_id, nonce: 6, amount: depositAssets});
+            UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
+            updateLedgerParams[0] =
+                UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_1});
+
+            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, "0x");
+            svLedger.allocatToFunds(spIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            svLedger.settleAccounts(periodId, accountIds);
+            console.log("=============After Period 6=====================");
+            consoleState();
+            svLedger.updatePeriodId();
+        }
+        {
+            //Period 7
+            periodId++;
+            console.log("=============Start Period 7=====================");
+            strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 4000 * assetDecimal);
+            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, "0x");
+
+            uint256 withdrawShare = 9 * shareDecimal / 10;
+            Operation memory newOperation_1 = Operation({id: spA_id, nonce: 7, amount: withdrawShare});
+            UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
+            updateLedgerParams[0] =
+                UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: newOperation_1});
+
+            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, "0x");
+            svLedger.allocatToFunds(spIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds);
+            svLedger.settleAccounts(periodId, accountIds);
+            console.log("=============After Period 7=====================");
+            consoleState();
+            svLedger.updatePeriodId();
         }
     }
 

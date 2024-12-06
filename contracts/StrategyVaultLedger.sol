@@ -31,7 +31,7 @@ import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {console} from "forge-std/console.sol";
-//todo 1. sig verify 2. constant 3. admin access
+//todo 1. sig verify 2. constant 3. admin access 4. repeat nonce
 
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
     using Math for uint256;
@@ -154,6 +154,9 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             StrategyFund storage strategyFund = strategyFundById[strategyFundAssets[i].strategyProviderId];
             PendingState storage pendingState = strategyFund.pendingState;
 
+            //reset performance fee
+            strategyFund.pendingState.pendingPerformanceFee=0;
+
             uint256 fundAssets = strategyFundAssets[i].totalAssets;
             uint256 fundShares = strategyFund.totalShares;
 
@@ -258,7 +261,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                     Math.Rounding.Floor
                 );
             }
-
+            console.log("pendingLpDepositAssets", pendingLpDepositAssets);
+            console.log("pendingLpWithdrawShares", pendingLpWithdrawShares);
             //allocate deposit
             if (pendingLpDepositAssets > 0) {
                 for (uint256 i = 0; i < strategyProviderIds.length; i++) {
@@ -334,7 +338,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
             StrategyFund storage strategyFund = strategyFundById[strategyProviderIds[i]];
 
-            //hwm must be updated
+            //hwm must be updated firstly 
             strategyFund.hwm = _calculateHWM(strategyProviderIds[i]);
 
             strategyFund.totalShares = strategyFund.pendingState.pendingTotalShares;
@@ -371,6 +375,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     }
 
     function updatePeriodId() external onlyOperator {
+        pendingLpDepositAssets = 0;
+        pendingLpWithdrawShares = 0;
         latestPeriodId++;
 
         emit PeriodIdUpdated(latestPeriodId);
@@ -412,7 +418,6 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         external
         onlyOperator
     {
-
         // StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
         //     payloadType: uint8(payloadType),
         //     chainId: block.chainid,
@@ -598,11 +603,10 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
         StrategyFund memory strategyFund;
-
         strategyFund = strategyFundById[strategyProviderId];
+
         uint256 hwm = strategyFund.hwm;
         uint256 totalShares = strategyFund.totalShares;
-
         if (strategyFund.pendingState.pendingPerformanceFee > 0) {
             hwm = strategyFund.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
         } else {
