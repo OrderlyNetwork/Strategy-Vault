@@ -195,7 +195,7 @@
 //             //     lpDepositAssets - lpWithdrawAmount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor
 //             // );
 //             // console.log("netShares", netShares);
-//                                 console.log("MainShares_111:", mainShares);
+//             console.log("MainShares_111:", mainShares);
 
 //             if (lpDepositAssets > lpWithdrawAmount) {
 //                 deposit(
@@ -210,7 +210,7 @@
 //                 //withdraw();
 //                 uint256[] memory allocatedToFunds =
 //                     _distributionAssetsToFunds(lpWithdrawAmount - lpDepositAssets, spIds, strategyFundsAssetsAfterFee);
-//                     console.log("MainShares_222:", mainShares);
+//                 console.log("MainShares_222:", mainShares);
 //                 lpWithdrawShares = _convertToShares(
 //                     lpWithdrawAmount - lpDepositAssets, mainAssetsAfterFee, mainShares, Math.Rounding.Floor
 //                 );

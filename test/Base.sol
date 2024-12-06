@@ -10,9 +10,11 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {StrategyVaultLedger} from "../contracts/StrategyVaultLedger.sol";
+import {MockSVLedger} from "./MockSVLedger.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
 import {StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 // Mock ERC20 token contract
+
 contract MockERC20 is ERC20 {
     constructor(string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol) {}
 
@@ -26,12 +28,14 @@ contract Base is TestHelperOz5 {
 
     address public owner = address(0x123);
     address public user = address(0x1);
+    address public operator = address(0x5);
+
     uint32 public srcEid = 1;
     uint32 public ledgerEid = 2;
 
     MockERC20 mockToken;
     ProtocolVault protocolVault;
-    StrategyVaultLedger svLedger;
+    MockSVLedger svLedger;
     VaultCrossChainManager aVaultCrossChainManager;
     VaultCrossChainManager bVaultCrossChainManager;
 
@@ -41,11 +45,13 @@ contract Base is TestHelperOz5 {
 
         vm.deal(user, 100 ether);
         // Deploy the StrategyVaultLedger contract
-        address svLedgerImpl = address(new StrategyVaultLedger());
-        address svLedgerProxy =
-            address(new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(StrategyVaultLedger.initialize.selector, "")));
-        svLedger = StrategyVaultLedger(svLedgerProxy);
-
+        address svLedgerImpl = address(new MockSVLedger());
+        address svLedgerProxy = address(
+            new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(StrategyVaultLedger.initialize.selector, owner))
+        );
+        svLedger = MockSVLedger(svLedgerProxy);
+        vm.prank(owner);
+        svLedger.setOperatorManager(operator);
         // Initialize 2 endpoints, using UltraLightNode as the library type
         setUpEndpoints(2, LibraryType.UltraLightNode);
         address[] memory uas = setupOApps(type(VaultCrossChainManager).creationCode, 1, 2);
@@ -56,7 +62,7 @@ contract Base is TestHelperOz5 {
         aVaultCrossChainManager.setDstEid(ledgerEid);
         bVaultCrossChainManager.setDstEid(srcEid);
         bVaultCrossChainManager.setLedger(svLedgerProxy);
-
+        vm.prank(owner);
         svLedger.setCrossChainManagerAddress(address(bVaultCrossChainManager));
 
         //Deploy the ProtocolVault contract
