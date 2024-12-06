@@ -6,31 +6,25 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
-import {
-    VaultType,
-    PayloadType,
-    OperationParams
-} from "./lib/types/VaultStruct.sol";
+import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
+import {VaultType, RoleType, OperationParams, OperationData, UserClaimedInfo} from "./lib/types/VaultStruct.sol";
+import {PayloadType} from "./lib/types/CrossChainStruct.sol";
+
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-
-/**
- * // todo
- *  - if different token, using another contract
- *  -
- */
-contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
+//todo 1. 是否要限制只有dex vault才能调用 当transfer fund 2. constant 3. 校验相关的配置要在evm还是ledger
+contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
     using SafeERC20 for IERC20;
 
     uint256 public ledgerChainId;
 
-    address public orderlyDexVault;
+    address public dexVault;
     address public crossChainManager;
 
-    uint256 public nonce;
+    uint256 public chainNonce;
     //uint256 miniumDepositForUser;
     // uint256 miniumDepositForSP;
     // uint256 capUserNumber;
@@ -38,23 +32,37 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     // address feeRecipient;
     //VaultState vaultState;
 
-    mapping(bytes32 => uint256) public unclaimedAssets;
-    mapping(bytes32 => bool) public isAllowedToken;
+    /// @dev AccountId or SPId => UserClaimedInfo
+    mapping(bytes32 => UserClaimedInfo) public userClaimedInfo;
+
+    mapping(bytes32 => address) public allowedToken;
     mapping(bytes32 => bool) public isAllowedBroker;
-
-    // mapping(address => uint256) userToDepositAmount;
-    // mapping(address => StrategyParams) strategies;
-    // mapping(address => bool) isActiveSigner;
-
-    error InvalidDepositAmount();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    modifier onlyAllowedStrategyProvider() {
+    /// @notice Require only cross chain manager can call
+    modifier onlyVaultCrossChainManager() {
+        if (msg.sender != crossChainManager) {
+            revert InvalidCrossChainManager();
+        }
         _;
+    }
+
+    /// @notice Require only dex vault can call
+    modifier onlyDexVault() {
+        if (msg.sender != dexVault) {
+            revert InvalidDexVault();
+        }
+        _;
+    }
+
+    struct UpdateUserClaim {
+        bytes32 accountId;
+        uint256 claimAssets;
+        uint256 requestId;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
@@ -65,7 +73,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
 
         __UUPSUpgradeable_init();
 
-        crossChainManager = _crossChainManager;
+        crossChainManager = _crossChainManager; 
         ledgerChainId = 291;
     }
     /*=========================================================================================
@@ -73,50 +81,92 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
     *=========================================================================================*/
 
     function executeOperation(OperationParams memory operationParams) external payable {
-        // if (operationParams.operationType == OperationType.LP_DEPOSIT) {
-        //     bytes32 vaultId = keccak256(abi.encodePacked(operationParams.brokerHash, address(this)));
-        //     bytes32 accountId = keccak256(abi.encodePacked(msg.sender, operationParams.brokerHash));
-        // } else if (operationParams.operationType == OperationType.SP_DEPOSIT) {
-        //     //check if strategyProvider is allowed
-        //     bytes32 strategyProviderId =
-        //         keccak256(abi.encodePacked(address(this), msg.sender, operationParams.brokerHash));
-        // } else if (operationParams.operationType == OperationType.LP_WITHDRAW) {
-        //     //check if strategyProvider is allowed
-        //     bytes32 strategyProviderId =
-        //         keccak256(abi.encodePacked(address(this), msg.sender, operationParams.brokerHash));
-        // } else if (operationParams.operationType == OperationType.SP_WITHDRAW) {
-        //     //check if strategyProvider is allowed
-        //     bytes32 strategyProviderId =
-        //         keccak256(abi.encodePacked(address(this), msg.sender, operationParams.brokerHash));
-        // }
-        // transfer token to this contract
-        //IERC20(token).safeTransferFrom(msg.sender, msg.sender, assets);
-        //construct DepositData cross chain message
-        // DepositData memory depositData = DepositData({
-        //     vaultType: VaultType.PROTOCOL,
-        //     amount: amount,
-        //     depositNonce: 0,
-        //     token: token,
-        //     receiver: to,
-        //     strategyProvider: address(0),
-        //     vault: address(this),
-        //     vaultId: vaultId,
-        //     accountId: accountId,
-        //     strategyProviderId: keccak256(abi.encodePacked(address(this))),
-        //     brokerHash: brokerHash
-        // });
+        PayloadType payloadType = operationParams.payloadType;
+        bytes32 brokerHash = operationParams.brokerHash;
+        bytes32 tokenHash = operationParams.tokenHash;
+        address token = allowedToken[tokenHash];
 
-        // StrategyVaultCCMessage memory message =
-        //     StrategyVaultCCMessage({payloadType: uint8(PayloadType.DEPOSIT), payload: abi.encode(depositData)});
-        // //cross-chain message
-        // IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+        if (token == address(0)) {
+            revert NotAllowedToken();
+        }
+
+        bytes32 vaultId;
+        bytes32 accountId;
+        bytes32 strategyProviderId;
+
+        if (payloadType == PayloadType.LP_DEPOSIT) {
+            vaultId = _getVaultId(brokerHash);
+            accountId = _getAccountId(msg.sender, brokerHash);
+        } else if (payloadType == PayloadType.SP_DEPOSIT) {
+            strategyProviderId = _getStrategyProviderId(msg.sender, brokerHash);
+        } else if (payloadType == PayloadType.LP_WITHDRAW) {
+            strategyProviderId = _getAccountId(msg.sender, brokerHash);
+        } else if (payloadType == PayloadType.SP_WITHDRAW) {
+            strategyProviderId = _getStrategyProviderId(msg.sender, brokerHash);
+        }
+
+        //transfer token to this contract
+        uint256 amount = operationParams.amount;
+        IERC20(token).safeTransferFrom(msg.sender, msg.sender, amount);
+        //construct OperationData cross chain message
+        OperationData memory operationData = OperationData({
+            vaultType: VaultType.PROTOCOL,
+            sender: msg.sender,
+            receiver: operationParams.receiver,
+            chainNonce: chainNonce,
+            amount: amount,
+            vaultId: vaultId,
+            accountId: accountId,
+            strategyProviderId: strategyProviderId,
+            tokenHash: operationParams.tokenHash,
+            brokerHash: brokerHash
+        });
+
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: payloadType,
+            srcChainId: uint32(block.chainid),
+            dstChainId: uint32(ledgerChainId),
+            payload: abi.encode(operationData)
+        });
+        //cross-chain message
+        //IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+
+        emit OperationExecuted(operationData);
     }
 
-        
-    
-    function depositToOrderleDex() external {
+    function claim(RoleType roleType, uint256 amount, bytes32 brokerHash, bytes32 tokenHash) external {
+        bytes32 id;
+        address token = allowedToken[tokenHash];
+
+        if (roleType == RoleType.LP) {
+            id = _getAccountId(msg.sender, brokerHash);
+            _valitateClaim(id, amount);
+        } else if (roleType == RoleType.SP) {
+            id = _getStrategyProviderId(msg.sender, brokerHash);
+            _valitateClaim(id, amount);
+        } else {
+            revert InvalidRoleType();
+        }
+
+        //transfer to user
+        IERC20(token).safeTransfer(msg.sender, amount);
+
+        //effect
+        userClaimedInfo[id].unClaimedAssets -= amount;
+
+        emit UserClaimed(amount, userClaimedInfo[id].requests);
+    }
+
+    //--------------------------------------FROM DEX-----------------------------------------
+
+    function depositFromDex(uint256 periodId, uint256 amount) external onlyDexVault {
+        emit DepositFromDex(periodId, amount);
+    }
+    //--------------------------------------FROM Ledger-----------------------------------------
+
+    function depositToStrategy() external onlyVaultCrossChainManager {
         //check vault ID
-       // bytes32 vaultId = keccak256(abi.encodePacked(strategyExecution.brokerHash, address(this)));
+        // bytes32 vaultId = keccak256(abi.encodePacked(strategyExecution.brokerHash, address(this)));
 
         // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
         //     .VaultDepositFE({
@@ -129,28 +179,41 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         //     IDexVault(orderlyDexVault).deposit();
     }
 
-    /*======================================================================
-     *   Config Functions
-     *======================================================================*/
-
-    /*======================================================================
-     *   View Functions
-     *======================================================================*/
+    // function updateUnClaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims)
+    //     external
+    //     onlyVaultCrossChainManager
+    // {
+    //     emit UnClaimedUpdated(periodId, updateUserClaims);
+    // }
 
     //--------------------------------------CONFIG--------------------------------------------
     function setLedgerChainId(uint256 _ledgerChainId) external onlyOwner {
         ledgerChainId = _ledgerChainId;
     }
 
-    function setOrderlyDexVault(address _orderlyDexVault) external onlyOwner {
-        orderlyDexVault = _orderlyDexVault;
+    function setOrderlyDexVault(address _dexVault) external onlyOwner {
+        dexVault = _dexVault;
     }
 
     function setCrossChainManager(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;
     }
 
-    //--------------------------------------INTERNAL--------------------------------------------
+    function emergencyWithdraw(address to, uint256 amount) external onlyOwner {
+        //withdraw all token to owner
+    }
+    /*=========================================================================================
+    *                                       VIEW
+    *=========================================================================================*/
+    // function getEstimateFee() public view returns (uint256) {
+    //     bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+
+    //     (uint256 nativeFee,) = IVaultCrossChainManager(crossChainManager).quote(ledgerEid, buildCCMessage(), options, false);
+    //     return nativeFee;
+    // }
+    /*=========================================================================================
+    *                                       INTERNAL
+    *=========================================================================================*/
     function _validateDeposit(uint256 amount) internal view {
         // check if tokenHash and brokerHash are allowed
         // if (!isAllowedToken[data.token]) revert TokenNotAllowed();
@@ -160,5 +223,23 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable {
         //     revert AccountIdInvalid();
         // check if tokenAmount > 0
         if (amount == 0) revert InvalidDepositAmount();
+    }
+
+    function _valitateClaim(bytes32 id, uint256 amount) internal view {
+        if (amount > userClaimedInfo[id].unClaimedAssets) {
+            revert NotEnoughUnclaimedAssets();
+        }
+    }
+
+    function _getAccountId(address account, bytes32 brokerHash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(account, brokerHash));
+    }
+
+    function _getStrategyProviderId(address strategyProvider, bytes32 brokerHash) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), strategyProvider, brokerHash));
+    }
+
+    function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(brokerHash, address(this)));
     }
 }

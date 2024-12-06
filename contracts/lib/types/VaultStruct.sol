@@ -1,28 +1,28 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {PayloadType} from "./CrossChainStruct.sol";
 enum VaultType {
     PROTOCOL,
     USER
+}
+
+enum RoleType{
+    LP,
+    SP
 }
 enum VaultState {
     OPEN,
     SHUTDOWN,
     CLOSED
 }
-enum PayloadType {
-    LP_DEPOSIT,
-    SP_DEPOSIT,
-    LP_WITHDRAW,
-    SP_WITHDRAW,
-    TRANSFER_TO_ORDERLY_DEX
-}
 
 struct OperationParams {
     PayloadType payloadType;
-    address token;
     address receiver;
     uint256 amount;
     bytes32 brokerHash;
+    bytes32 tokenHash;
 }
 
 struct OperationData {
@@ -32,8 +32,8 @@ struct OperationData {
     address sender;
     ///@dev receiver
     address receiver;
-    ///@dev global deposit nonce
-    uint256 nonce;
+    ///@dev deposit nonce on a specific chain
+    uint256 chainNonce;
     ///@dev deposit assets amount or withdraw shares amount
     uint256 amount;
     ///@dev keccak256(abi.encodePacked(brokerHash, vault address))
@@ -46,4 +46,9 @@ struct OperationData {
     bytes32 tokenHash;
     ///@dev keccak256(abi.encodePacked(broker address))
     bytes32 brokerHash;
+}
+
+struct UserClaimedInfo {
+    uint256 unClaimedAssets;
+    uint256[] requests;
 }

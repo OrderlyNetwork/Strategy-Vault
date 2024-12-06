@@ -12,23 +12,25 @@ import {OApp, Origin, MessagingFee} from "@layerzerolabs/lz-evm-oapp-v2/contract
 // dev imports
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
-import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
+import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
+import {StrategyVaultCCMessage, PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {console} from "forge-std/console.sol";
 
 /**
  * todo:
- *  - lz gas estimate
+ *  - lz gas estimate OptionsBuilder
  * - lz send require vault equal quote fee
  *
  */
-contract VaultCrossChainManager is OApp {
+contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
     error InvalidPayloadType();
 
     using OptionsBuilder for bytes;
 
     uint32 public eid;
     uint32 public dstEid;
-    address public svLedger;
+    address public ledger;
+    address public vault;
 
     constructor(address endpoint, address delegate) OApp(endpoint, delegate) Ownable(msg.sender) {
         eid = ILayerZeroEndpointV2(endpoint).eid();
@@ -37,8 +39,8 @@ contract VaultCrossChainManager is OApp {
     function vaultSendToLedger(StrategyVaultCCMessage memory message) external payable {
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
 
-        bytes memory lzMessage = encodeLzMsg(message.payloadType, message.payload);
-
+        //bytes memory lzMessage = encodeLzMsg(message.payloadType, message.payload);
+        bytes memory lzMessage = abi.encode(message);
         MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
         _lzSend(
             dstEid,
@@ -51,12 +53,12 @@ contract VaultCrossChainManager is OApp {
         );
     }
 
-    function ledgerSendToVault(
-        StrategyVaultCCMessage memory strategyVaultCCMessage
-    ) internal {
+    function ledgerSendToVault(StrategyVaultCCMessage memory strategyVaultCCMessage) internal {
         // Encodes the message before invoking _lzSend.
         // Replace with whatever data you want to send!
-        // bytes memory payload = svMessage.payload;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+
+        bytes memory payload = strategyVaultCCMessage.payload;
         // _lzSend(
         //     strategyVaultCCMessage.chainId,
         //     payload,
@@ -76,14 +78,30 @@ contract VaultCrossChainManager is OApp {
         bytes calldata /*_extraData*/
     ) internal virtual override {
         //Decode the payload by payloadType
-        // (uint8 payloadType, bytes memory payload) = decodeLzMsg(_message);
-        // if (payloadType == uint8(PayloadType.LP_DEPOSIT)) {
-        //     DepositData memory depositData = abi.decode(payload, (DepositData));
-        //     //call ledger vaultDeposit function
-        //     IStrategyVaultLedger(svLedger).accountDeposit(depositData);
-        // } else {
-        //     revert InvalidPayloadType();
-        // }
+        StrategyVaultCCMessage memory strategyVaultCCmessage = abi.decode(_message, (StrategyVaultCCMessage));
+        PayloadType payloadType = strategyVaultCCmessage.payloadType;
+        bytes memory payload = strategyVaultCCmessage.payload;
+
+        if (
+            payloadType == PayloadType.UPDATE_USER_CLAIM || payloadType == PayloadType.LP_DEPOSIT
+                || payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.LP_WITHDRAW
+        ) {
+            //Decode the payload
+            OperationData memory operationData = abi.decode(payload, (OperationData));
+
+            //Call strategyVaultLedger to handle the operation
+            // IStrategyVaultLedger(ledger).handleOpFromVault(
+            //     payloadType, strategyVaultCCmessage.srcChainId, operationData
+            // );
+        } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
+            //Decode the payload
+            //UserClaimedInfo memory userClaimedInfo = abi.decode(payload, (UserClaimedInfo));
+            //Call strategyVaultLedger to handle the operation
+            // IStrategyVaultLedger(ledger).handleUserClaimed(strategyVaultCCmessage.srcChainId, userClaimedInfo);
+        }
+        else {
+            revert InvalidPayloadType();
+        }
     }
 
     //--------------------------------------CONFIG--------------------------------------------
@@ -92,11 +110,16 @@ contract VaultCrossChainManager is OApp {
         dstEid = _dstEid;
     }
 
-    function setSvLedger(address _svLedger) external onlyOwner {
-        svLedger = _svLedger;
+    function setLedger(address _ledger) external onlyOwner {
+        ledger = _ledger;
     }
 
-    //--------------------------------------VIEW--------------------------------------------
+    function setVault(address _vault) external onlyOwner {
+        vault = _vault;
+    }
+    /*=========================================================================================
+    *                                       VIEW
+    *=========================================================================================*/
 
     function quote(uint32 _dstEid, bytes memory _message, bytes memory _options, bool _payInLzToken)
         public
@@ -106,18 +129,5 @@ contract VaultCrossChainManager is OApp {
         //        bytes memory options = combineOptions(_eid, _type, _options);
         MessagingFee memory fee = _quote(_dstEid, _message, _options, _payInLzToken);
         return (fee.nativeFee, fee.lzTokenFee);
-    }
-
-    //--------------------------------------INTERNAL--------------------------------------------
-
-    function encodeLzMsg(uint8 msgType, bytes memory payload) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint8(msgType), payload);
-    }
-
-    function decodeLzMsg(bytes calldata message) internal pure returns (uint8 msgType, bytes memory payload) {
-        //decode msg type and payload
-        uint8 MSG_TYPE_OFFSET = 1;
-        msgType = uint8(bytes1(message[:MSG_TYPE_OFFSET]));
-        payload = message[MSG_TYPE_OFFSET:];
     }
 }

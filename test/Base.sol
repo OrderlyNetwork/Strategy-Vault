@@ -55,7 +55,7 @@ contract Base is TestHelperOz5 {
 
         aVaultCrossChainManager.setDstEid(ledgerEid);
         bVaultCrossChainManager.setDstEid(srcEid);
-        bVaultCrossChainManager.setSvLedger(svLedgerProxy);
+        bVaultCrossChainManager.setLedger(svLedgerProxy);
 
         svLedger.setCrossChainManagerAddress(address(bVaultCrossChainManager));
 

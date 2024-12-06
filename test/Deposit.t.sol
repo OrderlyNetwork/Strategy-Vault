@@ -16,7 +16,7 @@ contract TestProtocolVault is Base {
 
         assertEq(svLedger.crossChainManagerAddress(), address(bVaultCrossChainManager));
 
-        assertEq(bVaultCrossChainManager.svLedger(), address(svLedger));
+        assertEq(bVaultCrossChainManager.ledger(), address(svLedger));
 
         assertEq(aVaultCrossChainManager.eid(), 1);
         assertEq(bVaultCrossChainManager.eid(), 2);
