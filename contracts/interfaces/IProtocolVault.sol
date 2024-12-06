@@ -3,12 +3,13 @@ pragma solidity ^0.8.26;
 
 import {VaultType, RoleType, OperationParams, OperationData, UserClaimedInfo} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
+import {UpdateUserClaim} from "../lib/types/LedgerStruct.sol";
 
 interface IProtocolVault {
     event OperationExecuted(OperationData operationData);
     event UserClaimed(uint256 amount, uint256[] requests);
     event DepositFromDex(uint256 periodId,uint256 amount);
-    //event UnClaimedUpdated(uint256 periodId,UpdateUserClaim[] updateUserClaims);
+    event UnClaimedUpdated(uint256 periodId,UpdateUserClaim[] updateUserClaims);
 
     error NotAllowedToken();
     error InvalidDepositAmount();

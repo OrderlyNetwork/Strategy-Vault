@@ -4,13 +4,11 @@ pragma solidity ^0.8.26;
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {VaultType, RoleType, OperationParams, OperationData, UserClaimedInfo} from "./lib/types/VaultStruct.sol";
-import {PayloadType} from "./lib/types/CrossChainStruct.sol";
-
-import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
+import {PayloadType,StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
+import {UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
 import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
@@ -33,7 +31,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     //VaultState vaultState;
 
     /// @dev AccountId or SPId => UserClaimedInfo
-    mapping(bytes32 => UserClaimedInfo) public userClaimedInfo;
+    mapping(bytes32 => UserClaimedInfo) public userClaimedById;
 
     mapping(bytes32 => address) public allowedToken;
     mapping(bytes32 => bool) public isAllowedBroker;
@@ -57,12 +55,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
             revert InvalidDexVault();
         }
         _;
-    }
-
-    struct UpdateUserClaim {
-        bytes32 accountId;
-        uint256 claimAssets;
-        uint256 requestId;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
@@ -152,9 +144,9 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         IERC20(token).safeTransfer(msg.sender, amount);
 
         //effect
-        userClaimedInfo[id].unClaimedAssets -= amount;
+        userClaimedById[id].unClaimedAssets -= amount;
 
-        emit UserClaimed(amount, userClaimedInfo[id].requests);
+        emit UserClaimed(amount, userClaimedById[id].requests);
     }
 
     //--------------------------------------FROM DEX-----------------------------------------
@@ -179,12 +171,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         //     IDexVault(orderlyDexVault).deposit();
     }
 
-    // function updateUnClaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims)
-    //     external
-    //     onlyVaultCrossChainManager
-    // {
-    //     emit UnClaimedUpdated(periodId, updateUserClaims);
-    // }
+    function updateUnClaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims)
+        external
+        onlyVaultCrossChainManager
+    {
+        emit UnClaimedUpdated(periodId, updateUserClaims);
+    }
 
     //--------------------------------------CONFIG--------------------------------------------
     function setLedgerChainId(uint256 _ledgerChainId) external onlyOwner {
@@ -226,7 +218,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     }
 
     function _valitateClaim(bytes32 id, uint256 amount) internal view {
-        if (amount > userClaimedInfo[id].unClaimedAssets) {
+        if (amount > userClaimedById[id].unClaimedAssets) {
             revert NotEnoughUnclaimedAssets();
         }
     }
