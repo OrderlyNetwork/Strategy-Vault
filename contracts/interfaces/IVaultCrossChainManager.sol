@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-// import {DepositData, VaultType, PayloadType, StrategyVaultCCMessage} from "../lib/Struct.sol";
+import {StrategyVaultCCMessage} from "../lib/types/CrossChainStruct.sol";
 
 interface IVaultCrossChainManager {
-    // function vaultSendToLedger(StrategyVaultCCMessage memory _message) external payable;
-
-    // function testCounter() external;
+    function quote(uint32 _dstEid, bytes memory _message, bytes memory _options, bool _payInLzToken)
+        external
+        view
+        returns (uint256 nativeFee, uint256 lzTokenFee);
+    function vaultSendToLedger(StrategyVaultCCMessage memory message) external payable;
 }
