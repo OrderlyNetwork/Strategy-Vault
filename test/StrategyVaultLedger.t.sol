@@ -49,7 +49,7 @@ contract StrategyVaultLedgerTest is Base {
         spIds.push(spB_id);
     }
 
-    //forge t --match-test testUpgradeFundAssets -vv
+    //forge t --match-test testUpgradeFundAssetsSignature -vv
     function testUpgradeFundAssetsSignature() public {
         initialize();
         UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](2);

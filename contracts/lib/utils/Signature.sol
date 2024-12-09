@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.26;
+
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {
+    Account,
+    StrategyFund,
+    UpdateStrategyFundAssetsParams,
+    StrategyExecutionParams,
+    BasicInfo,
+    PendingState,
+    StrategyExecution,
+    Operation,
+    OperationType,
+    OperationRes,
+    UpdateLedgerParams,
+    AssetsDistribution,
+    AccountState,
+    UpdateUserClaim,
+    AllocateFundRes,
+    SettleType,
+    StrategyFundState,
+    SettleParams
+} from "../types/LedgerStruct.sol";
+
+library Signature {
+    error InvalidSigner();
+
+    function verifyUploadFundAssets(
+        uint256 periodId,
+        UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
+        bytes memory signature,
+        address signer
+    ) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(periodId, strategyFundAssets));
+        if (signer != ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(messageHash), signature)) {
+            revert InvalidSigner();
+        }
+    }
+}

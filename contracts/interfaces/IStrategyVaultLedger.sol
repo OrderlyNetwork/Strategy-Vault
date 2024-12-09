@@ -37,7 +37,6 @@ interface IStrategyVaultLedger {
     error NotEnoughSPDeposit();
     error InvalidOpType();
     error InvalidTotalAssets();
-    error InvalidSigner();
 
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(uint256 periodId, uint256 mainAssetsAfterFee, PendingState[] pendingStates);

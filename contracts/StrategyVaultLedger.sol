@@ -4,8 +4,7 @@ pragma solidity ^0.8.26;
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
 import {
     Account,
     StrategyFund,
@@ -26,7 +25,7 @@ import {
     StrategyFundState,
     SettleParams
 } from "./lib/types/LedgerStruct.sol";
-
+import {Signature} from "./lib/utils/Signature.sol";
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
 import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
@@ -150,11 +149,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        bytes32 messageHash = keccak256(abi.encode(periodId, strategyFundAssets));
-        address signer = ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(messageHash), signature);
-        if (signer != engineAddress) {
-            revert InvalidSigner();
-        }
+        Signature.verifyUploadFundAssets(periodId, strategyFundAssets, signature, engineAddress);
         uint256 assetsAfterFee;
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
             //gas optimization
