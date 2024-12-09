@@ -149,7 +149,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyUploadFundAssets(periodId, strategyFundAssets, signature, engineAddress);
+        Signature.verifyUpdateFundAssets(periodId, strategyFundAssets, signature, engineAddress);
         uint256 assetsAfterFee;
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
             //gas optimization
@@ -203,6 +203,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
+        Signature.verifyUpdateLPAndStrategyFund(periodId, updateUserLedgerParams, signature, engineAddress);
+        
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
         uint256 amount;
         for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {

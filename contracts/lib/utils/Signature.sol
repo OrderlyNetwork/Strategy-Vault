@@ -27,13 +27,26 @@ import {
 library Signature {
     error InvalidSigner();
 
-    function verifyUploadFundAssets(
+    function verifyUpdateFundAssets(
         uint256 periodId,
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
         bytes memory signature,
         address signer
     ) internal pure {
         bytes32 messageHash = keccak256(abi.encode(periodId, strategyFundAssets));
+        verifySignature(signer, messageHash, signature);
+    }
+
+    function verifyUpdateLPAndStrategyFund(
+        uint256 periodId,
+        UpdateLedgerParams[] calldata updateUserLedgerParams,
+        bytes memory signature,
+        address signer
+    ) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(periodId, updateUserLedgerParams));
+        verifySignature(signer, messageHash, signature);
+    }
+    function verifySignature(address signer, bytes32 messageHash, bytes memory signature) internal pure {
         if (signer != ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(messageHash), signature)) {
             revert InvalidSigner();
         }
