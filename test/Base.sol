@@ -30,6 +30,9 @@ contract Base is TestHelperOz5 {
     address public user = address(0x1);
     address public operator = address(0x5);
 
+    address engine;
+    uint256 enginePrivateKey;
+
     uint32 public srcEid = 1;
     uint32 public ledgerEid = 2;
 
@@ -42,6 +45,7 @@ contract Base is TestHelperOz5 {
     function setUp() public virtual override {
         // Call the base setup function from the TestHelperOz5 contract
         super.setUp();
+        (engine, enginePrivateKey) = makeAddrAndKey("engine");
 
         vm.deal(user, 100 ether);
         // Deploy the StrategyVaultLedger contract
@@ -52,6 +56,8 @@ contract Base is TestHelperOz5 {
         svLedger = MockSVLedger(svLedgerProxy);
         vm.prank(owner);
         svLedger.setOperatorManager(operator);
+        vm.prank(owner);
+        svLedger.setEngine(engine);
         // Initialize 2 endpoints, using UltraLightNode as the library type
         setUpEndpoints(2, LibraryType.UltraLightNode);
         address[] memory uas = setupOApps(type(VaultCrossChainManager).creationCode, 1, 2);

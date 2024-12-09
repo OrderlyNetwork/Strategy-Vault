@@ -7,7 +7,7 @@ import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {VaultType, RoleType, OperationParams, OperationData, UserClaimedInfo} from "./lib/types/VaultStruct.sol";
-import {PayloadType,StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
+import {PayloadType, StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
 import {console} from "forge-std/console.sol";
 
@@ -65,7 +65,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         __UUPSUpgradeable_init();
 
-        crossChainManager = _crossChainManager; 
+        crossChainManager = _crossChainManager;
         ledgerChainId = 291;
     }
     /*=========================================================================================
@@ -99,7 +99,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         //transfer token to this contract
         uint256 amount = operationParams.amount;
-        IERC20(token).safeTransferFrom(msg.sender, msg.sender, amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         //construct OperationData cross chain message
         OperationData memory operationData = OperationData({
             vaultType: VaultType.PROTOCOL,
@@ -121,7 +121,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
             payload: abi.encode(operationData)
         });
         //cross-chain message
-        //IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
 
         emit OperationExecuted(operationData);
     }

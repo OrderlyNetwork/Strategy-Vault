@@ -23,6 +23,7 @@ import {
     StrategyFundState,
     SettleParams
 } from "../contracts/StrategyVaultLedger.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract StrategyVaultLedgerTest is Base {
     uint256 shareDecimal = 1e6;
@@ -43,30 +44,31 @@ contract StrategyVaultLedgerTest is Base {
 
     function setUp() public override {
         super.setUp();
-
         spIds.push(spA_id);
         spIds.push(spB_id);
     }
 
+    //forge t --match-test testUpgradeFundAssets -vv
+    function testUpgradeFundAssets() public {
+        uint256 periodId = 0;
+        initialize();
+        UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](2);
+
+        strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 1000 * assetDecimal);
+        strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
+        bytes32 messageHash = keccak256(abi.encode(periodId, strategyFundAssets));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.startPrank(operator);
+        svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+    }
     //forge t --match-test testUpdateLedger -vv
+
     function testUpdateLedger() public {
-        uint256 mainshares = 1 * shareDecimal;
-
-        uint256[] memory StrategyFundsAssets = new uint256[](2);
-        StrategyFundsAssets[0] = 2000 * assetDecimal;
-        StrategyFundsAssets[1] = 2000 * assetDecimal;
-
-        uint256[] memory mainSharesInFund = new uint256[](2);
-        mainSharesInFund[0] = 1 * shareDecimal;
-        mainSharesInFund[1] = 1 * shareDecimal;
-
-        uint256[] memory spSharesInFund = new uint256[](2);
-        spSharesInFund[0] = 1 * shareDecimal;
-        spSharesInFund[1] = 1 * shareDecimal;
-        //initialize
-        svLedger.initializeStrategyFund(
-            mainshares, spIds, mainSharesInFund, spSharesInFund, StrategyFundsAssets, 1000 * priceDecimal
-        );
+        initialize();
         bytes32[] memory accountIds = new bytes32[](1);
         bytes32[] memory strategyProviderIds = new bytes32[](2);
         accountIds[0] = userA_id;
@@ -240,6 +242,26 @@ contract StrategyVaultLedgerTest is Base {
             consoleState();
             svLedger.updatePeriodId();
         }
+    }
+
+    function initialize() public {
+        uint256 mainshares = 1 * shareDecimal;
+
+        uint256[] memory StrategyFundsAssets = new uint256[](2);
+        StrategyFundsAssets[0] = 2000 * assetDecimal;
+        StrategyFundsAssets[1] = 2000 * assetDecimal;
+
+        uint256[] memory mainSharesInFund = new uint256[](2);
+        mainSharesInFund[0] = 1 * shareDecimal;
+        mainSharesInFund[1] = 1 * shareDecimal;
+
+        uint256[] memory spSharesInFund = new uint256[](2);
+        spSharesInFund[0] = 1 * shareDecimal;
+        spSharesInFund[1] = 1 * shareDecimal;
+        //initialize
+        svLedger.initializeStrategyFund(
+            mainshares, spIds, mainSharesInFund, spSharesInFund, StrategyFundsAssets, 1000 * priceDecimal
+        );
     }
 
     function consolePendingState() public view {

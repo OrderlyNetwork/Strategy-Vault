@@ -4,7 +4,8 @@ pragma solidity ^0.8.26;
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {
     Account,
     StrategyFund,
@@ -51,6 +52,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     address public crossChainManagerAddress;
     address public operatorAddress;
+    /// @dev address of upload data to contract 
+    address public engineAddress;
 
     /// @dev fee rate of each strategy fund
     mapping(uint256 => uint256) public feeRateOfFund;
@@ -147,7 +150,11 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-
+        bytes32 messageHash =keccak256(abi.encode(periodId, strategyFundAssets));
+        address signer = ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(messageHash), signature);
+        if(signer != engineAddress){
+            revert InvalidSigner();
+        }
         uint256 assetsAfterFee;
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
             //gas optimization
@@ -201,7 +208,6 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
         uint256 amount;
         for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
@@ -452,6 +458,9 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit OperatorManagerSet(_operatorAddress);
     }
 
+    function setEngine(address _engineAddress) public onlyOwner {
+        engineAddress = _engineAddress;
+    }   
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
