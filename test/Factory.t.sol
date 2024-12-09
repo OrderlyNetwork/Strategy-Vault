@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import "forge-std/Test.sol";
-import {ContractFactory} from "../contracts/utils/ContractFactory.sol";
+import {ContractFactory} from "../contracts/ContractFactory.sol";
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 
 contract Create3FactoryTest is Test {

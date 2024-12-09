@@ -29,6 +29,7 @@ contract StrategyVaultLedgerTest is Base {
     uint256 shareDecimal = 1e6;
     uint256 assetDecimal = 1e6;
     uint256 priceDecimal = 1e6;
+    uint256 periodId;
 
     address public userA = address(0x1);
     address public userB = address(0x2);
@@ -49,8 +50,7 @@ contract StrategyVaultLedgerTest is Base {
     }
 
     //forge t --match-test testUpgradeFundAssets -vv
-    function testUpgradeFundAssets() public {
-        uint256 periodId = 0;
+    function testUpgradeFundAssetsSignature() public {
         initialize();
         UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](2);
 
@@ -65,7 +65,21 @@ contract StrategyVaultLedgerTest is Base {
         vm.startPrank(operator);
         svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
     }
-    //forge t --match-test testUpdateLedger -vv
+    //forge t --match-test testUpdateLPAndStrategyFund -vv
+    // function testUpdateLPAndStrategyFund() public {
+    //     //initialize UpdateLedgerParams dymnamic arrary
+    //     initialize();
+    //     UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
+    //     Operation memory newOperation_1 = Operation({id: userA_id, nonce: 0, amount: 1});
+    //     updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+    //     bytes32 messageHash = keccak256(abi.encode(periodId, updateLedgerParams));
+    //     (uint8 v, bytes32 r, bytes32 s) =
+    //         vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+    //     bytes memory signature = abi.encodePacked(r, s, v);
+
+    //     vm.startPrank(operator);
+    //     svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
+    // }
 
     function testUpdateLedger() public {
         initialize();

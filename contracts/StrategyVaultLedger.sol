@@ -52,7 +52,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     address public crossChainManagerAddress;
     address public operatorAddress;
-    /// @dev address of upload data to contract 
+    /// @dev address of upload data to contract
     address public engineAddress;
 
     /// @dev fee rate of each strategy fund
@@ -150,9 +150,9 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        bytes32 messageHash =keccak256(abi.encode(periodId, strategyFundAssets));
+        bytes32 messageHash = keccak256(abi.encode(periodId, strategyFundAssets));
         address signer = ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(messageHash), signature);
-        if(signer != engineAddress){
+        if (signer != engineAddress) {
             revert InvalidSigner();
         }
         uint256 assetsAfterFee;
@@ -162,7 +162,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             PendingState storage pendingState = strategyFund.pendingState;
 
             //reset performance fee
-            strategyFund.pendingState.pendingPerformanceFee=0;
+            strategyFund.pendingState.pendingPerformanceFee = 0;
 
             uint256 fundAssets = strategyFundAssets[i].totalAssets;
             uint256 fundShares = strategyFund.totalShares;
@@ -344,7 +344,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
             StrategyFund storage strategyFund = strategyFundById[strategyProviderIds[i]];
 
-            //hwm must be updated firstly 
+            //hwm must be updated firstly
             strategyFund.hwm = _calculateHWM(strategyProviderIds[i]);
 
             strategyFund.totalShares = strategyFund.pendingState.pendingTotalShares;
@@ -460,7 +460,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     function setEngine(address _engineAddress) public onlyOwner {
         engineAddress = _engineAddress;
-    }   
+    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
