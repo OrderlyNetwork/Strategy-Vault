@@ -130,11 +130,16 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
             svLedger.allocatToFunds(periodId, spIds, signature);
 
-            svLedger.settleMainAndStrategyFunds(periodId, spIds);
-            svLedger.settleAccounts(periodId, accountIds);
+            signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+
+            signature = _getSettleAccountSig(periodId, accountIds);
+            svLedger.settleAccounts(periodId, accountIds, signature);
             console.log("=============After Period 1=====================");
             consoleState();
-            svLedger.updatePeriodId();
+
+            signature = _getUpdatePeriodIdSig(periodId);
+            svLedger.updatePeriodId(periodId, signature);
         }
         //Period 2
         console.log("=============Start Period 2=====================");
@@ -146,11 +151,17 @@ contract StrategyVaultLedgerTest is Base {
 
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
             svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds);
-            svLedger.settleAccounts(periodId, accountIds);
+
+            signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+
+            signature = _getSettleAccountSig(periodId, accountIds);
+            svLedger.settleAccounts(periodId, accountIds, signature);
+
             console.log("=============After Period 2=====================");
             consoleState();
-            svLedger.updatePeriodId();
+            signature = _getUpdatePeriodIdSig(periodId);
+            svLedger.updatePeriodId(periodId, signature);
         }
         //Period 3
         console.log("=============Start Period 3=====================");
@@ -180,11 +191,16 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
             svLedger.allocatToFunds(periodId, spIds, signature);
 
-            svLedger.settleMainAndStrategyFunds(periodId, spIds);
-            svLedger.settleAccounts(periodId, accountIds);
+            signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+
+            signature = _getSettleAccountSig(periodId, accountIds);
+            svLedger.settleAccounts(periodId, accountIds, signature);
+
             console.log("=============After Period 3=====================");
             consoleState();
-            svLedger.updatePeriodId();
+            signature = _getUpdatePeriodIdSig(periodId);
+            svLedger.updatePeriodId(periodId, signature);
         }
         {
             //Period 4
@@ -208,11 +224,16 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
             svLedger.allocatToFunds(periodId, spIds, signature);
 
-            svLedger.settleMainAndStrategyFunds(periodId, spIds);
-            svLedger.settleAccounts(periodId, accountIds);
+            signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+
+            signature = _getSettleAccountSig(periodId, accountIds);
+            svLedger.settleAccounts(periodId, accountIds, signature);
+
             console.log("=============After Period 4=====================");
             consoleState();
-            svLedger.updatePeriodId();
+            signature = _getUpdatePeriodIdSig(periodId);
+            svLedger.updatePeriodId(periodId, signature);
         }
         {
             //Period 5
@@ -223,11 +244,14 @@ contract StrategyVaultLedgerTest is Base {
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
             svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
 
-            svLedger.settleMainAndStrategyFunds(periodId, spIds);
-            svLedger.settleAccounts(periodId, accountIds);
+            signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            signature = _getSettleAccountSig(periodId, accountIds);
+            svLedger.settleAccounts(periodId, accountIds, signature);
             console.log("=============After Period 5=====================");
             consoleState();
-            svLedger.updatePeriodId();
+            signature = _getUpdatePeriodIdSig(periodId);
+            svLedger.updatePeriodId(periodId, signature);
         }
         {
             //Period 6
@@ -250,11 +274,14 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
             svLedger.allocatToFunds(periodId, spIds, signature);
 
-            svLedger.settleMainAndStrategyFunds(periodId, spIds);
-            svLedger.settleAccounts(periodId, accountIds);
+            signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            signature = _getSettleAccountSig(periodId, accountIds);
+            svLedger.settleAccounts(periodId, accountIds, signature);
             console.log("=============After Period 6=====================");
             consoleState();
-            svLedger.updatePeriodId();
+            signature = _getUpdatePeriodIdSig(periodId);
+            svLedger.updatePeriodId(periodId, signature);
         }
         {
             //Period 7
@@ -276,12 +303,16 @@ contract StrategyVaultLedgerTest is Base {
 
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
             svLedger.allocatToFunds(periodId, spIds, signature);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds);
 
-            svLedger.settleAccounts(periodId, accountIds);
+            signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
+            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+
+            signature = _getSettleAccountSig(periodId, accountIds);
+            svLedger.settleAccounts(periodId, accountIds, signature);
             console.log("=============After Period 7=====================");
             consoleState();
-            svLedger.updatePeriodId();
+            signature = _getUpdatePeriodIdSig(periodId);
+            svLedger.updatePeriodId(periodId, signature);
         }
     }
 
@@ -380,6 +411,38 @@ contract StrategyVaultLedgerTest is Base {
         returns (bytes memory)
     {
         bytes32 messageHash = keccak256(abi.encode(_periodId, strategyProviderIds));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
+    function _getSettleMainAndFundSig(uint256 _periodId, bytes32[] memory strategyProviderIds)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 messageHash = keccak256(abi.encode(_periodId, strategyProviderIds));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
+    function _getSettleAccountSig(uint256 _periodId, bytes32[] memory accountIds)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 messageHash = keccak256(abi.encode(_periodId, accountIds));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
+    function _getUpdatePeriodIdSig(uint256 _periodId) internal view returns (bytes memory) {
+        bytes32 messageHash = keccak256(abi.encode(_periodId));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);

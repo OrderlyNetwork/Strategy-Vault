@@ -239,7 +239,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     {
         _check(periodId);
         Signature.verifyAllocatToFunds(periodId, strategyProviderIds, signature, engineAddress);
-        
+
         StrategyFund storage strategyFund;
         uint256 totalMainAssetsInFund;
 
@@ -333,12 +333,13 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit FundAllocated(strategyProviderIds, allocateFundRes);
     }
 
-    function settleMainAndStrategyFunds(uint256 periodId, bytes32[] calldata strategyProviderIds)
-        external
-        onlyOperator
-    {
+    function settleMainAndStrategyFunds(
+        uint256 periodId,
+        bytes32[] calldata strategyProviderIds,
+        bytes memory signature
+    ) external onlyOperator {
         _check(periodId);
-
+        Signature.verifySettleMainAndStrategyFunds(periodId, strategyProviderIds, signature, engineAddress);
         //settle MAIN
         mainShares = pendingMainShares;
         StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
@@ -369,8 +370,13 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit MainAndStrategyFundsSettled(periodId, mainShares, strategyFundStates);
     }
 
-    function settleAccounts(uint256 periodId, bytes32[] calldata accountIds) external onlyOperator {
+    function settleAccounts(uint256 periodId, bytes32[] calldata accountIds, bytes memory signature)
+        external
+        onlyOperator
+    {
         _check(periodId);
+        Signature.verifySettleAccount(periodId, accountIds, signature, engineAddress);
+
         AccountState[] memory accountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
             Account storage account = accountById[accountIds[i]];
@@ -383,7 +389,10 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit AccountSettled(periodId, accountStates);
     }
 
-    function updatePeriodId() external onlyOperator {
+    function updatePeriodId(uint256 periodId, bytes memory signature) external onlyOperator {
+        _check(periodId);
+        Signature.verifyUpdatePeriodId(periodId,signature, engineAddress);
+        
         pendingLpDepositAssets = 0;
         pendingLpWithdrawShares = 0;
         latestPeriodId++;

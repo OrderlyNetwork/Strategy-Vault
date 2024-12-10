@@ -57,6 +57,30 @@ library Signature {
         verifySignature(signer, messageHash, signature);
     }
 
+    function verifySettleMainAndStrategyFunds(
+        uint256 periodId,
+        bytes32[] calldata strategyProviderIds,
+        bytes memory signature,
+        address signer
+    ) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(periodId, strategyProviderIds));
+        verifySignature(signer, messageHash, signature);
+    }
+
+    function verifySettleAccount(
+        uint256 periodId,
+        bytes32[] calldata accountIds,
+        bytes memory signature,
+        address signer
+    ) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(periodId, accountIds));
+        verifySignature(signer, messageHash, signature);
+    }
+
+    function verifyUpdatePeriodId(uint256 periodId, bytes memory signature, address signer) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(periodId));
+        verifySignature(signer, messageHash, signature);
+    }
     function verifySignature(address signer, bytes32 messageHash, bytes memory signature) internal pure {
         if (signer != ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(messageHash), signature)) {
             revert InvalidSigner();
