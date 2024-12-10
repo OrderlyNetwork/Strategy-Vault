@@ -233,7 +233,13 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit LPAndStrategyFundUpdated(periodId, pendingMainShares, operationRes);
     }
 
-    function allocatToFunds(bytes32[] calldata strategyProviderIds) external onlyOperator {
+    function allocatToFunds(uint256 periodId, bytes32[] calldata strategyProviderIds, bytes memory signature)
+        external
+        onlyOperator
+    {
+        _check(periodId);
+        Signature.verifyAllocatToFunds(periodId, strategyProviderIds, signature, engineAddress);
+        
         StrategyFund storage strategyFund;
         uint256 totalMainAssetsInFund;
 

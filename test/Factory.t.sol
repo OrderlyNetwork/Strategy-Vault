@@ -2,14 +2,25 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "forge-std/Test.sol";
 import {ContractFactory} from "../contracts/ContractFactory.sol";
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 
+contract MockERC20 is ERC20 {
+    constructor(string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol) {}
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
+
 contract Create3FactoryTest is Test {
     ContractFactory factory;
     ProtocolVault protocolVault;
+    MockERC20 mockToken;
+
     address vaultCrossChainManager = address(0x123);
     bytes32 salt = keccak256(abi.encodePacked("test_salt"));
 
@@ -17,7 +28,7 @@ contract Create3FactoryTest is Test {
     address manager = address(0x02);
 
     error NoAccess();
-    
+
     function setUp() public {
         factory = new ContractFactory(owner);
     }
@@ -29,7 +40,9 @@ contract Create3FactoryTest is Test {
             type(ERC1967Proxy).creationCode,
             abi.encode(
                 protocolVaultImpl,
-                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(vaultCrossChainManager))
+                abi.encodeWithSelector(
+                    ProtocolVault.initialize.selector, address(vaultCrossChainManager), owner, address(mockToken)
+                )
             )
         );
         //owner deploy
@@ -39,6 +52,8 @@ contract Create3FactoryTest is Test {
 
         assertEq(protocolVault.ledgerChainId(), 291);
         assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
+        assertEq(protocolVault.owner(), owner);
+        assertEq(protocolVault.isAllowedToken(address(mockToken)), true);
 
         //manager deploy
         address[] memory managers = new address[](1);

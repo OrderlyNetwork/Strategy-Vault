@@ -65,7 +65,8 @@ interface IStrategyVaultLedger {
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes calldata signature
     ) external;
-    function allocatToFunds(bytes32[] calldata strategyProviderIds) external;
+    function allocatToFunds(uint256 periodId, bytes32[] calldata strategyProviderIds, bytes memory signature)
+        external;
     function settleMainAndStrategyFunds(uint256 periodId, bytes32[] calldata strategyProviderIds) external;
     function settleAccounts(uint256 periodId, bytes32[] calldata accountIds) external;
     function updatePeriodId() external;

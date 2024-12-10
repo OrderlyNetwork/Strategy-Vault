@@ -78,6 +78,7 @@ contract StrategyVaultLedgerTest is Base {
     //     svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
     // }
 
+    //forge t --match-test testUpdateLedger -vv
     function testUpdateLedger() public {
         initialize();
         bytes32[] memory accountIds = new bytes32[](1);
@@ -126,7 +127,9 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
             svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
 
-            svLedger.allocatToFunds(spIds);
+            signature = _getALlocateFundsSig(periodId, strategyProviderIds);
+            svLedger.allocatToFunds(periodId, spIds, signature);
+
             svLedger.settleMainAndStrategyFunds(periodId, spIds);
             svLedger.settleAccounts(periodId, accountIds);
             console.log("=============After Period 1=====================");
@@ -174,7 +177,9 @@ contract StrategyVaultLedgerTest is Base {
 
             svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
 
-            svLedger.allocatToFunds(spIds);
+            signature = _getALlocateFundsSig(periodId, strategyProviderIds);
+            svLedger.allocatToFunds(periodId, spIds, signature);
+
             svLedger.settleMainAndStrategyFunds(periodId, spIds);
             svLedger.settleAccounts(periodId, accountIds);
             console.log("=============After Period 3=====================");
@@ -199,7 +204,10 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
 
             svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
-            svLedger.allocatToFunds(spIds);
+
+            signature = _getALlocateFundsSig(periodId, strategyProviderIds);
+            svLedger.allocatToFunds(periodId, spIds, signature);
+
             svLedger.settleMainAndStrategyFunds(periodId, spIds);
             svLedger.settleAccounts(periodId, accountIds);
             console.log("=============After Period 4=====================");
@@ -238,7 +246,10 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
 
             svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
-            svLedger.allocatToFunds(spIds);
+
+            signature = _getALlocateFundsSig(periodId, strategyProviderIds);
+            svLedger.allocatToFunds(periodId, spIds, signature);
+
             svLedger.settleMainAndStrategyFunds(periodId, spIds);
             svLedger.settleAccounts(periodId, accountIds);
             console.log("=============After Period 6=====================");
@@ -262,8 +273,11 @@ contract StrategyVaultLedgerTest is Base {
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
 
             svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
-            svLedger.allocatToFunds(spIds);
+
+            signature = _getALlocateFundsSig(periodId, strategyProviderIds);
+            svLedger.allocatToFunds(periodId, spIds, signature);
             svLedger.settleMainAndStrategyFunds(periodId, spIds);
+
             svLedger.settleAccounts(periodId, accountIds);
             console.log("=============After Period 7=====================");
             consoleState();
@@ -354,6 +368,18 @@ contract StrategyVaultLedgerTest is Base {
         returns (bytes memory)
     {
         bytes32 messageHash = keccak256(abi.encode(_periodId, updateUserLedgerParams));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
+    function _getALlocateFundsSig(uint256 _periodId, bytes32[] memory strategyProviderIds)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 messageHash = keccak256(abi.encode(_periodId, strategyProviderIds));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
