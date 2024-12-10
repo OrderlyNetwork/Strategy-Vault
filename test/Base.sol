@@ -76,7 +76,7 @@ contract Base is TestHelperOz5 {
         address proxy = address(
             new ERC1967Proxy(
                 protocolVaultImpl,
-                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(aVaultCrossChainManager))
+                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(aVaultCrossChainManager),owner,address(mockToken))
             )
         );
         protocolVault = ProtocolVault(proxy);

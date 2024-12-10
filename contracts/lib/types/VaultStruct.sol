@@ -2,27 +2,36 @@
 pragma solidity ^0.8.26;
 
 import {PayloadType} from "./CrossChainStruct.sol";
+
 enum VaultType {
     PROTOCOL,
     USER
 }
 
-enum RoleType{
+enum RoleType {
     LP,
     SP
 }
+
 enum VaultState {
     OPEN,
     SHUTDOWN,
     CLOSED
 }
 
-struct OperationParams {
+struct DepositParams {
     PayloadType payloadType;
     address receiver;
+    address token;
     uint256 amount;
     bytes32 brokerHash;
-    bytes32 tokenHash;
+}
+
+struct WithdrawParams {
+    PayloadType payloadType;
+    address token;
+    uint256 amount;
+    bytes32 brokerHash;
 }
 
 struct OperationData {
