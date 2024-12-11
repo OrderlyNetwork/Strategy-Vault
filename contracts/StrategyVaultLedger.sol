@@ -29,7 +29,7 @@ import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {console} from "forge-std/console.sol";
-//todo 1. sig verify 2. constant 3. admin access 4. repeat nonce
+//todo  1. constant 3. admin access 4. repeat nonce
 
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
     using Math for uint256;
