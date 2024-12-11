@@ -45,7 +45,7 @@ interface IStrategyVaultLedger {
     event PeriodIdUpdated(uint256 latestPeriodId);
     event StrategyExecuted(uint256 periodId, uint256 totalTransferredAssets);
     event CrossChainManagerAddressSet(address crossChainManagerAddress);
-    event AllowedStrategyProviderSet(bytes32 spId, bool knob);
+    event AllowedStrategyProviderSet(address sp, bytes32 brokerHash, bytes32 spId, bool knob);
     event OperatorManagerSet(address operatorAddress);
 
     //--------------------------------------FROM VAULT-----------------------------------------

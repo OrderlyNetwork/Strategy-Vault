@@ -449,12 +449,10 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit CrossChainManagerAddressSet(_crossChainManagerAddress);
     }
 
-    /// @notice Set the address of Strategy Provider
-    /// @param spId Strategy Provider Id
-    function setAllowedStrategyProvider(bytes32 spId, bool knob) external onlyOwner {
+    function setAllowedStrategyProvider(address sp,bytes32 brokerHash, bytes32 spId,bool knob) external onlyOwner {
         isAllowedStrategyProvider[spId] = knob;
 
-        emit AllowedStrategyProviderSet(spId, knob);
+        emit AllowedStrategyProviderSet(sp,brokerHash,spId, knob);
     }
 
     /// @notice Set the address of operatorManager contract
