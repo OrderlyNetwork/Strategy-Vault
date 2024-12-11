@@ -126,7 +126,7 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
         view
         returns (uint256 nativeFee, uint256 lzTokenFee)
     {
-        //        bytes memory options = combineOptions(_eid, _type, _options);
+        //bytes memory options = combineOptions(_eid, _type, _options);
         MessagingFee memory fee = _quote(_dstEid, _message, _options, _payInLzToken);
         return (fee.nativeFee, fee.lzTokenFee);
     }
