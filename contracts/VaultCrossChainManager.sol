@@ -90,9 +90,9 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
             OperationData memory operationData = abi.decode(payload, (OperationData));
 
             //Call strategyVaultLedger to handle the operation
-            // IStrategyVaultLedger(ledger).handleOpFromVault(
-            //     payloadType, strategyVaultCCmessage.srcChainId, operationData
-            // );
+            IStrategyVaultLedger(ledger).handleOpFromVault(
+                payloadType, strategyVaultCCmessage.srcChainId, operationData
+            );
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
             //UserClaimedInfo memory userClaimedInfo = abi.decode(payload, (UserClaimedInfo));

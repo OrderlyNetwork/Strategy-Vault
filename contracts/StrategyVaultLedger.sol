@@ -391,8 +391,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     function updatePeriodId(uint256 periodId, bytes memory signature) external onlyOperator {
         _check(periodId);
-        Signature.verifyUpdatePeriodId(periodId,signature, engineAddress);
-        
+        Signature.verifyUpdatePeriodId(periodId, signature, engineAddress);
+
         pendingLpDepositAssets = 0;
         pendingLpWithdrawShares = 0;
         latestPeriodId++;

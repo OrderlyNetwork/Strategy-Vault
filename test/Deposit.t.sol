@@ -4,6 +4,17 @@ pragma solidity ^0.8.24;
 import {Base} from "./Base.sol";
 import {console} from "forge-std/console.sol";
 
+import {
+    VaultType,
+    RoleType,
+    DepositParams,
+    WithdrawParams,
+    OperationData,
+    UserClaimedInfo
+} from "../contracts/lib/types/VaultStruct.sol";
+import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
+// import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
+
 contract TestProtocolVault is Base {
     function setUp() public override {
         super.setUp();
@@ -24,12 +35,35 @@ contract TestProtocolVault is Base {
         assertEq(bVaultCrossChainManager.dstEid(), 1);
     }
 
-    function testProtocolDeposit() public {
+    function testProtocolVaultLPDeposit() public {
         uint256 nativeFee = getEstimateFee();
-        // // Call deposit function
-        // protocolVault.deposit{value: nativeFee}(address(mockToken), user, 100e6);
+        uint256 amount = 100e6;
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: user,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        // Call deposit function
+        protocolVault.deposit{value: nativeFee}(depositParams);
 
-        // verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+        (
+            , // accountId
+            uint256 assets, // assets
+            , // shares
+            uint256 unAllocatedAssets,
+            , // frozenShares
+            , // pendingShares
+                // enableClaimedAssets
+        ) = svLedger.accountById(accountId);
+        assertEq(unAllocatedAssets,amount);
+        assertEq(assets,amount);
     }
 
     // function testUserVaultDeposit public {}

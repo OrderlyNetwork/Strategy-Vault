@@ -12,7 +12,8 @@ import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {StrategyVaultLedger} from "../contracts/StrategyVaultLedger.sol";
 import {MockSVLedger} from "./MockSVLedger.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
-import {StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
+import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
+
 // Mock ERC20 token contract
 
 contract MockERC20 is ERC20 {
@@ -25,6 +26,8 @@ contract MockERC20 is ERC20 {
 
 contract Base is TestHelperOz5 {
     using OptionsBuilder for bytes;
+
+    bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
 
     address public owner = address(0x123);
     address public user = address(0x1);
@@ -61,6 +64,7 @@ contract Base is TestHelperOz5 {
         // Initialize 2 endpoints, using UltraLightNode as the library type
         setUpEndpoints(2, LibraryType.UltraLightNode);
         address[] memory uas = setupOApps(type(VaultCrossChainManager).creationCode, 1, 2);
+
         // Deploy the VaultCrossChainManager contract
         aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
         bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
@@ -71,18 +75,22 @@ contract Base is TestHelperOz5 {
         vm.prank(owner);
         svLedger.setCrossChainManagerAddress(address(bVaultCrossChainManager));
 
+        //Deploy the MockERC20 contract and approve
+        mockToken = new MockERC20("mockToken", "MTK", 6);
+
         //Deploy the ProtocolVault contract
         address protocolVaultImpl = address(new ProtocolVault());
         address proxy = address(
             new ERC1967Proxy(
                 protocolVaultImpl,
-                abi.encodeWithSelector(ProtocolVault.initialize.selector, address(aVaultCrossChainManager),owner,address(mockToken))
+                abi.encodeWithSelector(
+                    ProtocolVault.initialize.selector, address(aVaultCrossChainManager), owner, address(mockToken), 0, 0
+                )
             )
         );
         protocolVault = ProtocolVault(proxy);
 
-        //Deploy the MockERC20 contract and approve
-        mockToken = new MockERC20("mockToken", "MTK", 6);
+        //mint token
         mockToken.mint(user, 100000e6);
 
         vm.startPrank(user);
@@ -102,32 +110,41 @@ contract Base is TestHelperOz5 {
 
         bytes32 accountId = keccak256(abi.encodePacked(user, vaultId));
 
-        // DepositData memory depositData = DepositData({
-        //     vaultType: VaultType.PROTOCOL,
-        //     amount: 100e6,
-        //     depositNonce: 0,
-        //     token: address(mockToken),
-        //     receiver: user,
-        //     strategyProvider: address(0),
-        //     vault: address(protocolVault),
-        //     vaultId: vaultId,
-        //     accountId: accountId,
-        //     strategyProviderId: keccak256(abi.encodePacked(address(protocolVault))),
-        //     brokerHash: bytes32(0)
-        // });
+        OperationData memory operationData = OperationData({
+            vaultType: VaultType.PROTOCOL,
+            sender: msg.sender,
+            receiver: owner,
+            chainNonce: 0,
+            amount: 0,
+            vaultId: vaultId,
+            accountId: accountId,
+            strategyProviderId: keccak256(abi.encodePacked(owner)),
+            tokenHash: keccak256(abi.encodePacked(owner)),
+            brokerHash: keccak256(abi.encodePacked(owner))
+        });
 
-        //bytes memory lzMessage = encodeLzMsg(uint8(PayloadType.DEPOSIT), abi.encode(depositData));
-        //return lzMessage;
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: PayloadType.LP_DEPOSIT,
+            srcChainId: 1,
+            dstChainId: 2,
+            payload: abi.encode(operationData)
+        });
+
+        bytes memory lzMessage = abi.encode(message);
+
+        return lzMessage;
     }
 
-    function encodeLzMsg(uint8 msgType, bytes memory payload) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint8(msgType), payload);
+    function _getAccountId(address account, bytes32 brokerHash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(account, brokerHash));
     }
 
-    function decodeLzMsg(bytes calldata message) internal pure returns (uint8 msgType, bytes memory payload) {
-        //decode msg type and payload
-        uint8 MSG_TYPE_OFFSET = 1;
-        msgType = uint8(bytes1(message[:MSG_TYPE_OFFSET]));
-        payload = message[MSG_TYPE_OFFSET:];
+    function _getStrategyProviderId(address strategyProvider, bytes32 brokerHash) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), strategyProvider, brokerHash));
     }
+
+    function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), brokerHash));
+    }
+
 }

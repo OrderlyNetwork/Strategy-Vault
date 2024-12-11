@@ -67,7 +67,13 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    function initialize(address _crossChainManager, address owner, address USDC) external initializer {
+    function initialize(
+        address _crossChainManager,
+        address owner,
+        address token,
+        uint256 _minDepositForLp,
+        uint256 _minDepositForSp
+    ) external initializer {
         __Ownable2Step_init();
         __Ownable_init(owner);
 
@@ -75,8 +81,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         crossChainManager = _crossChainManager;
         ledgerChainId = 291;
+
         isAllowedBroker[ORDERLY_BROKER] = true;
-        isAllowedToken[USDC] = true;
+        isAllowedToken[token] = true;
+        
+        minDepositForLp = _minDepositForLp;
+        minDepositForSp = _minDepositForSp;
     }
     /*=========================================================================================
     *                                       EXTERNAL
