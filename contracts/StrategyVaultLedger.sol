@@ -21,9 +21,7 @@ import {
     AccountState,
     UpdateUserClaim,
     AllocateFundRes,
-    SettleType,
-    StrategyFundState,
-    SettleParams
+    StrategyFundState
 } from "./lib/types/LedgerStruct.sol";
 import {Signature} from "./lib/utils/Signature.sol";
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";

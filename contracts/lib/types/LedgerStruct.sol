@@ -118,23 +118,7 @@ struct StrategyFundState {
     uint256 strategyProviderShares;
     uint256 hwm;
 }
-//--------------------------------------Ledger Settle--------------------------------------------
 
-enum SettleType {
-    HWM,
-    MAIN,
-    ACCOUNT,
-    STRATEGY_PROVIDER
-}
-
-struct SettleParams {
-    ///@dev settle type
-    SettleType settleType;
-    ///@dev account ID
-    bytes32[] accountIds;
-    ///@dev strategy provider ID
-    bytes32[] strategyProviderIds;
-}
 //--------------------------------------Fund Transfer--------------------------------------------
 
 struct BasicInfo {
