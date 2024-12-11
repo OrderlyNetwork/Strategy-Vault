@@ -19,9 +19,7 @@ import {
     AccountState,
     UpdateUserClaim,
     AllocateFundRes,
-    SettleType,
-    StrategyFundState,
-    SettleParams
+    StrategyFundState
 } from "../contracts/StrategyVaultLedger.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 

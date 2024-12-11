@@ -19,9 +19,7 @@ import {
     AccountState,
     UpdateUserClaim,
     AllocateFundRes,
-    SettleType,
-    StrategyFundState,
-    SettleParams
+    StrategyFundState
 } from "../types/LedgerStruct.sol";
 
 library Signature {

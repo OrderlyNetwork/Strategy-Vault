@@ -17,9 +17,7 @@ import {
     AccountState,
     UpdateUserClaim,
     AllocateFundRes,
-    SettleType,
-    StrategyFundState,
-    SettleParams
+    StrategyFundState
 } from "../lib/types/LedgerStruct.sol";
 
 import {VaultType, OperationData} from "../lib/types/VaultStruct.sol";
@@ -32,7 +30,7 @@ interface IStrategyVaultLedger {
     error AlreadyAllocatedShare();
     error NotEnoughWithdrawShare();
     error InvalidPayloadType();
-    error NotAllowedStrategyProvider();
+    error NotAllowedStrategyProvider(); //0x4767d1b2
     error NotEnoughLPDeposit();
     error NotEnoughSPDeposit();
     error InvalidOpType();

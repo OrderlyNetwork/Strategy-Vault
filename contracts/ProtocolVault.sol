@@ -20,7 +20,7 @@ import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-//todo 1. 是否要限制只有dex vault才能调用 当transfer fund 2. constant 3. 校验相关的配置要在evm还是ledger
+//todo 1. 是否要限制只有dex vault才能调用 当transfer fund 2. constant 
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
     using SafeERC20 for IERC20;
 

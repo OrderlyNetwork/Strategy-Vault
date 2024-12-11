@@ -13,7 +13,7 @@ import {
     UserClaimedInfo
 } from "../contracts/lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
-// import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
+import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
 
 contract TestProtocolVault is Base {
     function setUp() public override {
@@ -62,9 +62,34 @@ contract TestProtocolVault is Base {
             , // pendingShares
                 // enableClaimedAssets
         ) = svLedger.accountById(accountId);
-        assertEq(unAllocatedAssets,amount);
-        assertEq(assets,amount);
+        assertEq(unAllocatedAssets, amount);
+        assertEq(assets, amount);
     }
 
+    function testProtocolVaultSPDeposit() public {
+        uint256 nativeFee = getEstimateFee();
+        uint256 amount = 100e6;
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.SP_DEPOSIT,
+            receiver: sp,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+
+        console.logAddress(address(protocolVault));
+
+        // Call deposit function
+        protocolVault.deposit{value: nativeFee}(depositParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+
+        StrategyFund memory sf = svLedger.getStrategyFund(spId);
+        assertEq(sf.unAllocatedAssets, amount);
+    }
     // function testUserVaultDeposit public {}
 }

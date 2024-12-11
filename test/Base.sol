@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {console} from "forge-std/console.sol";
+
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -30,6 +32,7 @@ contract Base is TestHelperOz5 {
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
 
     address public owner = address(0x123);
+    address public sp = address(0x2);
     address public user = address(0x1);
     address public operator = address(0x5);
 
@@ -90,6 +93,8 @@ contract Base is TestHelperOz5 {
         );
         protocolVault = ProtocolVault(proxy);
 
+        vm.prank(owner);
+        svLedger.setAllowedStrategyProvider(_getStrategyProviderId(sp, ORDERLY_BROKER), true);
         //mint token
         mockToken.mint(user, 100000e6);
 
@@ -140,11 +145,10 @@ contract Base is TestHelperOz5 {
     }
 
     function _getStrategyProviderId(address strategyProvider, bytes32 brokerHash) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(address(this), strategyProvider, brokerHash));
+        return keccak256(abi.encodePacked(address(protocolVault), strategyProvider, brokerHash));
     }
 
     function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(address(this), brokerHash));
+        return keccak256(abi.encodePacked(address(protocolVault), brokerHash));
     }
-
 }
