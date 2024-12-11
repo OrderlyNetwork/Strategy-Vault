@@ -18,7 +18,7 @@ import {console} from "forge-std/console.sol";
 
 /**
  * todo:
- *  - lz gas estimate OptionsBuilder
+ *  - lz gas estimate OptionsBuilder 2. set block 
  * - lz send require vault equal quote fee
  *
  */
@@ -83,7 +83,7 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
         bytes memory payload = strategyVaultCCmessage.payload;
 
         if (
-            payloadType == PayloadType.UPDATE_USER_CLAIM || payloadType == PayloadType.LP_DEPOSIT
+            payloadType == PayloadType.SP_WITHDRAW || payloadType == PayloadType.LP_DEPOSIT
                 || payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.LP_WITHDRAW
         ) {
             //Decode the payload

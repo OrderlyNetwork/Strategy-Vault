@@ -16,6 +16,8 @@ import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossC
 import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
 
 contract TestProtocolVault is Base {
+    error NotEnoughWithdrawShare();
+
     function setUp() public override {
         super.setUp();
     }
@@ -89,5 +91,94 @@ contract TestProtocolVault is Base {
         StrategyFund memory sf = svLedger.getStrategyFund(spId);
         assertEq(sf.unAllocatedAssets, amount);
     }
-    // function testUserVaultDeposit public {}
+
+    function testProtocolVaultLPWithdraw() public {
+        uint256 nativeFee = getEstimateFee();
+        uint256 shares = 100e6;
+        //Initialize
+        svLedger.setAccountShares(_getAccountId(user, ORDERLY_BROKER), shares);
+        //Withdraw
+        uint256 withdrawShares = 10e6;
+        WithdrawParams memory withdrawParams = WithdrawParams({
+            payloadType: PayloadType.LP_WITHDRAW,
+            token: address(mockToken),
+            amount: withdrawShares,
+            brokerHash: ORDERLY_BROKER
+        });
+        protocolVault.withdraw{value: nativeFee}(withdrawParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+        (
+            , // accountId
+            , // assets
+            , // shares
+            ,
+            uint256 frozenShares, // frozenShares
+            , // pendingShares
+                // enableClaimedAssets
+        ) = svLedger.accountById(accountId);
+        assertEq(frozenShares, withdrawShares);
+    }
+
+    function testProtocolVaultSPWithdraw() public {
+        uint256 nativeFee = getEstimateFee();
+        uint256 shares = 100e6;
+        bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+
+        //Initialize
+        svLedger.setFundSshares(spId, shares);
+        //Withdraw
+        
+        vm.prank(sp);
+        uint256 withdrawShares = 10e6;
+        WithdrawParams memory withdrawParams = WithdrawParams({
+            payloadType: PayloadType.SP_WITHDRAW,
+            token: address(mockToken),
+            amount: withdrawShares,
+            brokerHash: ORDERLY_BROKER
+        });
+        protocolVault.withdraw{value: nativeFee}(withdrawParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        StrategyFund memory sf = svLedger.getStrategyFund(spId);
+
+        assertEq(sf.frozenShares, withdrawShares);
+    }
+
+    function testFailedProtocolVaultLPWithdrawNotEnoughShares() public {
+        uint256 nativeFee = getEstimateFee();
+        uint256 withdrawShares = 10e6;
+        WithdrawParams memory withdrawParams = WithdrawParams({
+            payloadType: PayloadType.LP_WITHDRAW,
+            token: address(mockToken),
+            amount: withdrawShares,
+            brokerHash: ORDERLY_BROKER
+        });
+        protocolVault.withdraw{value: nativeFee}(withdrawParams);
+
+        //LZ
+        // vm.expectRevert(NotEnoughWithdrawShare.selector);
+
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+    }
+
+    // function deposit(PayloadType payloadType, uint256 amount, address _user) public {
+    //     uint256 nativeFee = getEstimateFee();
+    //     DepositParams memory depositParams = DepositParams({
+    //         payloadType: payloadType,
+    //         receiver: _user,
+    //         token: address(mockToken),
+    //         amount: amount,
+    //         brokerHash: ORDERLY_BROKER
+    //     });
+    //     // Call deposit function
+    //     protocolVault.deposit{value: nativeFee}(depositParams);
+    // }
 }

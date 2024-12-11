@@ -54,6 +54,7 @@ contract Base is TestHelperOz5 {
         (engine, enginePrivateKey) = makeAddrAndKey("engine");
 
         vm.deal(user, 100 ether);
+        vm.deal(sp,100 ether);
         // Deploy the StrategyVaultLedger contract
         address svLedgerImpl = address(new MockSVLedger());
         address svLedgerProxy = address(
@@ -98,7 +99,7 @@ contract Base is TestHelperOz5 {
         //mint token
         mockToken.mint(user, 100000e6);
 
-        vm.startPrank(user);
+        vm.prank(user);
         mockToken.approve(address(protocolVault), 100e6);
     }
 
@@ -145,6 +146,7 @@ contract Base is TestHelperOz5 {
     }
 
     function _getStrategyProviderId(address strategyProvider, bytes32 brokerHash) internal view returns (bytes32) {
+
         return keccak256(abi.encodePacked(address(protocolVault), strategyProvider, brokerHash));
     }
 

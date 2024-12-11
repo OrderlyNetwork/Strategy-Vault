@@ -40,6 +40,14 @@ contract MockSVLedger is StrategyVaultLedger {
         return hwms;
     }
 
+    function setAccountShares(bytes32 accountId, uint256 amount) external {
+        accountById[accountId].shares = amount;
+    }
+
+    function setFundSshares(bytes32 strategyProviderIds, uint256 amount) external {
+        strategyFundById[strategyProviderIds].totalShares = amount;
+    }
+
     function setAccountState(bytes32 accountId, uint256 unAllocatedAssets, uint256 frozenShares, uint256 pendingShares)
         external
     {
