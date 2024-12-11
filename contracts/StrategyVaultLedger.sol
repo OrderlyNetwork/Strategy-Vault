@@ -164,15 +164,14 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             uint256 performanceFee;
             uint256 feeShares;
             uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
-            // console.log("assetPerShare", assetPerShare);
-            // console.log("strategyFund.hwm", strategyFund.hwm);
+       
             if (assetPerShare > strategyFund.hwm) {
                 performanceFee =
                     (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[i] / 100 / 10 ** priceDecimal;
-                console.log("performanceFee", performanceFee);
+               
                 feeShares =
                     _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
-                console.log("feeShares", feeShares);
+              
                 strategyFund.pendingState.pendingPerformanceFee = performanceFee;
             }
 
@@ -185,7 +184,6 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         }
 
         mainAssetsAfterFee = assetsAfterFee;
-        //console.log("mainAssetsAfterFee", mainAssetsAfterFee);
 
         //emit event
         PendingState[] memory pendingStates = new PendingState[](strategyFundAssets.length);
@@ -268,8 +266,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                     Math.Rounding.Floor
                 );
             }
-            console.log("pendingLpDepositAssets", pendingLpDepositAssets);
-            console.log("pendingLpWithdrawShares", pendingLpWithdrawShares);
+
             //allocate deposit
             if (pendingLpDepositAssets > 0) {
                 for (uint256 i = 0; i < strategyProviderIds.length; i++) {
@@ -557,8 +554,6 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         pendingMainShares += depositShares;
         pendingLpDepositAssets += amount;
 
-        console.log("depositShares", depositShares);
-        console.log("after depoist mainshares", pendingMainShares);
         return depositShares;
     }
 
@@ -577,7 +572,6 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         pendingMainShares -= amount;
         pendingLpWithdrawShares += amount;
 
-        console.log("after withdrw mainshares", pendingMainShares);
         return withdrawAssets;
     }
 
@@ -588,8 +582,6 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         if (amount > strategyFund.unAllocatedAssets) {
             revert NotEnoughSPDeposit();
         }
-        //console.log("SP deposit amount", amount);
-        console.log("strategyFund.fundAssetsAfterFee", strategyFund.fundAssetsAfterFee);
         uint256 depositShares =
             _convertToShares(amount, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor);
 
@@ -597,7 +589,6 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         pendingState.pendingStrategyProviderShares += depositShares;
         pendingState.pendingTotalAssets += amount;
         strategyFund.unAllocatedAssets -= amount;
-        console.log("deposit SP Shares", depositShares);
         return depositShares;
     }
 

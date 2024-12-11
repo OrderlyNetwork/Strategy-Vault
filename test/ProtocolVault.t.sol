@@ -77,8 +77,6 @@ contract TestProtocolVault is Base {
             brokerHash: ORDERLY_BROKER
         });
 
-        console.logAddress(address(protocolVault));
-
         // Call deposit function
         protocolVault.deposit{value: nativeFee}(depositParams);
 
