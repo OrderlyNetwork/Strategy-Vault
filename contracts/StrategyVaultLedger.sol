@@ -29,7 +29,7 @@ import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {console} from "forge-std/console.sol";
-//todo  1. constant 3. admin access 4. repeat nonce 5.emit not revert
+//todo  1. constant 3. admin access 4. repeat requestId 5.emit not revert
 
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
     using Math for uint256;
@@ -60,8 +60,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     mapping(bytes32 => StrategyFund) public strategyFundById;
     /// @dev account information by account id
     mapping(bytes32 => Account) public accountById;
-    /// @dev Determines whether the operation corresponding to the nonce is executed by the contract
-    mapping(uint256 => bool) public isOpHandeled;
+    /// @dev Determines whether the operation corresponding to the requestId is executed by the contract
+    mapping(bytes32 => bool) public isOpHandeled;
 
     /// @notice Require only operator can call
     modifier onlyOperator() {
@@ -164,14 +164,14 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             uint256 performanceFee;
             uint256 feeShares;
             uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
-       
+
             if (assetPerShare > strategyFund.hwm) {
                 performanceFee =
                     (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[i] / 100 / 10 ** priceDecimal;
-               
+
                 feeShares =
                     _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
-              
+
                 strategyFund.pendingState.pendingPerformanceFee = performanceFee;
             }
 
@@ -204,25 +204,30 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
         uint256 amount;
         for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
-            Operation memory operation = updateUserLedgerParams[i].operation;
-            OperationType operationType = updateUserLedgerParams[i].operationType;
-            if (operationType == OperationType.LP_DEPOSIT) {
-                //handle LP deposit
-                amount = _handleLpDeposit(operation.id, operation.amount);
-            } else if (operationType == OperationType.LP_WITHDRAW) {
-                //handle LP withdraw
-                amount = _handleLpWithdraw(operation.id, operation.amount);
-            } else if (operationType == OperationType.SP_DEPOSIT) {
-                //handle SP deposit
-                amount = _handleSPDeposit(operation.id, operation.amount);
-            } else if (operationType == OperationType.SP_WITHDRAW) {
-                //handle SP withdraw
-                amount = _handleSpWithdraw(operation.id, operation.amount);
-            } else {
-                revert InvalidOpType();
+            bytes32 requsstId = updateUserLedgerParams[i].operation.requestId;
+
+            if (!isOpHandeled[requsstId]) {
+                Operation memory operation = updateUserLedgerParams[i].operation;
+                OperationType operationType = updateUserLedgerParams[i].operationType;
+                if (operationType == OperationType.LP_DEPOSIT) {
+                    //handle LP deposit
+                    amount = _handleLpDeposit(operation.id, operation.amount);
+                } else if (operationType == OperationType.LP_WITHDRAW) {
+                    //handle LP withdraw
+                    amount = _handleLpWithdraw(operation.id, operation.amount);
+                } else if (operationType == OperationType.SP_DEPOSIT) {
+                    //handle SP deposit
+                    amount = _handleSPDeposit(operation.id, operation.amount);
+                } else if (operationType == OperationType.SP_WITHDRAW) {
+                    //handle SP withdraw
+                    amount = _handleSpWithdraw(operation.id, operation.amount);
+                } else {
+                    revert InvalidOpType();
+                }
+                
+                operationRes[i] = OperationRes({id: operation.id, requestId: operation.requestId, amount: amount});
+                isOpHandeled[operation.requestId] = true;
             }
-            operationRes[i] = OperationRes({id: operation.id, nonce: operation.nonce, amount: amount});
-            isOpHandeled[operation.nonce] = true;
         }
 
         //emit event
@@ -449,10 +454,10 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit CrossChainManagerAddressSet(_crossChainManagerAddress);
     }
 
-    function setAllowedStrategyProvider(address sp,bytes32 brokerHash, bytes32 spId,bool knob) external onlyOwner {
+    function setAllowedStrategyProvider(address sp, bytes32 brokerHash, bytes32 spId, bool knob) external onlyOwner {
         isAllowedStrategyProvider[spId] = knob;
 
-        emit AllowedStrategyProviderSet(sp,brokerHash,spId, knob);
+        emit AllowedStrategyProviderSet(sp, brokerHash, spId, knob);
     }
 
     /// @notice Set the address of operatorManager contract

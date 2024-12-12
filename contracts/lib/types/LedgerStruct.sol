@@ -81,8 +81,8 @@ enum OperationType {
 struct Operation {
     /// @dev account ID or strategy provider ID
     bytes32 id;
-    /// @dev operation nonce
-    uint256 nonce;
+    /// @dev operation requestId
+    bytes32 requestId;
     /// @dev deposit assets or withdraw share
     uint256 amount;
 }
@@ -92,8 +92,8 @@ struct Operation {
 struct OperationRes {
     /// @dev account ID or strategy provider ID
     bytes32 id;
-    /// @dev operation nonce
-    uint256 nonce;
+    /// @dev operation requestId
+    bytes32 requestId;
     /// @dev deposit shares or withdraw assets by computed
     uint256 amount;
 }
