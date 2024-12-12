@@ -89,7 +89,7 @@ contract MockSVLedger is StrategyVaultLedger {
             uint256 hwm = strategyFund.hwm;
             uint256 totalShares = strategyFund.totalShares;
 
-            if (strategyFund.pendingState.pendingPerformanceFee > 0) {
+            if (strategyFund.performanceFee > 0) {
                 hwm = strategyFund.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
             } else {
                 uint256 pendingTotalShares = strategyFund.pendingState.pendingTotalShares;

@@ -9,6 +9,7 @@ import {
     Account,
     StrategyFund,
     UpdateStrategyFundAssetsParams,
+    UpdateStrategyFundAssetsRes,
     StrategyExecutionParams,
     BasicInfo,
     PendingState,
@@ -29,7 +30,7 @@ import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {console} from "forge-std/console.sol";
-//todo  1. constant 3. admin access 4. repeat requestId 5.emit not revert
+//todo  1. constant requestId 5.emit not revert
 
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
     using Math for uint256;
@@ -62,6 +63,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     mapping(bytes32 => Account) public accountById;
     /// @dev Determines whether the operation corresponding to the requestId is executed by the contract
     mapping(bytes32 => bool) public isOpHandeled;
+    mapping(bytes32 => bool) public isClaimedHandled;
 
     /// @notice Require only operator can call
     modifier onlyOperator() {
@@ -143,19 +145,24 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     //--------------------------------------FROM BE--------------------------------------------
     function updateStrategyFundAssets(
         uint256 periodId,
+        bytes32 vaultId,
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
         Signature.verifyUpdateFundAssets(periodId, strategyFundAssets, signature, engineAddress);
         uint256 assetsAfterFee;
+        //emit event
+        UpdateStrategyFundAssetsRes[] memory updateStrategyFundAssetsRes =
+            new UpdateStrategyFundAssetsRes[](strategyFundAssets.length);
+
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
             //gas optimization
             StrategyFund storage strategyFund = strategyFundById[strategyFundAssets[i].strategyProviderId];
             PendingState storage pendingState = strategyFund.pendingState;
 
             //reset performance fee
-            strategyFund.pendingState.pendingPerformanceFee = 0;
+            strategyFund.performanceFee = 0;
 
             uint256 fundAssets = strategyFundAssets[i].totalAssets;
             uint256 fundShares = strategyFund.totalShares;
@@ -164,7 +171,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             uint256 performanceFee;
             uint256 feeShares;
             uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
-
+          
             if (assetPerShare > strategyFund.hwm) {
                 performanceFee =
                     (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[i] / 100 / 10 ** priceDecimal;
@@ -172,29 +179,35 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                 feeShares =
                     _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
 
-                strategyFund.pendingState.pendingPerformanceFee = performanceFee;
+                strategyFund.performanceFee = performanceFee;
             }
 
-            //Update pending stateå
+            //Update pending state
             strategyFund.pendingState.pendingTotalAssets = fundAssets;
             strategyFund.fundAssetsAfterFee = fundAssets - performanceFee;
             pendingState.pendingStrategyProviderShares += feeShares;
             pendingState.pendingTotalShares = fundShares + feeShares;
             assetsAfterFee += strategyFund.mainShares * (fundAssets - performanceFee) / strategyFund.totalShares;
+
+            //Add to event 
+            // updateStrategyFundAssetsRes[i] = UpdateStrategyFundAssetsRes({
+            //     strategyProviderId: strategyFundAssets[i].strategyProviderId,
+            //     fundAssetsAfterFee:  fundAssets - performanceFee,
+            //     strategyProviderShares: strategyFundById[strategyFundAssets[i].strategyProviderId]
+            //         .pendingState
+            //         .pendingStrategyProviderShares,
+            //     totalShares: strategyFundById[strategyFundAssets[i].strategyProviderId].pendingState.pendingTotalShares
+            // });
         }
 
         mainAssetsAfterFee = assetsAfterFee;
 
-        //emit event
-        PendingState[] memory pendingStates = new PendingState[](strategyFundAssets.length);
-        for (uint256 i = 0; i < strategyFundAssets.length; i++) {
-            pendingStates[i] = strategyFundById[strategyFundAssets[i].strategyProviderId].pendingState;
-        }
-        emit StrategyFundAssetsUpdate(periodId, mainAssetsAfterFee, pendingStates);
+        emit StrategyFundAssetsUpdate(periodId, vaultId, mainAssetsAfterFee, updateStrategyFundAssetsRes);
     }
 
     function updateLPAndStrategyFund(
         uint256 periodId,
+        bytes32 vaultId,
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes memory signature
     ) external onlyOperator {
@@ -224,20 +237,22 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                 } else {
                     revert InvalidOpType();
                 }
-                
+
                 operationRes[i] = OperationRes({id: operation.id, requestId: operation.requestId, amount: amount});
                 isOpHandeled[operation.requestId] = true;
             }
         }
 
         //emit event
-        emit LPAndStrategyFundUpdated(periodId, pendingMainShares, operationRes);
+        emit LPAndStrategyFundUpdated(periodId, vaultId, operationRes);
     }
 
-    function allocatToFunds(uint256 periodId, bytes32[] calldata strategyProviderIds, bytes memory signature)
-        external
-        onlyOperator
-    {
+    function allocatToFunds(
+        uint256 periodId,
+        bytes32 vaultId,
+        bytes32[] calldata strategyProviderIds,
+        bytes memory signature
+    ) external onlyOperator {
         _check(periodId);
         Signature.verifyAllocatToFunds(periodId, strategyProviderIds, signature, engineAddress);
 
@@ -330,11 +345,14 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                 mainShares: strategyFund.pendingState.pendingMainShares
             });
         }
-        emit FundAllocated(strategyProviderIds, allocateFundRes);
+        //todo id add in struct
+        //todo 区分deposit和withdraw的增量
+        //emit FundAllocated(periodId, vaultId, strategyProviderIds, allocateFundRes);
     }
 
     function settleMainAndStrategyFunds(
         uint256 periodId,
+        bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
         bytes memory signature
     ) external onlyOperator {
@@ -370,7 +388,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit MainAndStrategyFundsSettled(periodId, mainShares, strategyFundStates);
     }
 
-    function settleAccounts(uint256 periodId, bytes32[] calldata accountIds, bytes memory signature)
+    function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes memory signature)
         external
         onlyOperator
     {
@@ -389,7 +407,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit AccountSettled(periodId, accountStates);
     }
 
-    function updatePeriodId(uint256 periodId, bytes memory signature) external onlyOperator {
+    function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature) external onlyOperator {
+        //todo 递增的校验
         _check(periodId);
         Signature.verifyUpdatePeriodId(periodId, signature, engineAddress);
 
@@ -402,6 +421,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     function executeStrategy(
         uint256 periodId,
+        bytes32 vaultId,
         StrategyExecutionParams memory strategyExecutionParams,
         bytes calldata signature
     ) external onlyOperator {
@@ -432,10 +452,12 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit StrategyExecuted(periodId, totalTransferredAssets);
     }
 
-    function updateUnclaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims, bytes memory signature)
-        external
-        onlyOperator
-    {
+    function updateUnclaimed(
+        uint256 periodId,
+        bytes32 vaultId,
+        UpdateUserClaim[] memory updateUserClaims,
+        bytes memory signature
+    ) external onlyOperator {
         // StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
         //     payloadType: uint8(payloadType),
         //     chainId: block.chainid,
@@ -454,10 +476,17 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit CrossChainManagerAddressSet(_crossChainManagerAddress);
     }
 
-    function setAllowedStrategyProvider(address sp, bytes32 brokerHash, bytes32 spId, bool knob) external onlyOwner {
+    function setAllowedStrategyProvider(
+        bytes32 vaultId,
+        address vault,
+        address sp,
+        bytes32 brokerHash,
+        bytes32 spId,
+        bool knob
+    ) external onlyOwner {
         isAllowedStrategyProvider[spId] = knob;
 
-        emit AllowedStrategyProviderSet(sp, brokerHash, spId, knob);
+        emit AllowedStrategyProviderSet(vaultId, vault, sp, brokerHash, spId, knob);
     }
 
     /// @notice Set the address of operatorManager contract
@@ -475,7 +504,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     *                                       VIEW
     *=========================================================================================*/
 
-    function checkMainAndStrategyFund(uint256 periodId, bytes32[] calldata strategyProviderIds)
+    function checkMainAndStrategyFund(uint256 periodId, bytes32 vaultId, bytes32[] calldata strategyProviderIds)
         external
         view
         returns (StrategyFundState[] memory)
@@ -496,14 +525,11 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                 hwm: hwm
             });
         }
+        //todo add main
         return strategyFundStates;
     }
 
-    function checkAccounts(uint256 periodId, bytes32[] calldata accountIds)
-        external
-        view
-        returns (AccountState[] memory)
-    {
+    function checkLP(uint256 periodId, bytes32[] calldata accountIds) external view returns (AccountState[] memory) {
         _check(periodId);
         AccountState[] memory accountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
@@ -620,7 +646,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
         uint256 hwm = strategyFund.hwm;
         uint256 totalShares = strategyFund.totalShares;
-        if (strategyFund.pendingState.pendingPerformanceFee > 0) {
+        if (strategyFund.performanceFee > 0) {
             hwm = strategyFund.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
         } else {
             uint256 pendingTotalShares = strategyFund.pendingState.pendingTotalShares;

@@ -26,6 +26,8 @@ struct StrategyFund {
     bytes32 strategyProviderId;
     ///@dev pending state during a period
     PendingState pendingState;
+    ///@dev performance fee during a period
+    uint256 performanceFee;
     ///@dev fund assets after performance fee
     uint256 fundAssetsAfterFee;
     ///@dev deposit assets that waiting for handle
@@ -45,8 +47,6 @@ struct StrategyFund {
 }
 
 struct PendingState {
-    ///@dev pending performance fee during a period
-    uint256 pendingPerformanceFee;
     ///@dev pending fund assets during a period
     uint256 pendingTotalAssets;
     ///@dev pending fund shares during a period
@@ -64,6 +64,17 @@ struct UpdateStrategyFundAssetsParams {
     bytes32 strategyProviderId;
     ///@dev fund assets after a period
     uint256 totalAssets;
+}
+
+struct UpdateStrategyFundAssetsRes {
+    ///@dev keccak256(vault address, sp address, brokerHash))
+    bytes32 strategyProviderId;
+    ///@dev pending fundAssetsAfterFee after update fund assets
+    uint256 fundAssetsAfterFee;
+    ///@dev pending strategyProviderShares after update fund assets
+    uint256 strategyProviderShares;
+    ///@dev pending totalShares after update fund assets
+    uint256 totalShares;
 }
 
 struct UpdateLedgerParams {
@@ -155,9 +166,8 @@ struct StrategyExecution {
 //--------------------------------------User Claim--------------------------------------------
 
 struct UpdateUserClaim {
+    uint256 chainID;
     bytes32 accountId;
     uint256 claimAssets;
     uint256 requestId;
 }
-
- 

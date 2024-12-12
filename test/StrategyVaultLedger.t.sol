@@ -39,6 +39,8 @@ contract StrategyVaultLedgerTest is Base {
     bytes32 userA_id = keccak256(abi.encodePacked(userA));
     bytes32 userB_id = keccak256(abi.encodePacked(userB));
 
+    bytes32 vaultId;
+
     bytes32[] public spIds;
 
     function setUp() public override {
@@ -58,7 +60,7 @@ contract StrategyVaultLedgerTest is Base {
         bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
 
         vm.startPrank(operator);
-        svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+        svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
     }
     //forge t --match-test testUpdateLPAndStrategyFund -vv
     // function testUpdateLPAndStrategyFund() public {
@@ -103,14 +105,16 @@ contract StrategyVaultLedgerTest is Base {
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
 
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
-            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+            svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
             uint256 depositAmount = 500 * assetDecimal;
             uint256 withdrawShare = 6 * shareDecimal / 10; //0.6 shares
             uint256 spDepositAmount = 800 * assetDecimal;
 
-            Operation memory newOperation_1 = Operation({id: userA_id, nonce: 0, amount: depositAmount});
-            Operation memory newOperation_2 = Operation({id: userA_id, nonce: 1, amount: withdrawShare});
-            Operation memory newOperation_3 = Operation({id: spB_id, nonce: 2, amount: spDepositAmount});
+            Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: depositAmount});
+            Operation memory newOperation_2 =
+                Operation({id: userA_id, requestId: keccak256(abi.encode(1)), amount: withdrawShare});
+            Operation memory newOperation_3 =
+                Operation({id: spB_id, requestId: keccak256(abi.encode(2)), amount: spDepositAmount});
 
             //initialize UpdateLedgerParams dymnamic arrary
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
@@ -123,21 +127,21 @@ contract StrategyVaultLedgerTest is Base {
                 UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_3});
 
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
-            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
+            svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, spIds, signature);
+            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleAccountSig(periodId, accountIds);
-            svLedger.settleAccounts(periodId, accountIds, signature);
+            svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 1=====================");
             consoleState();
 
             signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, signature);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         //Period 2
         console.log("=============Start Period 2=====================");
@@ -148,18 +152,18 @@ contract StrategyVaultLedgerTest is Base {
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1250 * assetDecimal);
 
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
-            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+            svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
             signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleAccountSig(periodId, accountIds);
-            svLedger.settleAccounts(periodId, accountIds, signature);
+            svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
 
             console.log("=============After Period 2=====================");
             consoleState();
             signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, signature);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         //Period 3
         console.log("=============Start Period 3=====================");
@@ -170,12 +174,14 @@ contract StrategyVaultLedgerTest is Base {
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 750 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
-            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+            svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
             uint256 depositAmount = 10000 * assetDecimal;
             uint256 withdrawShare = 1 * shareDecimal;
-            Operation memory newOperation_1 = Operation({id: userA_id, nonce: 3, amount: depositAmount});
-            Operation memory newOperation_2 = Operation({id: spB_id, nonce: 4, amount: withdrawShare});
+            Operation memory newOperation_1 =
+                Operation({id: userA_id, requestId: keccak256(abi.encode(3)), amount: depositAmount});
+            Operation memory newOperation_2 =
+                Operation({id: spB_id, requestId: keccak256(abi.encode(4)), amount: withdrawShare});
 
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](2);
             updateLedgerParams[0] =
@@ -184,21 +190,21 @@ contract StrategyVaultLedgerTest is Base {
                 UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: newOperation_2});
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
 
-            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
+            svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, spIds, signature);
+            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleAccountSig(periodId, accountIds);
-            svLedger.settleAccounts(periodId, accountIds, signature);
+            svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
 
             console.log("=============After Period 3=====================");
             consoleState();
             signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, signature);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 4
@@ -208,30 +214,31 @@ contract StrategyVaultLedgerTest is Base {
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
 
-            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+            svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
             uint256 withdrawShare = 8 * shareDecimal;
-            Operation memory newOperation_1 = Operation({id: userA_id, nonce: 5, amount: withdrawShare});
+            Operation memory newOperation_1 =
+                Operation({id: userA_id, requestId: keccak256(abi.encode(5)), amount: withdrawShare});
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
             updateLedgerParams[0] =
                 UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: newOperation_1});
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
 
-            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
+            svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, spIds, signature);
+            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleAccountSig(periodId, accountIds);
-            svLedger.settleAccounts(periodId, accountIds, signature);
+            svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
 
             console.log("=============After Period 4=====================");
             consoleState();
             signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, signature);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 5
@@ -240,16 +247,16 @@ contract StrategyVaultLedgerTest is Base {
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 10750 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
-            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+            svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
             signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
             signature = _getSettleAccountSig(periodId, accountIds);
-            svLedger.settleAccounts(periodId, accountIds, signature);
+            svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 5=====================");
             consoleState();
             signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, signature);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 6
@@ -258,28 +265,29 @@ contract StrategyVaultLedgerTest is Base {
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 6000 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
-            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+            svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
             uint256 depositAssets = 10000 * assetDecimal;
-            Operation memory newOperation_1 = Operation({id: spA_id, nonce: 6, amount: depositAssets});
+            Operation memory newOperation_1 =
+                Operation({id: spA_id, requestId: keccak256(abi.encode(6)), amount: depositAssets});
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
             updateLedgerParams[0] =
                 UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_1});
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
 
-            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
+            svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, spIds, signature);
+            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
             signature = _getSettleAccountSig(periodId, accountIds);
-            svLedger.settleAccounts(periodId, accountIds, signature);
+            svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 6=====================");
             consoleState();
             signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, signature);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 7
@@ -288,29 +296,30 @@ contract StrategyVaultLedgerTest is Base {
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 4000 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
             bytes memory signature = _getUploadFundAssetsSignature(periodId, strategyFundAssets);
-            svLedger.updateStrategyFundAssets(periodId, strategyFundAssets, signature);
+            svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
             uint256 withdrawShare = 9 * shareDecimal / 10;
-            Operation memory newOperation_1 = Operation({id: spA_id, nonce: 7, amount: withdrawShare});
+            Operation memory newOperation_1 =
+                Operation({id: spA_id, requestId: keccak256(abi.encode(7)), amount: withdrawShare});
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
             updateLedgerParams[0] =
                 UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: newOperation_1});
             signature = _getUpdateLPAndStrategyFundSig(periodId, updateLedgerParams);
 
-            svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
+            svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, spIds, signature);
+            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, strategyProviderIds);
-            svLedger.settleMainAndStrategyFunds(periodId, spIds, signature);
+            svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleAccountSig(periodId, accountIds);
-            svLedger.settleAccounts(periodId, accountIds, signature);
+            svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 7=====================");
             consoleState();
             signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, signature);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
     }
 
