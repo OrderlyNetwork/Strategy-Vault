@@ -171,7 +171,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             uint256 performanceFee;
             uint256 feeShares;
             uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
-          
+
             if (assetPerShare > strategyFund.hwm) {
                 performanceFee =
                     (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[i] / 100 / 10 ** priceDecimal;
@@ -189,15 +189,13 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             pendingState.pendingTotalShares = fundShares + feeShares;
             assetsAfterFee += strategyFund.mainShares * (fundAssets - performanceFee) / strategyFund.totalShares;
 
-            //Add to event 
-            // updateStrategyFundAssetsRes[i] = UpdateStrategyFundAssetsRes({
-            //     strategyProviderId: strategyFundAssets[i].strategyProviderId,
-            //     fundAssetsAfterFee:  fundAssets - performanceFee,
-            //     strategyProviderShares: strategyFundById[strategyFundAssets[i].strategyProviderId]
-            //         .pendingState
-            //         .pendingStrategyProviderShares,
-            //     totalShares: strategyFundById[strategyFundAssets[i].strategyProviderId].pendingState.pendingTotalShares
-            // });
+            //Add to event
+            updateStrategyFundAssetsRes[i] = UpdateStrategyFundAssetsRes({
+                strategyProviderId: strategyFundAssets[i].strategyProviderId,
+                fundAssetsAfterFee: fundAssets - performanceFee,
+                strategyProviderShares: pendingState.pendingStrategyProviderShares,
+                totalShares: fundShares + feeShares
+            });
         }
 
         mainAssetsAfterFee = assetsAfterFee;
@@ -259,6 +257,9 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         StrategyFund storage strategyFund;
         uint256 totalMainAssetsInFund;
 
+        //for event
+        AllocateFundRes[] memory allocateFundRes = new AllocateFundRes[](strategyProviderIds.length);
+
         if (strategyProviderIds.length == 1) {
             strategyFund = strategyFundById[strategyProviderIds[0]];
 
@@ -270,15 +271,25 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             strategyFund.pendingState.pendingTotalShares += distributeDepositShares;
             strategyFund.pendingState.pendingMainShares += distributeDepositShares;
 
-            //withdraws
+            //withdraw
             uint256 withdrawAssets =
                 _convertToAssets(pendingLpWithdrawShares, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
             strategyFund.pendingState.pendingTotalAssets -= withdrawAssets;
             strategyFund.pendingState.pendingMainShares -= pendingLpWithdrawShares;
             strategyFund.pendingState.pendingTotalShares -= pendingLpWithdrawShares;
+
+            //event
+            allocateFundRes[0] = AllocateFundRes({
+                strategyProviderId: strategyProviderIds[0],
+                totalDepositAssets: pendingLpDepositAssets,
+                totalDepositShares: distributeDepositShares,
+                totalWithdrawAssets: withdrawAssets,
+                totalWithdrawShares: pendingLpWithdrawShares
+            });
         } else {
             for (uint256 i = 0; i < strategyProviderIds.length; i++) {
                 strategyFund = strategyFundById[strategyProviderIds[i]];
+                allocateFundRes[i].strategyProviderId = strategyProviderIds[i];
                 totalMainAssetsInFund += _convertToAssets(
                     strategyFund.mainShares,
                     strategyFund.fundAssetsAfterFee,
@@ -298,15 +309,22 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                         strategyFund.totalShares,
                         Math.Rounding.Floor
                     );
-                    uint256 distributeAssets =
+                    uint256 distributeDepositAssets =
                         pendingLpDepositAssets.mulDiv(mainAssetsInFund, totalMainAssetsInFund, Math.Rounding.Floor);
 
-                    uint256 distributeShares = _convertToShares(
-                        distributeAssets, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor
+                    uint256 distributeDepositShares = _convertToShares(
+                        distributeDepositAssets,
+                        strategyFund.fundAssetsAfterFee,
+                        strategyFund.totalShares,
+                        Math.Rounding.Floor
                     );
-                    strategyFund.pendingState.pendingTotalAssets += distributeAssets;
-                    strategyFund.pendingState.pendingTotalShares += distributeShares;
-                    strategyFund.pendingState.pendingMainShares += distributeShares;
+                    strategyFund.pendingState.pendingTotalAssets += distributeDepositAssets;
+                    strategyFund.pendingState.pendingTotalShares += distributeDepositShares;
+                    strategyFund.pendingState.pendingMainShares += distributeDepositShares;
+
+                    //event
+                    allocateFundRes[i].totalDepositAssets = distributeDepositAssets;
+                    allocateFundRes[i].totalDepositShares = distributeDepositShares;
                 }
             }
             //allocate withdraw
@@ -323,31 +341,25 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                         strategyFund.totalShares,
                         Math.Rounding.Floor
                     );
-                    uint256 distributeAssets =
+                    uint256 distributeWithdrawAssets =
                         withdrawAssets.mulDiv(mainAssetsInFund, totalMainAssetsInFund, Math.Rounding.Ceil);
-                    uint256 distributeShares = _convertToShares(
-                        distributeAssets, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor
+                    uint256 distributeWithdrawShares = _convertToShares(
+                        distributeWithdrawAssets,
+                        strategyFund.fundAssetsAfterFee,
+                        strategyFund.totalShares,
+                        Math.Rounding.Floor
                     );
-                    strategyFund.pendingState.pendingTotalAssets -= distributeAssets;
-                    strategyFund.pendingState.pendingMainShares -= distributeShares;
-                    strategyFund.pendingState.pendingTotalShares -= distributeShares;
+                    strategyFund.pendingState.pendingTotalAssets -= distributeWithdrawAssets;
+                    strategyFund.pendingState.pendingMainShares -= distributeWithdrawShares;
+                    strategyFund.pendingState.pendingTotalShares -= distributeWithdrawShares;
+                    //event
+                    allocateFundRes[i].totalWithdrawAssets = distributeWithdrawAssets;
+                    allocateFundRes[i].totalWithdrawShares = distributeWithdrawShares;
                 }
             }
         }
 
-        //emit event
-        AllocateFundRes[] memory allocateFundRes = new AllocateFundRes[](strategyProviderIds.length);
-        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            strategyFund = strategyFundById[strategyProviderIds[i]];
-            allocateFundRes[i] = AllocateFundRes({
-                totalAssets: strategyFund.pendingState.pendingTotalAssets,
-                totalShares: strategyFund.pendingState.pendingTotalShares,
-                mainShares: strategyFund.pendingState.pendingMainShares
-            });
-        }
-        //todo id add in struct
-        //todo 区分deposit和withdraw的增量
-        //emit FundAllocated(periodId, vaultId, strategyProviderIds, allocateFundRes);
+        emit FundAllocated(periodId, vaultId, strategyProviderIds, allocateFundRes);
     }
 
     function settleMainAndStrategyFunds(
@@ -385,7 +397,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             });
         }
 
-        emit MainAndStrategyFundsSettled(periodId, mainShares, strategyFundStates);
+        emit MainAndStrategyFundsSettled(periodId, vaultId,mainShares, strategyFundStates);
     }
 
     function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes memory signature)
@@ -404,19 +416,20 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             accountStates[i] = AccountState({accountId: accountIds[i], shares: account.shares});
         }
 
-        emit AccountSettled(periodId, accountStates);
+        emit AccountSettled(periodId,vaultId, accountStates);
     }
 
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature) external onlyOperator {
-        //todo 递增的校验
-        _check(periodId);
+        if (periodId != latestPeriodId + 1) {
+            revert InvalidPeriodId();
+        }
         Signature.verifyUpdatePeriodId(periodId, signature, engineAddress);
 
         pendingLpDepositAssets = 0;
         pendingLpWithdrawShares = 0;
         latestPeriodId++;
 
-        emit PeriodIdUpdated(latestPeriodId);
+        emit PeriodIdUpdated(periodId, vaultId);
     }
 
     function executeStrategy(
@@ -449,7 +462,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             });
         }
 
-        emit StrategyExecuted(periodId, totalTransferredAssets);
+        emit StrategyExecuted(periodId, vaultId, totalTransferredAssets);
     }
 
     function updateUnclaimed(
@@ -504,10 +517,10 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     *                                       VIEW
     *=========================================================================================*/
 
-    function checkMainAndStrategyFund(uint256 periodId, bytes32 vaultId, bytes32[] calldata strategyProviderIds)
+    function checkMainAndStrategyFund(uint256 periodId, bytes32, bytes32[] calldata strategyProviderIds)
         external
         view
-        returns (StrategyFundState[] memory)
+        returns (uint256, StrategyFundState[] memory)
     {
         _check(periodId);
         StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
@@ -525,8 +538,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
                 hwm: hwm
             });
         }
-        //todo add main
-        return strategyFundStates;
+        return (pendingMainShares, strategyFundStates);
     }
 
     function checkLP(uint256 periodId, bytes32[] calldata accountIds) external view returns (AccountState[] memory) {

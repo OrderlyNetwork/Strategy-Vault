@@ -111,9 +111,12 @@ struct OperationRes {
 ///@notice Event for handle fund allocation
 
 struct AllocateFundRes {
-    uint256 totalAssets;
-    uint256 totalShares;
-    uint256 mainShares;
+    ///@dev keccak256(vault address, sp address, brokerHash))
+    bytes32 strategyProviderId;
+    uint256 totalDepositAssets;
+    uint256 totalDepositShares;
+    uint256 totalWithdrawAssets;
+    uint256 totalWithdrawShares;
 }
 
 struct AccountState {

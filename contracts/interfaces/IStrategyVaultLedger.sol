@@ -5,9 +5,9 @@ import {
     Account,
     StrategyFund,
     UpdateStrategyFundAssetsParams,
+    UpdateStrategyFundAssetsRes,
     StrategyExecutionParams,
     BasicInfo,
-    PendingState,
     StrategyExecution,
     Operation,
     OperationType,
@@ -37,15 +37,26 @@ interface IStrategyVaultLedger {
     error InvalidTotalAssets();
 
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
-    event StrategyFundAssetsUpdate(uint256 periodId, uint256 mainAssetsAfterFee, PendingState[] pendingStates);
-    event LPAndStrategyFundUpdated(uint256 periodId, uint256 pendingMainShares, OperationRes[] operationRes);
-    event FundAllocated(bytes32[] strategyProviderIds, AllocateFundRes[] allocateFundRes);
-    event MainAndStrategyFundsSettled(uint256 mainAssets, uint256 mainShares, StrategyFundState[] strategyFundStates);
-    event AccountSettled(uint256 periodId, AccountState[] accountStates);
-    event PeriodIdUpdated(uint256 latestPeriodId);
-    event StrategyExecuted(uint256 periodId, uint256 totalTransferredAssets);
+    event StrategyFundAssetsUpdate(
+        uint256 periodId,
+        bytes32 vaultId,
+        uint256 mainAssetsAfterFee,
+        UpdateStrategyFundAssetsRes[] updateStrategyFundAssetsRes
+    );
+    event LPAndStrategyFundUpdated(uint256 periodId, bytes32 vaultId, OperationRes[] operationRes);
+    event FundAllocated(
+        uint256 periodId, bytes32 vaultId, bytes32[] strategyProviderIds, AllocateFundRes[] allocateFundRes
+    );
+    event MainAndStrategyFundsSettled(
+        uint256 mainAssets, bytes32 vaultId, uint256 mainShares, StrategyFundState[] strategyFundStates
+    );
+    event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
+    event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
+    event StrategyExecuted(uint256 periodId, bytes32 vaultId, uint256 totalTransferredAssets);
     event CrossChainManagerAddressSet(address crossChainManagerAddress);
-    event AllowedStrategyProviderSet(address sp, bytes32 brokerHash, bytes32 spId, bool knob);
+    event AllowedStrategyProviderSet(
+        bytes32 vaultId, address vault, address sp, bytes32 brokerHash, bytes32 spId, bool knob
+    );
     event OperatorManagerSet(address operatorAddress);
 
     //--------------------------------------FROM VAULT-----------------------------------------
@@ -55,41 +66,51 @@ interface IStrategyVaultLedger {
     //--------------------------------------FROM BE--------------------------------------------
     function updateStrategyFundAssets(
         uint256 periodId,
+        bytes32 vaultId,
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
         bytes calldata signature
     ) external;
     function updateLPAndStrategyFund(
         uint256 periodId,
+        bytes32 vaultId,
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes calldata signature
     ) external;
-    function allocatToFunds(uint256 periodId, bytes32[] calldata strategyProviderIds, bytes memory signature)
-        external;
-    function settleMainAndStrategyFunds(
+    function allocatToFunds(
         uint256 periodId,
+        bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
         bytes memory signature
     ) external;
-    function settleAccounts(uint256 periodId, bytes32[] calldata accountIds, bytes memory signature) external;
-    function updatePeriodId(uint256 periodId, bytes memory signature) external;
+    function settleMainAndStrategyFunds(
+        uint256 periodId,
+        bytes32 vaultId,
+        bytes32[] calldata strategyProviderIds,
+        bytes memory signature
+    ) external;
+    function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes memory signature)
+        external;
+    function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature) external;
     function executeStrategy(
         uint256 periodId,
+        bytes32 vaultId,
         StrategyExecutionParams memory strategyExecutionParams,
         bytes calldata signature
     ) external;
-    function updateUnclaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims, bytes memory signature)
-        external;
+    function updateUnclaimed(
+        uint256 periodId,
+        bytes32 vaultId,
+        UpdateUserClaim[] memory updateUserClaims,
+        bytes memory signature
+    ) external;
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
 
-    function checkMainAndStrategyFund(uint256 periodId, bytes32[] calldata strategyProviderIds)
+    function checkMainAndStrategyFund(uint256 periodId, bytes32 vaultId, bytes32[] calldata strategyProviderIds)
         external
         view
-        returns (StrategyFundState[] memory);
+        returns (uint256, StrategyFundState[] memory);
 
-    function checkAccounts(uint256 periodId, bytes32[] calldata accountIds)
-        external
-        view
-        returns (AccountState[] memory);
+    function checkLP(uint256 periodId, bytes32[] calldata accountIds) external view returns (AccountState[] memory);
 }

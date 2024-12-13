@@ -140,8 +140,8 @@ contract StrategyVaultLedgerTest is Base {
             console.log("=============After Period 1=====================");
             consoleState();
 
-            signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId + 1);
+            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
         }
         //Period 2
         console.log("=============Start Period 2=====================");
@@ -162,8 +162,8 @@ contract StrategyVaultLedgerTest is Base {
 
             console.log("=============After Period 2=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId + 1);
+            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
         }
         //Period 3
         console.log("=============Start Period 3=====================");
@@ -203,8 +203,8 @@ contract StrategyVaultLedgerTest is Base {
 
             console.log("=============After Period 3=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId + 1);
+            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
         }
         {
             //Period 4
@@ -237,8 +237,8 @@ contract StrategyVaultLedgerTest is Base {
 
             console.log("=============After Period 4=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId + 1);
+            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
         }
         {
             //Period 5
@@ -255,8 +255,8 @@ contract StrategyVaultLedgerTest is Base {
             svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 5=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId + 1);
+            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
         }
         {
             //Period 6
@@ -286,8 +286,8 @@ contract StrategyVaultLedgerTest is Base {
             svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 6=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId + 1);
+            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
         }
         {
             //Period 7
@@ -318,8 +318,8 @@ contract StrategyVaultLedgerTest is Base {
             svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 7=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId);
-            svLedger.updatePeriodId(periodId, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId + 1);
+            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
         }
     }
 

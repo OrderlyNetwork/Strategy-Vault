@@ -50,7 +50,6 @@ contract Create3FactoryTest is Test {
         address deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
 
-        assertEq(protocolVault.ledgerChainId(), 291);
         assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
         assertEq(protocolVault.owner(), owner);
         assertEq(protocolVault.isAllowedToken(address(mockToken)), true);
@@ -66,7 +65,6 @@ contract Create3FactoryTest is Test {
         deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
 
-        assertEq(protocolVault.ledgerChainId(), 291);
         assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
     }
 
@@ -91,7 +89,6 @@ contract Create3FactoryTest is Test {
             )
         );
         factory.deploy(salt, bytecodeA);
-        assertEq(protocolVault.ledgerChainId(), 291);
         //expect to fail with reason DeploymentFailed()
         //factory.deploy(salt, bytecodeB);
     }

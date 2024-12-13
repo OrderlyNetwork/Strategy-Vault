@@ -96,7 +96,7 @@ contract Base is TestHelperOz5 {
 
         vm.prank(owner);
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
-        svLedger.setAllowedStrategyProvider(sp, ORDERLY_BROKER, spId, true);
+        svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
         //mint token
         mockToken.mint(user, 100000e6);
 
