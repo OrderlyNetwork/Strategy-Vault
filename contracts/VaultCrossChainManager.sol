@@ -13,12 +13,12 @@ import {OApp, Origin, MessagingFee} from "@layerzerolabs/lz-evm-oapp-v2/contract
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
-import {StrategyVaultCCMessage, PayloadType} from "./lib/types/CrossChainStruct.sol";
+import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
 import {console} from "forge-std/console.sol";
 
 /**
  * todo:
- *  - lz gas estimate OptionsBuilder 2. set block 
+ *  - lz gas estimate OptionsBuilder 2. set block
  * - lz send require vault equal quote fee
  *
  */
@@ -32,42 +32,40 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
     address public ledger;
     address public vault;
 
+    mapping(uint32 => uint32) public chainIdToEid;
+    mapping(uint8 => LzOptions) public msgOptions;
+
     constructor(address endpoint, address delegate) OApp(endpoint, delegate) Ownable(msg.sender) {
         eid = ILayerZeroEndpointV2(endpoint).eid();
     }
 
     function vaultSendToLedger(StrategyVaultCCMessage memory message) external payable {
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
-
-        //bytes memory lzMessage = encodeLzMsg(message.payloadType, message.payload);
         bytes memory lzMessage = abi.encode(message);
+
+        bytes memory options = _getOptions(message.payloadType);
         MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
         _lzSend(
             dstEid,
             lzMessage,
             options,
-            // Fee in native gas and ZRO token.
             messageFee,
-            // Refund address in case of failed source message.
             payable(msg.sender)
         );
     }
 
-    function ledgerSendToVault(StrategyVaultCCMessage memory strategyVaultCCMessage) internal {
-        // Encodes the message before invoking _lzSend.
-        // Replace with whatever data you want to send!
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+    function ledgerSendToVault(StrategyVaultCCMessage memory message) external {
+        bytes memory lzMessage = abi.encode(message);
 
-        bytes memory payload = strategyVaultCCMessage.payload;
-        // _lzSend(
-        //     strategyVaultCCMessage.chainId,
-        //     payload,
-        //     options,
-        //     // Fee in native gas and ZRO token.
-        //     MessagingFee(msg.value, 0),
-        //     // Refund address in case of failed source message.
-        //     payable(msg.sender)
-        // );
+        bytes memory options = _getOptions(message.payloadType);
+        MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
+
+        _lzSend(
+            chainIdToEid[message.dstChainId],
+            lzMessage,
+            options,
+            messageFee, // Refund address in case of failed source message.
+            payable(msg.sender)
+        );
     }
 
     function _lzReceive(
@@ -117,17 +115,38 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
     function setVault(address _vault) external onlyOwner {
         vault = _vault;
     }
+
+    function setEid(uint32 chainId, uint32 eid) external onlyOwner {
+        chainIdToEid[chainId] = eid;
+    }
+
+    function setOptions(uint8 _msgType, uint128 _gas, uint128 _value) external onlyOwner {
+        msgOptions[_msgType] = LzOptions(_gas, _value);
+    }
+
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
 
-    function quote(uint32 _dstEid, bytes memory _message, bytes memory _options, bool _payInLzToken)
+    function quote(uint32 _dstEid, bytes memory _message, PayloadType payloadType, bool _payInLzToken)
         public
         view
         returns (uint256 nativeFee, uint256 lzTokenFee)
     {
-        //bytes memory options = combineOptions(_eid, _type, _options);
-        MessagingFee memory fee = _quote(_dstEid, _message, _options, _payInLzToken);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(
+            msgOptions[uint8(payloadType)].gas, msgOptions[uint8(payloadType)].value
+        );
+
+        MessagingFee memory fee = _quote(_dstEid, _message, options, _payInLzToken);
         return (fee.nativeFee, fee.lzTokenFee);
+    }
+    /*=========================================================================================
+    *                                       VIEW
+    *=========================================================================================*/
+
+    function _getOptions(PayloadType payloadType) internal view returns (bytes memory) {
+        return OptionsBuilder.newOptions().addExecutorLzReceiveOption(
+            msgOptions[uint8(payloadType)].gas, msgOptions[uint8(payloadType)].value
+        );
     }
 }

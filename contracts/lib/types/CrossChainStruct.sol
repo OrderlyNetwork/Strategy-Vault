@@ -6,6 +6,7 @@ enum PayloadType {
     SP_DEPOSIT,
     LP_WITHDRAW,
     SP_WITHDRAW,
+    ASSETS_DISTRIBUTION,
     UPDATE_USER_CLAIM  
 }
 
@@ -17,3 +18,9 @@ struct StrategyVaultCCMessage {
     /// @dev payload is the data to be sent
     bytes payload;
 }
+
+struct LzOptions {
+    uint128 gas;
+    uint128 value;
+}
+

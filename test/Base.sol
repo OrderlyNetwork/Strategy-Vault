@@ -104,10 +104,8 @@ contract Base is TestHelperOz5 {
         mockToken.approve(address(protocolVault), 100e6);
     }
 
-    function getEstimateFee() public view returns (uint256) {
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
-
-        (uint256 nativeFee,) = aVaultCrossChainManager.quote(ledgerEid, buildCCMessage(), options, false);
+    function getEstimateFee(PayloadType payloadType) public view returns (uint256) {
+        (uint256 nativeFee,) = aVaultCrossChainManager.quote(ledgerEid, buildCCMessage(), payloadType, false);
         return nativeFee;
     }
 
