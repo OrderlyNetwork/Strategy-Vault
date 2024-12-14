@@ -14,9 +14,10 @@ import {UpdateUserClaim} from "../lib/types/LedgerStruct.sol";
 
 interface IProtocolVault {
     event OperationExecuted(PayloadType payloadType, OperationData operationData);
-    event UserClaimed(uint256 amount, uint256[] requests);
-    event DepositFromDex(uint256 periodId, uint256 amount);
+    event UserClaimed(uint256 amount, bytes32[] requests);
+    event DepositFromStrategy(uint256 periodId, bytes32 vaultId, address sender, uint256 amount);
     event UnClaimedUpdated(uint256 periodId, UpdateUserClaim[] updateUserClaims);
+    event DepositToStrategy(uint256 periodId, bytes32 vaultId, address receiver, uint256 amount);
 
     error NotAllowedToken();
     error InvalidDepositAmount();

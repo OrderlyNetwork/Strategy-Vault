@@ -135,36 +135,11 @@ struct StrategyFundState {
 
 //--------------------------------------Fund Transfer--------------------------------------------
 
-struct BasicInfo {
-    ///@dev USER or PROTOCOL
-    VaultType vaultType;
-    ///@dev period ID
-    uint256 periodId;
-    ///@dev keccak256(abi.encodePacked(vault address, brokerHash))
-    bytes32 vaultId;
-    ///@dev token hash
-    bytes32 tokenHash;
-    ///@dev keccak256(abi.encodePacked(broker address))
-    bytes32 brokerHash;
-}
-
 struct AssetsDistribution {
-    uint256 chainId;
+    ///@dev chainId
+    uint32 chainId;
+    ///@dev assets to be distributed on a chain
     uint256 assets;
-}
-
-struct StrategyExecutionParams {
-    ///@dev total assets to be transferred
-    uint256 totalAssets;
-    BasicInfo basicInfo;
-    ///@dev assets distribution
-    AssetsDistribution[] assetsDistributions;
-}
-
-struct StrategyExecution {
-    BasicInfo basicInfo;
-    uint256 chainId;
-    uint256 amount;
 }
 //--------------------------------------User Claim--------------------------------------------
 

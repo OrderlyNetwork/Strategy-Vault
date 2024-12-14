@@ -30,6 +30,7 @@ contract Base is TestHelperOz5 {
     using OptionsBuilder for bytes;
 
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
+    uint32 constant LEDGER_CHAIN_ID = 291;
 
     address public owner = address(0x123);
     address public sp = address(0x2);
@@ -39,8 +40,9 @@ contract Base is TestHelperOz5 {
     address engine;
     uint256 enginePrivateKey;
 
-    uint32 public srcEid = 1;
-    uint32 public ledgerEid = 2;
+    uint32 evmChainId = 1;
+    uint8 public srcEid = 1;
+    uint8 public ledgerEid = 2;
 
     MockERC20 mockToken;
     ProtocolVault protocolVault;
@@ -65,16 +67,18 @@ contract Base is TestHelperOz5 {
         svLedger.setOperatorManager(operator);
         vm.prank(owner);
         svLedger.setEngine(engine);
-        // Initialize 2 endpoints, using UltraLightNode as the library type
-        setUpEndpoints(2, LibraryType.UltraLightNode);
-        address[] memory uas = setupOApps(type(VaultCrossChainManager).creationCode, 1, 2);
 
         // Deploy the VaultCrossChainManager contract
+        // Initialize 2 endpoints, using UltraLightNode as the library type
+        setUpEndpoints(2, LibraryType.UltraLightNode);
+        address[] memory uas = setupOApps(type(VaultCrossChainManager).creationCode, srcEid, ledgerEid);
+
         aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
         bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
 
-        aVaultCrossChainManager.setDstEid(ledgerEid);
-        bVaultCrossChainManager.setDstEid(srcEid);
+        aVaultCrossChainManager.setEid(LEDGER_CHAIN_ID, ledgerEid);
+        bVaultCrossChainManager.setEid(evmChainId, srcEid);
+
         bVaultCrossChainManager.setLedger(svLedgerProxy);
 
         //set options
@@ -107,7 +111,7 @@ contract Base is TestHelperOz5 {
         //mint token
         mockToken.mint(user, 100000e6);
         mockToken.mint(sp, 100000e6);
-        
+
         //approve
         vm.prank(user);
         mockToken.approve(address(protocolVault), 100e6);

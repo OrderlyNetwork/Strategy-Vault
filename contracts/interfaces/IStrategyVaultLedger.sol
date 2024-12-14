@@ -6,9 +6,7 @@ import {
     StrategyFund,
     UpdateStrategyFundAssetsParams,
     UpdateStrategyFundAssetsRes,
-    StrategyExecutionParams,
-    BasicInfo,
-    StrategyExecution,
+    PendingState,
     Operation,
     OperationType,
     OperationRes,
@@ -58,7 +56,7 @@ interface IStrategyVaultLedger {
         bytes32 vaultId, address vault, address sp, bytes32 brokerHash, bytes32 spId, bool knob
     );
     event OperatorManagerSet(address operatorAddress);
-
+    event AssetsDistrubuted(uint256 periodId, bytes32 vaultId);
     //--------------------------------------FROM VAULT-----------------------------------------
 
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData) external;
@@ -91,10 +89,11 @@ interface IStrategyVaultLedger {
     function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes memory signature)
         external;
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature) external;
-    function executeStrategy(
+
+    function distributeAssets(
         uint256 periodId,
         bytes32 vaultId,
-        StrategyExecutionParams memory strategyExecutionParams,
+        AssetsDistribution[] memory assetsDistributions,
         bytes calldata signature
     ) external;
     function updateUnclaimed(

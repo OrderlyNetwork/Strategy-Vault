@@ -10,10 +10,7 @@ import {
     StrategyFund,
     UpdateStrategyFundAssetsParams,
     UpdateStrategyFundAssetsRes,
-    StrategyExecutionParams,
-    BasicInfo,
     PendingState,
-    StrategyExecution,
     Operation,
     OperationType,
     OperationRes,
@@ -28,9 +25,10 @@ import {Signature} from "./lib/utils/Signature.sol";
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
 import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
+import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {console} from "forge-std/console.sol";
-//todo  1. constant requestId 5.emit not revert
+//todo emit not revert from cc
 
 contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
     using Math for uint256;
@@ -48,10 +46,10 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     uint256 public latestPeriodId;
 
-    address public crossChainManagerAddress;
-    address public operatorAddress;
+    address public crossChainManager;
+    address public operator;
     /// @dev address of upload data to contract
-    address public engineAddress;
+    address public engine;
 
     /// @dev fee rate of each strategy fund
     mapping(uint256 => uint256) public feeRateOfFund;
@@ -67,7 +65,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     /// @notice Require only operator can call
     modifier onlyOperator() {
-        if (msg.sender != operatorAddress) {
+        if (msg.sender != operator) {
             revert InvalidCaller();
         }
         _;
@@ -75,7 +73,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     /// @notice Require only crossChainManager can call
 
     modifier onlyVaultCrossChainManager() {
-        if (msg.sender != crossChainManagerAddress) {
+        if (msg.sender != crossChainManager) {
             revert InvalidCaller();
         }
         _;
@@ -150,7 +148,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyUpdateFundAssets(periodId, strategyFundAssets, signature, engineAddress);
+        Signature.verifyUpdateFundAssets(periodId, strategyFundAssets, signature, engine);
         uint256 assetsAfterFee;
         //emit event
         UpdateStrategyFundAssetsRes[] memory updateStrategyFundAssetsRes =
@@ -210,7 +208,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyUpdateLPAndStrategyFund(periodId, updateUserLedgerParams, signature, engineAddress);
+        Signature.verifyUpdateLPAndStrategyFund(periodId, updateUserLedgerParams, signature, engine);
 
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
         uint256 amount;
@@ -252,7 +250,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyAllocatToFunds(periodId, strategyProviderIds, signature, engineAddress);
+        Signature.verifyAllocatToFunds(periodId, strategyProviderIds, signature, engine);
 
         StrategyFund storage strategyFund;
         uint256 totalMainAssetsInFund;
@@ -369,7 +367,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifySettleMainAndStrategyFunds(periodId, strategyProviderIds, signature, engineAddress);
+        Signature.verifySettleMainAndStrategyFunds(periodId, strategyProviderIds, signature, engine);
         //settle MAIN
         mainShares = pendingMainShares;
         StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
@@ -397,7 +395,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             });
         }
 
-        emit MainAndStrategyFundsSettled(periodId, vaultId,mainShares, strategyFundStates);
+        emit MainAndStrategyFundsSettled(periodId, vaultId, mainShares, strategyFundStates);
     }
 
     function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes memory signature)
@@ -405,7 +403,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         onlyOperator
     {
         _check(periodId);
-        Signature.verifySettleAccount(periodId, accountIds, signature, engineAddress);
+        Signature.verifySettleAccount(periodId, accountIds, signature, engine);
 
         AccountState[] memory accountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
@@ -416,14 +414,14 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             accountStates[i] = AccountState({accountId: accountIds[i], shares: account.shares});
         }
 
-        emit AccountSettled(periodId,vaultId, accountStates);
+        emit AccountSettled(periodId, vaultId, accountStates);
     }
 
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature) external onlyOperator {
         if (periodId != latestPeriodId + 1) {
             revert InvalidPeriodId();
         }
-        Signature.verifyUpdatePeriodId(periodId, signature, engineAddress);
+        Signature.verifyUpdatePeriodId(periodId, signature, engine);
 
         pendingLpDepositAssets = 0;
         pendingLpWithdrawShares = 0;
@@ -432,37 +430,32 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit PeriodIdUpdated(periodId, vaultId);
     }
 
-    function executeStrategy(
+    function distributeAssets(
         uint256 periodId,
         bytes32 vaultId,
-        StrategyExecutionParams memory strategyExecutionParams,
+        AssetsDistribution[] memory assetsDistributions,
         bytes calldata signature
     ) external onlyOperator {
-        uint256 totalTransferredAssets;
+        _check(periodId);
+        Signature.verifyAssetsDistribution(periodId, vaultId, assetsDistributions, signature, engine);
 
-        for (uint256 i = 0; i < strategyExecutionParams.assetsDistributions.length; i++) {
-            totalTransferredAssets += strategyExecutionParams.assetsDistributions[i].assets;
-        }
-        if (totalTransferredAssets != strategyExecutionParams.totalAssets) {
-            revert InvalidTotalAssets();
-        }
-
-        for (uint256 i = 0; i < strategyExecutionParams.assetsDistributions.length; i++) {
+        for (uint256 i = 0; i < assetsDistributions.length; i++) {
             //contruct StrategyExecution
-            StrategyExecution memory strategyExecution = StrategyExecution({
-                basicInfo: BasicInfo({
-                    vaultType: VaultType.USER,
-                    periodId: periodId,
-                    vaultId: strategyExecutionParams.basicInfo.vaultId,
-                    tokenHash: strategyExecutionParams.basicInfo.tokenHash,
-                    brokerHash: strategyExecutionParams.basicInfo.brokerHash
-                }),
-                chainId: strategyExecutionParams.assetsDistributions[i].chainId,
-                amount: strategyExecutionParams.assetsDistributions[i].assets
+            AssetsDistribution memory assetsDistribution =
+                AssetsDistribution({chainId: assetsDistributions[i].chainId, assets: assetsDistributions[i].assets});
+
+            //cross chain message
+            StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+                payloadType: PayloadType.ASSETS_DISTRIBUTION,
+                srcChainId: uint32(block.chainid),
+                dstChainId: assetsDistributions[i].chainId,
+                payload: abi.encode(assetsDistribution)
             });
+            //cross-chain
+            IVaultCrossChainManager(crossChainManager).sendMessage(message);
         }
 
-        emit StrategyExecuted(periodId, vaultId, totalTransferredAssets);
+        emit AssetsDistrubuted(periodId, vaultId);
     }
 
     function updateUnclaimed(
@@ -483,10 +476,10 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
     function setFeeRate(bytes32[] calldata strategyProviderIds) external {}
 
-    function setCrossChainManagerAddress(address _crossChainManagerAddress) external onlyOwner {
-        crossChainManagerAddress = _crossChainManagerAddress;
+    function setCrossChainManagerAddress(address _crossChainManager) external onlyOwner {
+        crossChainManager = _crossChainManager;
 
-        emit CrossChainManagerAddressSet(_crossChainManagerAddress);
+        emit CrossChainManagerAddressSet(_crossChainManager);
     }
 
     function setAllowedStrategyProvider(
@@ -503,15 +496,15 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     }
 
     /// @notice Set the address of operatorManager contract
-    /// @param _operatorAddress new operatorManagerAddress
-    function setOperatorManager(address _operatorAddress) public onlyOwner {
-        operatorAddress = _operatorAddress;
+    /// @param _operator new operatorManagerAddress
+    function setOperatorManager(address _operator) public onlyOwner {
+        operator = _operator;
 
-        emit OperatorManagerSet(_operatorAddress);
+        emit OperatorManagerSet(_operator);
     }
 
-    function setEngine(address _engineAddress) public onlyOwner {
-        engineAddress = _engineAddress;
+    function setEngine(address _engine) public onlyOwner {
+        engine = _engine;
     }
     /*=========================================================================================
     *                                       VIEW

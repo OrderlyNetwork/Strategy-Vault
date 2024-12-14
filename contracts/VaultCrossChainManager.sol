@@ -27,8 +27,6 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
 
     using OptionsBuilder for bytes;
 
-    uint32 public eid;
-    uint32 public dstEid;
     address public ledger;
     address public vault;
 
@@ -36,36 +34,18 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
     mapping(PayloadType => LzOptions) public msgOptions;
 
     constructor(address endpoint, address delegate) OApp(endpoint, delegate) Ownable(msg.sender) {
-        eid = ILayerZeroEndpointV2(endpoint).eid();
+        chainIdToEid[291] = 30213;
     }
 
-    function vaultSendToLedger(StrategyVaultCCMessage memory message) external payable {
+    function sendMessage(StrategyVaultCCMessage memory message) payable external {
         bytes memory lzMessage = abi.encode(message);
 
         bytes memory options = _getOptions(message.payloadType);
-        MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
-        _lzSend(
-            dstEid,
-            lzMessage,
-            options,
-            messageFee,
-            payable(msg.sender)
-        );
-    }
 
-    function ledgerSendToVault(StrategyVaultCCMessage memory message) external {
-        bytes memory lzMessage = abi.encode(message);
-
-        bytes memory options = _getOptions(message.payloadType);
+        uint32 dstEid = chainIdToEid[message.dstChainId];
         MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
 
-        _lzSend(
-            chainIdToEid[message.dstChainId],
-            lzMessage,
-            options,
-            messageFee, // Refund address in case of failed source message.
-            payable(msg.sender)
-        );
+        _lzSend(dstEid, lzMessage, options, messageFee, payable(msg.sender));
     }
 
     function _lzReceive(
@@ -103,11 +83,6 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
     }
 
     //--------------------------------------CONFIG--------------------------------------------
-
-    function setDstEid(uint32 _dstEid) external onlyOwner {
-        dstEid = _dstEid;
-    }
-
     function setLedger(address _ledger) external onlyOwner {
         ledger = _ledger;
     }

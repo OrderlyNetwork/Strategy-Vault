@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -20,14 +21,14 @@ import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-//todo 1. 是否要限制只有dex vault才能调用 当transfer fund 2. constant 
+//todo 1. 是否要限制只有dex vault才能调用 当transfer fund
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
     using SafeERC20 for IERC20;
 
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
+    uint32 constant LEDGER_CHAIN_ID = 291;
+    uint32 constant LEDGER_EID = 30213;
 
-    uint256 public ledgerChainId;
-     
     address public dexVault;
     address public crossChainManager;
 
@@ -80,11 +81,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         __UUPSUpgradeable_init();
 
         crossChainManager = _crossChainManager;
-        ledgerChainId = 291;
 
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
-        
+
         minDepositForLp = _minDepositForLp;
         minDepositForSp = _minDepositForSp;
     }
@@ -105,15 +105,15 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: payloadType,
             srcChainId: uint32(block.chainid),
-            dstChainId: uint32(ledgerChainId),
+            dstChainId: LEDGER_CHAIN_ID,
             payload: abi.encode(data)
         });
 
         //transfer token to this contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        //cross-chain message
-        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+        //cross-chain
+        IVaultCrossChainManager(crossChainManager).sendMessage{value: msg.value}(message);
 
         emit OperationExecuted(payloadType, data);
     }
@@ -132,12 +132,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: payloadType,
             srcChainId: uint32(block.chainid),
-            dstChainId: uint32(ledgerChainId),
+            dstChainId: LEDGER_CHAIN_ID,
             payload: abi.encode(data)
         });
 
         //cross-chain message
-        IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+        IVaultCrossChainManager(crossChainManager).sendMessage{value: msg.value}(message);
 
         emit OperationExecuted(payloadType, data);
     }
@@ -159,19 +159,21 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         //transfer to user
         IERC20(token).safeTransfer(msg.sender, amount);
+
         emit UserClaimed(amount, userClaimedById[id].requests);
     }
 
     //--------------------------------------FROM DEX-----------------------------------------
 
-    function depositFromDex(uint256 periodId, uint256 amount) external onlyDexVault {
-        emit DepositFromDex(periodId, amount);
+    function depositFromStrategy(uint256 periodId, address sender, uint256 amount) external onlyDexVault {
+        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
+        emit DepositFromStrategy(periodId, vaultId, sender, amount);
     }
     //--------------------------------------FROM Ledger-----------------------------------------
 
-    function depositToStrategy() external onlyVaultCrossChainManager {
-        //check vault ID
-        // bytes32 vaultId = keccak256(abi.encodePacked(strategyExecution.brokerHash, address(this)));
+    function depositToStrategy(uint256 periodId,address receiver,uint256 amount) external onlyVaultCrossChainManager {
+       
+        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
 
         // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
         //     .VaultDepositFE({
@@ -182,6 +184,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         //     });
         //cal dex
         //     IDexVault(orderlyDexVault).deposit();
+
+        emit DepositToStrategy(periodId,vaultId,receiver, amount);
     }
 
     function updateUnClaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims)
@@ -192,10 +196,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     }
 
     //--------------------------------------CONFIG--------------------------------------------
-    function setLedgerChainId(uint256 _ledgerChainId) external onlyOwner {
-        ledgerChainId = _ledgerChainId;
-    }
-
     function setOrderlyDexVault(address _dexVault) external onlyOwner {
         dexVault = _dexVault;
     }
@@ -218,15 +218,26 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
-    // function getEstimateFee() public view returns (uint256) {
-    //     bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
 
-    //     (uint256 nativeFee,) = IVaultCrossChainManager(crossChainManager).quote(ledgerEid, buildCCMessage(), options, false);
-    //     return nativeFee;
-    // }
+    function quoteOperation() external view returns (uint256) {
+        //bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+
+        // OperationData memory data = _getOperationData(PayloadType.LP_DEPOSIT, address(0), 0, address(0), ORDERLY_BROKER);
+        // StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+        //     payloadType: PayloadType.LP_DEPOSIT,
+        //     srcChainId: uint32(block.chainid),
+        //     dstChainId: uint32(LEDGER_CHAIN_ID),
+        //     payload: abi.encode(data)
+        // });
+        // bytes memory lzMessage = abi.encode(message);
+
+        // (uint256 nativeFee,) = IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, options, false);
+        // return nativeFee;
+    }
     /*=========================================================================================
     *                                       INTERNAL
     *=========================================================================================*/
+
     function _validateDeposit(PayloadType payloadType, address token, uint256 amount, bytes32 brokerHash)
         internal
         view

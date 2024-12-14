@@ -24,21 +24,18 @@ contract TestProtocolVault is Base {
 
     function testInitialize() public view {
         // Check initial state
-        assertEq(protocolVault.ledgerChainId(), 291);
         assertEq(protocolVault.crossChainManager(), address(aVaultCrossChainManager));
 
-        assertEq(svLedger.crossChainManagerAddress(), address(bVaultCrossChainManager));
+        assertEq(svLedger.crossChainManager(), address(bVaultCrossChainManager));
 
         assertEq(bVaultCrossChainManager.ledger(), address(svLedger));
 
-        assertEq(aVaultCrossChainManager.eid(), 1);
-        assertEq(bVaultCrossChainManager.eid(), 2);
-        assertEq(aVaultCrossChainManager.dstEid(), 2);
-        assertEq(bVaultCrossChainManager.dstEid(), 1);
+        // assertEq(aVaultCrossChainManager.dstEid(), 2);
+        // assertEq(bVaultCrossChainManager.dstEid(), 1);
     }
 
     function testProtocolVaultLPDeposit() public {
-        uint256 nativeFee = getEstimateFee();
+        uint256 nativeFee = getEstimateFee(PayloadType.LP_DEPOSIT);
         uint256 amount = 100e6;
         DepositParams memory depositParams = DepositParams({
             payloadType: PayloadType.LP_DEPOSIT,
@@ -48,6 +45,8 @@ contract TestProtocolVault is Base {
             brokerHash: ORDERLY_BROKER
         });
         // Call deposit function
+
+        vm.prank(user);
         protocolVault.deposit{value: nativeFee}(depositParams);
 
         //LZ
@@ -69,7 +68,7 @@ contract TestProtocolVault is Base {
     }
 
     function testProtocolVaultSPDeposit() public {
-        uint256 nativeFee = getEstimateFee();
+        uint256 nativeFee = getEstimateFee(PayloadType.SP_DEPOSIT);
         uint256 amount = 100e6;
         DepositParams memory depositParams = DepositParams({
             payloadType: PayloadType.SP_DEPOSIT,
@@ -80,6 +79,7 @@ contract TestProtocolVault is Base {
         });
 
         // Call deposit function
+        vm.prank(sp);
         protocolVault.deposit{value: nativeFee}(depositParams);
 
         //LZ
@@ -93,7 +93,7 @@ contract TestProtocolVault is Base {
     }
 
     function testProtocolVaultLPWithdraw() public {
-        uint256 nativeFee = getEstimateFee();
+        uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
         uint256 shares = 100e6;
         //Initialize
         svLedger.setAccountShares(_getAccountId(user, ORDERLY_BROKER), shares);
@@ -105,6 +105,7 @@ contract TestProtocolVault is Base {
             amount: withdrawShares,
             brokerHash: ORDERLY_BROKER
         });
+        vm.prank(user); 
         protocolVault.withdraw{value: nativeFee}(withdrawParams);
 
         //LZ
@@ -125,7 +126,7 @@ contract TestProtocolVault is Base {
     }
 
     function testProtocolVaultSPWithdraw() public {
-        uint256 nativeFee = getEstimateFee();
+        uint256 nativeFee = getEstimateFee(PayloadType.SP_WITHDRAW);
         uint256 shares = 100e6;
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
 
@@ -153,7 +154,7 @@ contract TestProtocolVault is Base {
     }
 
     function testFailedProtocolVaultLPWithdrawNotEnoughShares() public {
-        uint256 nativeFee = getEstimateFee();
+        uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
         uint256 withdrawShares = 10e6;
         WithdrawParams memory withdrawParams = WithdrawParams({
             payloadType: PayloadType.LP_WITHDRAW,
