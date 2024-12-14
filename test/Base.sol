@@ -31,6 +31,7 @@ contract Base is TestHelperOz5 {
 
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     uint32 constant LEDGER_CHAIN_ID = 291;
+    uint32 constant LEDGER_EID = 30213;
 
     address public owner = address(0x123);
     address public sp = address(0x2);
@@ -79,6 +80,7 @@ contract Base is TestHelperOz5 {
         aVaultCrossChainManager.setEid(LEDGER_CHAIN_ID, ledgerEid);
         bVaultCrossChainManager.setEid(evmChainId, srcEid);
 
+        //aVaultCrossChainManager.setPeer(LEDGER_EID,addressToBytes32(address(remoteOApp)));
         bVaultCrossChainManager.setLedger(svLedgerProxy);
 
         //set options

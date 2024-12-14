@@ -220,19 +220,17 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     *=========================================================================================*/
 
     function quoteOperation() external view returns (uint256) {
-        //bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        OperationData memory data = _getOperationData(PayloadType.LP_DEPOSIT, address(0), 0, address(0), ORDERLY_BROKER);
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: PayloadType.LP_DEPOSIT,
+            srcChainId: uint32(block.chainid),
+            dstChainId: uint32(LEDGER_CHAIN_ID),
+            payload: abi.encode(data)
+        });
+        bytes memory lzMessage = abi.encode(message);
 
-        // OperationData memory data = _getOperationData(PayloadType.LP_DEPOSIT, address(0), 0, address(0), ORDERLY_BROKER);
-        // StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-        //     payloadType: PayloadType.LP_DEPOSIT,
-        //     srcChainId: uint32(block.chainid),
-        //     dstChainId: uint32(LEDGER_CHAIN_ID),
-        //     payload: abi.encode(data)
-        // });
-        // bytes memory lzMessage = abi.encode(message);
-
-        // (uint256 nativeFee,) = IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, options, false);
-        // return nativeFee;
+        (uint256 nativeFee,) = IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, PayloadType.LP_DEPOSIT, false);
+        return nativeFee;
     }
     /*=========================================================================================
     *                                       INTERNAL
