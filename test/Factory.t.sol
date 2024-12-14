@@ -41,7 +41,7 @@ contract Create3FactoryTest is Test {
             abi.encode(
                 protocolVaultImpl,
                 abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector, address(vaultCrossChainManager), owner, address(mockToken)
+                    ProtocolVault.initialize.selector, address(vaultCrossChainManager), owner, address(mockToken), 0, 0
                 )
             )
         );

@@ -76,6 +76,13 @@ contract Base is TestHelperOz5 {
         aVaultCrossChainManager.setDstEid(ledgerEid);
         bVaultCrossChainManager.setDstEid(srcEid);
         bVaultCrossChainManager.setLedger(svLedgerProxy);
+
+        //set options
+        aVaultCrossChainManager.setOptions(PayloadType.LP_DEPOSIT, 120000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.LP_WITHDRAW, 150000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.SP_DEPOSIT, 150000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.SP_WITHDRAW, 150000, 0);
+
         vm.prank(owner);
         svLedger.setCrossChainManagerAddress(address(bVaultCrossChainManager));
 
@@ -99,8 +106,12 @@ contract Base is TestHelperOz5 {
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
         //mint token
         mockToken.mint(user, 100000e6);
-
+        mockToken.mint(sp, 100000e6);
+        
+        //approve
         vm.prank(user);
+        mockToken.approve(address(protocolVault), 100e6);
+        vm.prank(sp);
         mockToken.approve(address(protocolVault), 100e6);
     }
 

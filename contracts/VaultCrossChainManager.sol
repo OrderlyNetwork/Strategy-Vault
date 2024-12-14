@@ -33,7 +33,7 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
     address public vault;
 
     mapping(uint32 => uint32) public chainIdToEid;
-    mapping(uint8 => LzOptions) public msgOptions;
+    mapping(PayloadType => LzOptions) public msgOptions;
 
     constructor(address endpoint, address delegate) OApp(endpoint, delegate) Ownable(msg.sender) {
         eid = ILayerZeroEndpointV2(endpoint).eid();
@@ -120,8 +120,8 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
         chainIdToEid[chainId] = eid;
     }
 
-    function setOptions(uint8 _msgType, uint128 _gas, uint128 _value) external onlyOwner {
-        msgOptions[_msgType] = LzOptions(_gas, _value);
+    function setOptions(PayloadType payloadType, uint128 _gas, uint128 _value) external onlyOwner {
+        msgOptions[payloadType] = LzOptions(_gas, _value);
     }
 
     /*=========================================================================================
@@ -133,9 +133,7 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
         view
         returns (uint256 nativeFee, uint256 lzTokenFee)
     {
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(
-            msgOptions[uint8(payloadType)].gas, msgOptions[uint8(payloadType)].value
-        );
+        bytes memory options = _getOptions(payloadType);
 
         MessagingFee memory fee = _quote(_dstEid, _message, options, _payInLzToken);
         return (fee.nativeFee, fee.lzTokenFee);
@@ -146,7 +144,7 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
 
     function _getOptions(PayloadType payloadType) internal view returns (bytes memory) {
         return OptionsBuilder.newOptions().addExecutorLzReceiveOption(
-            msgOptions[uint8(payloadType)].gas, msgOptions[uint8(payloadType)].value
+            msgOptions[payloadType].gas, msgOptions[payloadType].value
         );
     }
 }
