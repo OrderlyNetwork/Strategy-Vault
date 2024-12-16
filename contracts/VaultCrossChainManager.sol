@@ -12,7 +12,10 @@ import {OApp, Origin, MessagingFee} from "@layerzerolabs/lz-evm-oapp-v2/contract
 // dev imports
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
+import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
+
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
+import {AssetsDistribution} from "./lib/types/LedgerStruct.sol";
 import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
 import {console} from "forge-std/console.sol";
 
@@ -37,15 +40,16 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
         chainIdToEid[291] = 30213;
     }
 
-    function sendMessage(StrategyVaultCCMessage memory message) payable external {
-        bytes memory lzMessage = abi.encode(message);
+    receive() external payable {}
 
+    function sendMessage(StrategyVaultCCMessage memory message) external payable {
+        bytes memory lzMessage = abi.encode(message);
         bytes memory options = _getOptions(message.payloadType);
 
         uint32 dstEid = chainIdToEid[message.dstChainId];
         MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
 
-        _lzSend(dstEid, lzMessage, options, messageFee, payable(msg.sender));
+        _lzSend(dstEid, lzMessage, options, messageFee, payable(address(this)));
     }
 
     function _lzReceive(
@@ -71,6 +75,13 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
             IStrategyVaultLedger(ledger).handleOpFromVault(
                 payloadType, strategyVaultCCmessage.srcChainId, operationData
             );
+        } else if (payloadType == PayloadType.ASSETS_DISTRIBUTION) {
+            //Decode the payload
+            (uint256 periodId, AssetsDistribution memory assetsDistribution) =
+                abi.decode(payload, (uint256, AssetsDistribution));
+
+            //Call Protocol Vault to handle the operation
+            IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
             //UserClaimedInfo memory userClaimedInfo = abi.decode(payload, (UserClaimedInfo));

@@ -150,7 +150,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         _check(periodId);
         Signature.verifyUpdateFundAssets(periodId, vaultId, strategyFundAssets, signature, engine);
         uint256 assetsAfterFee;
-        //emit event
+        //for event
         UpdateStrategyFundAssetsRes[] memory updateStrategyFundAssetsRes =
             new UpdateStrategyFundAssetsRes[](strategyFundAssets.length);
 
@@ -441,15 +441,17 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
         for (uint256 i = 0; i < assetsDistributions.length; i++) {
             //contruct StrategyExecution
-            AssetsDistribution memory assetsDistribution =
-                AssetsDistribution({chainId: assetsDistributions[i].chainId, assets: assetsDistributions[i].assets});
+            AssetsDistribution memory assetsDistribution = AssetsDistribution({
+                chainId: assetsDistributions[i].chainId,
+                assets: assetsDistributions[i].assets
+            });
 
             //cross chain message
             StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
                 payloadType: PayloadType.ASSETS_DISTRIBUTION,
                 srcChainId: uint32(block.chainid),
                 dstChainId: assetsDistributions[i].chainId,
-                payload: abi.encode(assetsDistribution)
+                payload: abi.encode(periodId, assetsDistribution)
             });
             //cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);

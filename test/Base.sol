@@ -81,13 +81,15 @@ contract Base is TestHelperOz5 {
         bVaultCrossChainManager.setEid(evmChainId, srcEid);
 
         //aVaultCrossChainManager.setPeer(LEDGER_EID,addressToBytes32(address(remoteOApp)));
-        bVaultCrossChainManager.setLedger(svLedgerProxy);
 
         //set options
         aVaultCrossChainManager.setOptions(PayloadType.LP_DEPOSIT, 120000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.LP_WITHDRAW, 150000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.SP_DEPOSIT, 150000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.SP_WITHDRAW, 150000, 0);
+
+        bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 120000, 0);
+        bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 120000, 0);
 
         vm.prank(owner);
         svLedger.setCrossChainManagerAddress(address(bVaultCrossChainManager));
@@ -110,6 +112,10 @@ contract Base is TestHelperOz5 {
         vm.prank(owner);
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
+
+        //config cc contract
+        aVaultCrossChainManager.setVault(address(protocolVault));
+        bVaultCrossChainManager.setLedger(svLedgerProxy);
         //mint token
         mockToken.mint(user, 100000e6);
         mockToken.mint(sp, 100000e6);

@@ -134,6 +134,14 @@ struct StrategyFundState {
 }
 
 //--------------------------------------Fund Transfer--------------------------------------------
+enum StrategyType {
+    Orderly
+}
+
+struct Strategy {
+    StrategyType strategyType;
+    address receiver;
+}
 
 struct AssetsDistribution {
     ///@dev chainId

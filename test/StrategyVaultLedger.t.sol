@@ -47,7 +47,19 @@ contract StrategyVaultLedgerTest is Base {
         spIds.push(spB_id);
     }
 
+    function testDistributeAssetsToOneChain() public {
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager),10 ether);
+        
+        AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
+        assetsDistributions[0] = AssetsDistribution({chainId: evmChainId, assets: 1000 * assetDecimal});
+        bytes memory signature = _getDistributeAssetsSignature(periodId, vaultId, assetsDistributions);
+
+        vm.startPrank(operator);
+        svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
+    }
     //forge t --match-test testUpgradeFundAssetsSignature -vv
+
     function testUpgradeFundAssetsSignature() public {
         initialize();
         UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](2);
@@ -60,21 +72,6 @@ contract StrategyVaultLedgerTest is Base {
         vm.startPrank(operator);
         svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
     }
-    //forge t --match-test testUpdateLPAndStrategyFund -vv
-    // function testUpdateLPAndStrategyFund() public {
-    //     //initialize UpdateLedgerParams dymnamic arrary
-    //     initialize();
-    //     UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
-    //     Operation memory newOperation_1 = Operation({id: userA_id, nonce: 0, amount: 1});
-    //     updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
-    //     bytes32 messageHash = keccak256(abi.encode(periodId, updateLedgerParams));
-    //     (uint8 v, bytes32 r, bytes32 s) =
-    //         vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
-    //     bytes memory signature = abi.encodePacked(r, s, v);
-
-    //     vm.startPrank(operator);
-    //     svLedger.updateLPAndStrategyFund(periodId, updateLedgerParams, signature);
-    // }
 
     //forge t --match-test testUpdateLedger -vv
     function testUpdateLedger() public {
@@ -449,6 +446,18 @@ contract StrategyVaultLedgerTest is Base {
 
     function _getUpdatePeriodIdSig(uint256 _periodId, bytes32 _vaultId) internal view returns (bytes memory) {
         bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
+    function _getDistributeAssetsSignature(
+        uint256 _periodId,
+        bytes32 _vaultId,
+        AssetsDistribution[] memory assetsDistributions
+    ) internal view returns (bytes memory) {
+        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, assetsDistributions));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
