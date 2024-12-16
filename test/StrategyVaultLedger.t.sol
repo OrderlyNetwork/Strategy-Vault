@@ -48,14 +48,16 @@ contract StrategyVaultLedgerTest is Base {
     }
 
     function testDistributeAssetsToOneChain() public {
-        //deal eth to cc contract on ledger
-        vm.deal(address(bVaultCrossChainManager),10 ether);
-        
         AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
         assetsDistributions[0] = AssetsDistribution({chainId: evmChainId, assets: 1000 * assetDecimal});
         bytes memory signature = _getDistributeAssetsSignature(periodId, vaultId, assetsDistributions);
 
+        //deal eth to cc contract on ledger
+        //(uint256 nativeFee,) = bVaultCrossChainManager.quote(evmChainId,);
+
+        //vm.deal(address(bVaultCrossChainManager), 10 ether);
         vm.startPrank(operator);
+
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
     }
     //forge t --match-test testUpgradeFundAssetsSignature -vv

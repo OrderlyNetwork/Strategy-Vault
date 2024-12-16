@@ -441,10 +441,8 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
 
         for (uint256 i = 0; i < assetsDistributions.length; i++) {
             //contruct StrategyExecution
-            AssetsDistribution memory assetsDistribution = AssetsDistribution({
-                chainId: assetsDistributions[i].chainId,
-                assets: assetsDistributions[i].assets
-            });
+            AssetsDistribution memory assetsDistribution =
+                AssetsDistribution({chainId: assetsDistributions[i].chainId, assets: assetsDistributions[i].assets});
 
             //cross chain message
             StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
@@ -460,19 +458,28 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         emit AssetsDistrubuted(periodId, vaultId);
     }
 
+    /// @notice update user unClaimed assets info on a specific chain
     function updateUnclaimed(
+        uint32 chainId,
         uint256 periodId,
         bytes32 vaultId,
         UpdateUserClaim[] memory updateUserClaims,
         bytes memory signature
     ) external onlyOperator {
-        // StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-        //     payloadType: uint8(payloadType),
-        //     chainId: block.chainid,
-        //     payload: abi.encode(periodId,updateUserClaims)
-        // });
-        //cross-chain message
-        //IVaultCrossChainManager(crossChainManager).vaultSendToLedger{value: msg.value}(message);
+        _check(periodId);
+        Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, updateUserClaims, signature, engine);
+
+        //cross chain message
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: PayloadType.UPDATE_USER_CLAIM,
+            srcChainId: uint32(block.chainid),
+            dstChainId: chainId,
+            payload: abi.encode(periodId, updateUserClaims)
+        });
+        //cross-chain
+        IVaultCrossChainManager(crossChainManager).sendMessage(message);
+
+        emit UnclaimedAssetsUpdated(periodId, vaultId, updateUserClaims);
     }
     //--------------------------------------CONFIG--------------------------------------------
 

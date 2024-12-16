@@ -90,7 +90,7 @@ contract Create3FactoryTest is Test {
         );
         factory.deploy(salt, bytecodeA);
         //expect to fail with reason DeploymentFailed()
-        //factory.deploy(salt, bytecodeB);
+        factory.deploy(salt, bytecodeB);
     }
 
     function testRevertDeployWithNoAccess() public {

@@ -97,6 +97,18 @@ library Signature {
         verifySignature(signer, messageHash, signature);
     }
 
+    function verifyUpdateUnclaimed(
+        uint32 chainId,
+        uint256 periodId,
+        bytes32 vaultId,
+        UpdateUserClaim[] memory updateUserClaims,
+        bytes memory signature,
+        address signer
+    ) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(chainId, periodId, vaultId, updateUserClaims));
+        verifySignature(signer, messageHash, signature);
+    }
+
     function verifySignature(address signer, bytes32 messageHash, bytes memory signature) internal pure {
         if (signer != ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(messageHash), signature)) {
             revert InvalidSigner();

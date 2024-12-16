@@ -57,6 +57,7 @@ interface IStrategyVaultLedger {
     );
     event OperatorManagerSet(address operatorAddress);
     event AssetsDistrubuted(uint256 periodId, bytes32 vaultId);
+    event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, UpdateUserClaim[] updateUserClaims);
     //--------------------------------------FROM VAULT-----------------------------------------
 
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData) external;
@@ -97,6 +98,7 @@ interface IStrategyVaultLedger {
         bytes calldata signature
     ) external;
     function updateUnclaimed(
+        uint32 chainId,
         uint256 periodId,
         bytes32 vaultId,
         UpdateUserClaim[] memory updateUserClaims,
