@@ -152,7 +152,7 @@ struct AssetsDistribution {
 //--------------------------------------User Claim--------------------------------------------
 
 struct UpdateUserClaim {
-    bytes32 accountId;
+    bytes32 userId;
     uint256 claimAssets;
-    uint256 requestId;
+    bytes32 requestId;
 }

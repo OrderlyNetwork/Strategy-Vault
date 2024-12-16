@@ -60,6 +60,18 @@ contract StrategyVaultLedgerTest is Base {
 
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
     }
+
+    function testUpdateUnclaimed() public {
+        UpdateUserClaim[] memory updateUserClaims = new UpdateUserClaim[](2);
+        updateUserClaims[0] =
+            UpdateUserClaim({userId: userA_id, claimAssets: 1000 * assetDecimal, requestId: keccak256(abi.encode(1))});
+        updateUserClaims[1] =
+            UpdateUserClaim({userId: userB_id, claimAssets: 1000 * assetDecimal, requestId: keccak256(abi.encode(2))});
+        
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, updateUserClaims);
+        vm.startPrank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, updateUserClaims, signature);
+    }
     //forge t --match-test testUpgradeFundAssetsSignature -vv
 
     function testUpgradeFundAssetsSignature() public {
@@ -460,6 +472,19 @@ contract StrategyVaultLedgerTest is Base {
         AssetsDistribution[] memory assetsDistributions
     ) internal view returns (bytes memory) {
         bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, assetsDistributions));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
+    function _getUpdateUnclaimedSignature(
+        uint32 chainId,
+        uint256 _periodId,
+        bytes32 _vaultId,
+        UpdateUserClaim[] memory updateUserClaims
+    ) internal view returns (bytes memory) {
+        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _vaultId, updateUserClaims));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
