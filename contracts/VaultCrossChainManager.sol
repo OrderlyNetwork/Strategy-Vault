@@ -2,12 +2,11 @@
 pragma solidity ^0.8.26;
 // oz imports
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+// import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
 // lz imports
-import {ILayerZeroEndpointV2} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
-import {OApp, Origin, MessagingFee} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
+import {OptionsBuilder} from "./lib/layerzero-v2/oapp/libs/OptionsBuilder.sol";
+import {OAppUpgradeable, MessagingFee, Origin} from "./lib/layerzero-v2/oapp/OAppUpgradeable.sol";
 
 // dev imports
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
@@ -25,7 +24,7 @@ import {console} from "forge-std/console.sol";
  * - lz send require vault equal quote fee
  *
  */
-contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
+contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     error InvalidPayloadType();
 
     using OptionsBuilder for bytes;
@@ -36,11 +35,20 @@ contract VaultCrossChainManager is OApp, IVaultCrossChainManager {
     mapping(uint32 => uint32) public chainIdToEid;
     mapping(PayloadType => LzOptions) public msgOptions;
 
-    constructor(address endpoint, address delegate) OApp(endpoint, delegate) Ownable(msg.sender) {
-        chainIdToEid[291] = 30213;
+    receive() external payable {}
+
+    /**
+     * @dev Disable the initializer on the implementation contract
+     */
+    constructor() {
+        _disableInitializers();
     }
 
-    receive() external payable {}
+    function initialize(address endpoint, address delegate) external virtual initializer {
+        __initializeOApp(endpoint, delegate);
+
+        chainIdToEid[291] = 30213;
+    }
 
     function sendMessage(StrategyVaultCCMessage memory message) external payable {
         bytes memory lzMessage = abi.encode(message);

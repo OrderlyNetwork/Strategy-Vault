@@ -31,7 +31,6 @@ contract Base is TestHelperOz5 {
 
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     uint32 constant LEDGER_CHAIN_ID = 291;
-    uint32 constant LEDGER_EID = 30213;
 
     address public owner = address(0x123);
     address public sp = address(0x2);
@@ -71,17 +70,39 @@ contract Base is TestHelperOz5 {
 
         // Deploy the VaultCrossChainManager contract
         // Initialize 2 endpoints, using UltraLightNode as the library type
+
         setUpEndpoints(2, LibraryType.UltraLightNode);
-        address[] memory uas = setupOApps(type(VaultCrossChainManager).creationCode, srcEid, ledgerEid);
+        address aCCManagerImpl = address(new VaultCrossChainManager());
+        address aCCManager = address(
+            new ERC1967Proxy(
+                aCCManagerImpl,
+                abi.encodeWithSelector(VaultCrossChainManager.initialize.selector, address(endpoints[srcEid]), owner)
+            )
+        );
+        aVaultCrossChainManager = VaultCrossChainManager(payable(aCCManager));
 
-        aVaultCrossChainManager = VaultCrossChainManager(payable(uas[0]));
-        bVaultCrossChainManager = VaultCrossChainManager(payable(uas[1]));
+        address bCCManagerImpl = address(new VaultCrossChainManager());
+        address bCCManager = address(
+            new ERC1967Proxy(
+                bCCManagerImpl,
+                abi.encodeWithSelector(VaultCrossChainManager.initialize.selector, address(endpoints[ledgerEid]), owner)
+            )
+        );
+        bVaultCrossChainManager = VaultCrossChainManager(payable(bCCManager));
 
+        //check deploy
+        assertEq(aVaultCrossChainManager.owner(), owner);
+        assertEq(bVaultCrossChainManager.owner(), owner);
+
+        vm.startPrank(owner);
+        //set eid with chainid
         aVaultCrossChainManager.setEid(LEDGER_CHAIN_ID, ledgerEid);
         bVaultCrossChainManager.setEid(evmChainId, srcEid);
 
-        //aVaultCrossChainManager.setPeer(LEDGER_EID,addressToBytes32(address(remoteOApp)));
-
+        //set peer
+        aVaultCrossChainManager.setPeer(ledgerEid,addressToBytes32(address(bVaultCrossChainManager)));
+        bVaultCrossChainManager.setPeer(srcEid,addressToBytes32(address(aVaultCrossChainManager)));
+        //console.logBytes32(aVaultCrossChainManager.peers(LEDGER_EID));
         //set options
         aVaultCrossChainManager.setOptions(PayloadType.LP_DEPOSIT, 120000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.LP_WITHDRAW, 150000, 0);
@@ -91,8 +112,8 @@ contract Base is TestHelperOz5 {
         bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 120000, 0);
         bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 120000, 0);
 
-        vm.prank(owner);
         svLedger.setCrossChainManagerAddress(address(bVaultCrossChainManager));
+        vm.stopPrank();
 
         //Deploy the MockERC20 contract and approve
         mockToken = new MockERC20("mockToken", "MTK", 6);
@@ -114,8 +135,10 @@ contract Base is TestHelperOz5 {
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
 
         //config cc contract
+        vm.startPrank(owner);
         aVaultCrossChainManager.setVault(address(protocolVault));
         bVaultCrossChainManager.setLedger(svLedgerProxy);
+        vm.stopPrank();
         //mint token
         mockToken.mint(user, 100000e6);
         mockToken.mint(sp, 100000e6);
