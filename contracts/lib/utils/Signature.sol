@@ -25,56 +25,64 @@ library Signature {
 
     function verifyUpdateFundAssets(
         uint256 periodId,
+        bytes32 vaultId,
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId, strategyFundAssets));
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, strategyFundAssets));
         verifySignature(signer, messageHash, signature);
     }
 
     function verifyUpdateLPAndStrategyFund(
         uint256 periodId,
+        bytes32 vaultId,
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId, updateUserLedgerParams));
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, updateUserLedgerParams));
         verifySignature(signer, messageHash, signature);
     }
 
     function verifyAllocatToFunds(
         uint256 periodId,
+        bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId, strategyProviderIds));
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, strategyProviderIds));
         verifySignature(signer, messageHash, signature);
     }
 
     function verifySettleMainAndStrategyFunds(
         uint256 periodId,
+        bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId, strategyProviderIds));
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, strategyProviderIds));
         verifySignature(signer, messageHash, signature);
     }
 
     function verifySettleAccount(
         uint256 periodId,
+        bytes32 vaultId,
         bytes32[] calldata accountIds,
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId, accountIds));
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, accountIds));
         verifySignature(signer, messageHash, signature);
     }
 
-    function verifyUpdatePeriodId(uint256 periodId, bytes memory signature, address signer) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId));
+    function verifyUpdatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature, address signer)
+        internal
+        pure
+    {
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId));
         verifySignature(signer, messageHash, signature);
     }
 

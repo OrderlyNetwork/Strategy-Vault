@@ -148,7 +148,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyUpdateFundAssets(periodId, strategyFundAssets, signature, engine);
+        Signature.verifyUpdateFundAssets(periodId, vaultId, strategyFundAssets, signature, engine);
         uint256 assetsAfterFee;
         //emit event
         UpdateStrategyFundAssetsRes[] memory updateStrategyFundAssetsRes =
@@ -208,7 +208,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyUpdateLPAndStrategyFund(periodId, updateUserLedgerParams, signature, engine);
+        Signature.verifyUpdateLPAndStrategyFund(periodId, vaultId, updateUserLedgerParams, signature, engine);
 
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
         uint256 amount;
@@ -250,7 +250,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyAllocatToFunds(periodId, strategyProviderIds, signature, engine);
+        Signature.verifyAllocatToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
 
         StrategyFund storage strategyFund;
         uint256 totalMainAssetsInFund;
@@ -367,7 +367,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes memory signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifySettleMainAndStrategyFunds(periodId, strategyProviderIds, signature, engine);
+        Signature.verifySettleMainAndStrategyFunds(periodId, vaultId, strategyProviderIds, signature, engine);
         //settle MAIN
         mainShares = pendingMainShares;
         StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
@@ -403,7 +403,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         onlyOperator
     {
         _check(periodId);
-        Signature.verifySettleAccount(periodId, accountIds, signature, engine);
+        Signature.verifySettleAccount(periodId, vaultId, accountIds, signature, engine);
 
         AccountState[] memory accountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
@@ -421,7 +421,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         if (periodId != latestPeriodId + 1) {
             revert InvalidPeriodId();
         }
-        Signature.verifyUpdatePeriodId(periodId, signature, engine);
+        Signature.verifyUpdatePeriodId(periodId, vaultId, signature, engine);
 
         pendingLpDepositAssets = 0;
         pendingLpWithdrawShares = 0;
