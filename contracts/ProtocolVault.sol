@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -21,7 +20,7 @@ import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-//todo 1. 是否要限制只有dex vault才能调用 当transfer fund
+
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
     using SafeERC20 for IERC20;
 
@@ -35,14 +34,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     uint256 public chainNonce;
     uint256 minDepositForLp;
     uint256 minDepositForSp;
-    // uint256 capUserNumber;
-    // uint256 fee;
-    // address feeRecipient;
 
     /// @dev User Id => UserClaimedInfo
     mapping(bytes32 => UserClaimedInfo) public userClaimedById;
-
+    /// @dev Token => isAllowed
     mapping(address => bool) public isAllowedToken;
+    /// @dev Broker Id => isAllowed
     mapping(bytes32 => bool) public isAllowedBroker;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
