@@ -59,5 +59,5 @@ struct OperationData {
 
 struct UserClaimedInfo {
     uint256 unClaimedAssets;
-    bytes32[] requests;
+    bytes32[] requestIds;
 }

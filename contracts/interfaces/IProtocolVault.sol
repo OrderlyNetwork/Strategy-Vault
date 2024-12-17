@@ -33,4 +33,5 @@ interface IProtocolVault {
     function withdraw(WithdrawParams memory withdrawParams) external payable;
     function claim(RoleType roleType, uint256 amount, bytes32 brokerHash, address token) external;
     function depositToStrategy(uint256 periodId, address receiver, uint256 amount) external;
+    function updateUnClaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims) external;
 }

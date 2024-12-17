@@ -39,7 +39,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     // uint256 fee;
     // address feeRecipient;
 
-    /// @dev AccountId or SPId => UserClaimedInfo
+    /// @dev User Id => UserClaimedInfo
     mapping(bytes32 => UserClaimedInfo) public userClaimedById;
 
     mapping(address => bool) public isAllowedToken;
@@ -160,7 +160,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         //transfer to user
         IERC20(token).safeTransfer(msg.sender, amount);
 
-        emit UserClaimed(amount, userClaimedById[id].requests);
+        emit UserClaimed(amount, userClaimedById[id].requestIds);
     }
 
     //--------------------------------------FROM DEX-----------------------------------------
@@ -171,10 +171,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     }
     //--------------------------------------FROM Ledger-----------------------------------------
 
-    function depositToStrategy(uint256 periodId,address receiver,uint256 amount) external onlyVaultCrossChainManager {
-       
+    function depositToStrategy(uint256 periodId, address receiver, uint256 amount)
+        external
+        onlyVaultCrossChainManager
+    {
+        //console.log("welcome to depositToStrategy");
+
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
-        console.log("welcome to depositToStrategy");
+        //console.log("welcome to depositToStrategy");
         // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
         //     .VaultDepositFE({
         //         accountId: //SP id
@@ -185,13 +189,19 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         //cal dex
         //     IDexVault(orderlyDexVault).deposit();
 
-        emit DepositToStrategy(periodId,vaultId,receiver, amount);
+        emit DepositToStrategy(periodId, vaultId, receiver, amount);
     }
 
     function updateUnClaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims)
         external
         onlyVaultCrossChainManager
     {
+        for (uint256 i = 0; i < updateUserClaims.length; i++) {
+            bytes32 userId = updateUserClaims[i].userId;
+            userClaimedById[userId].unClaimedAssets += updateUserClaims[i].amount;
+            userClaimedById[userId].requestIds.push(updateUserClaims[i].requestId);
+        }
+
         emit UnClaimedUpdated(periodId, updateUserClaims);
     }
 
@@ -219,6 +229,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     *                                       VIEW
     *=========================================================================================*/
 
+    function getUserClaimedInfo(bytes32 userId) public view returns (UserClaimedInfo memory) {
+        return userClaimedById[userId];
+    }
+
     function quoteOperation() external view returns (uint256) {
         OperationData memory data = _getOperationData(PayloadType.LP_DEPOSIT, address(0), 0, address(0), ORDERLY_BROKER);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
@@ -229,7 +243,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         });
         bytes memory lzMessage = abi.encode(message);
 
-        (uint256 nativeFee,) = IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, PayloadType.LP_DEPOSIT, false);
+        (uint256 nativeFee,) =
+            IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, PayloadType.LP_DEPOSIT, false);
         return nativeFee;
     }
     /*=========================================================================================

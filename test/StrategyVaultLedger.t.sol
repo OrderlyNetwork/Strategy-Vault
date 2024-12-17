@@ -19,6 +19,7 @@ import {
     AllocateFundRes,
     StrategyFundState
 } from "../contracts/StrategyVaultLedger.sol";
+import {UserClaimedInfo} from "../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract StrategyVaultLedgerTest is Base {
@@ -53,24 +54,38 @@ contract StrategyVaultLedgerTest is Base {
         bytes memory signature = _getDistributeAssetsSignature(periodId, vaultId, assetsDistributions);
 
         //deal eth to cc contract on ledger
-        //(uint256 nativeFee,) = bVaultCrossChainManager.quote(evmChainId,);
-
-        //vm.deal(address(bVaultCrossChainManager), 10 ether);
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
         vm.startPrank(operator);
 
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
     }
 
     function testUpdateUnclaimed() public {
         UpdateUserClaim[] memory updateUserClaims = new UpdateUserClaim[](2);
         updateUserClaims[0] =
-            UpdateUserClaim({userId: userA_id, claimAssets: 1000 * assetDecimal, requestId: keccak256(abi.encode(1))});
+            UpdateUserClaim({userId: userA_id, amount: 1000 * assetDecimal, requestId: keccak256(abi.encode(1))});
         updateUserClaims[1] =
-            UpdateUserClaim({userId: userB_id, claimAssets: 1000 * assetDecimal, requestId: keccak256(abi.encode(2))});
-        
+            UpdateUserClaim({userId: userB_id, amount: 1000 * assetDecimal, requestId: keccak256(abi.encode(2))});
+
         bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, updateUserClaims);
+
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+
         vm.startPrank(operator);
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, updateUserClaims, signature);
+
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        assertEq(userClaimedInfo_A.unClaimedAssets, 1000 * assetDecimal);
+        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
+
+        UserClaimedInfo memory userClaimedInfo_B = protocolVault.getUserClaimedInfo(userB_id);
+        assertEq(userClaimedInfo_B.unClaimedAssets, 1000 * assetDecimal);
+        assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(2)));
     }
     //forge t --match-test testUpgradeFundAssetsSignature -vv
 

@@ -153,6 +153,6 @@ struct AssetsDistribution {
 
 struct UpdateUserClaim {
     bytes32 userId;
-    uint256 claimAssets;
+    uint256 amount;
     bytes32 requestId;
 }

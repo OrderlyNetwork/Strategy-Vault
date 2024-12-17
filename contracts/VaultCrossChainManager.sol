@@ -14,7 +14,7 @@ import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
-import {AssetsDistribution} from "./lib/types/LedgerStruct.sol";
+import {AssetsDistribution, UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
 import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
 import {console} from "forge-std/console.sol";
 
@@ -79,7 +79,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             //Decode the payload
             OperationData memory operationData = abi.decode(payload, (OperationData));
 
-            //Call strategyVaultLedger to handle the operation
+            //Call strategyVaultLedger
             IStrategyVaultLedger(ledger).handleOpFromVault(
                 payloadType, strategyVaultCCmessage.srcChainId, operationData
             );
@@ -88,15 +88,16 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             (uint256 periodId, AssetsDistribution memory assetsDistribution) =
                 abi.decode(payload, (uint256, AssetsDistribution));
 
-            //Call Protocol Vault to handle the operation
+            //Call Protocol Vault
             IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            //UserClaimedInfo memory userClaimedInfo = abi.decode(payload, (UserClaimedInfo));
-            //Call strategyVaultLedger to handle the operation
-            // IStrategyVaultLedger(ledger).handleUserClaimed(strategyVaultCCmessage.srcChainId, userClaimedInfo);
-        }
-        else {
+            (uint256 periodId, UpdateUserClaim[] memory updateUserClaims) =
+                abi.decode(payload, (uint256, UpdateUserClaim[]));
+
+            //Call Protocol Vault
+            IProtocolVault(vault).updateUnClaimed(periodId, updateUserClaims);
+        } else {
             revert InvalidPayloadType();
         }
     }

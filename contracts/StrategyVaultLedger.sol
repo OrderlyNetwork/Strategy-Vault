@@ -474,7 +474,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             payloadType: PayloadType.UPDATE_USER_CLAIM,
             srcChainId: uint32(block.chainid),
             dstChainId: chainId,
-            payload: abi.encode(periodId, updateUserClaims)
+            payload: abi.encode(periodId,updateUserClaims)
         });
         //cross-chain
         IVaultCrossChainManager(crossChainManager).sendMessage(message);
