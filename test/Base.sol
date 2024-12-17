@@ -11,10 +11,11 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
-import {StrategyVaultLedger} from "../contracts/StrategyVaultLedger.sol";
+import {StrategyVaultLedger, UpdateUserClaim} from "../contracts/StrategyVaultLedger.sol";
 import {MockSVLedger} from "./MockSVLedger.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 // Mock ERC20 token contract
 
@@ -36,6 +37,16 @@ contract Base is TestHelperOz5 {
     address public sp = address(0x2);
     address public user = address(0x1);
     address public operator = address(0x5);
+
+    address public userA = address(0x1);
+    address public userB = address(0x2);
+    address public spA = address(0x3);
+    address public spB = address(0x4);
+
+    bytes32 spA_id = keccak256(abi.encodePacked(spA));
+    bytes32 spB_id = keccak256(abi.encodePacked(spB));
+    bytes32 userA_id = keccak256(abi.encodePacked(userA,ORDERLY_BROKER));
+    bytes32 userB_id = keccak256(abi.encodePacked(userB,ORDERLY_BROKER));
 
     address engine;
     uint256 enginePrivateKey;
@@ -100,8 +111,8 @@ contract Base is TestHelperOz5 {
         bVaultCrossChainManager.setEid(evmChainId, srcEid);
 
         //set peer
-        aVaultCrossChainManager.setPeer(ledgerEid,addressToBytes32(address(bVaultCrossChainManager)));
-        bVaultCrossChainManager.setPeer(srcEid,addressToBytes32(address(aVaultCrossChainManager)));
+        aVaultCrossChainManager.setPeer(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+        bVaultCrossChainManager.setPeer(srcEid, addressToBytes32(address(aVaultCrossChainManager)));
         //console.logBytes32(aVaultCrossChainManager.peers(LEDGER_EID));
         //set options
         aVaultCrossChainManager.setOptions(PayloadType.LP_DEPOSIT, 120000, 0);
@@ -142,7 +153,6 @@ contract Base is TestHelperOz5 {
         //mint token
         mockToken.mint(user, 100000e6);
         mockToken.mint(sp, 100000e6);
-
         //approve
         vm.prank(user);
         mockToken.approve(address(protocolVault), 100e6);
@@ -196,5 +206,18 @@ contract Base is TestHelperOz5 {
 
     function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
         return keccak256(abi.encodePacked(address(protocolVault), brokerHash));
+    }
+
+    function _getUpdateUnclaimedSignature(
+        uint32 chainId,
+        uint256 _periodId,
+        bytes32 _vaultId,
+        UpdateUserClaim[] memory updateUserClaims
+    ) internal view returns (bytes memory) {
+        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _vaultId, updateUserClaims));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
     }
 }

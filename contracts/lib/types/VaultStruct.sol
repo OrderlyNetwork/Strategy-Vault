@@ -34,6 +34,12 @@ struct WithdrawParams {
     bytes32 brokerHash;
 }
 
+struct ClaimParams {
+    RoleType roleType;
+    address token;
+    uint256 amount;
+    bytes32 brokerHash;
+}
 struct OperationData {
     ///@dev USER or PROTOCOL
     VaultType vaultType;

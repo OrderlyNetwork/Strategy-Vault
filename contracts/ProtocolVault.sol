@@ -9,6 +9,7 @@ import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {
     VaultType,
     RoleType,
+    ClaimParams,
     DepositParams,
     WithdrawParams,
     OperationData,
@@ -121,7 +122,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         uint256 amount = withdrawParams.amount;
         PayloadType payloadType = withdrawParams.payloadType;
 
-        _vailidateBasicInfo(token, brokerHash);
+        _validateBasicInfo(token, brokerHash);
 
         //construct OperationData
         OperationData memory data = _getOperationData(payloadType, msg.sender, amount, token, brokerHash);
@@ -139,23 +140,27 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         emit OperationExecuted(payloadType, data);
     }
 
-    function claim(RoleType roleType, uint256 amount, bytes32 brokerHash, address token) external {
+    function claim(ClaimParams memory claimParams) external {
         bytes32 id;
-
-        if (roleType == RoleType.LP) {
+        bytes32 brokerHash = claimParams.brokerHash;
+        
+        if (claimParams.roleType == RoleType.LP) {
             id = _getAccountId(msg.sender, brokerHash);
-            _valitateClaim(id, amount);
-        } else if (roleType == RoleType.SP) {
+        } else if (claimParams.roleType == RoleType.SP) {
             id = _getStrategyProviderId(msg.sender, brokerHash);
-            _valitateClaim(id, amount);
         } else {
             revert InvalidRoleType();
         }
+
+        //check
+        uint256 amount = claimParams.amount;
+        _valitateClaim(id, amount);
+
         //effect
         userClaimedById[id].unClaimedAssets -= amount;
 
         //transfer to user
-        IERC20(token).safeTransfer(msg.sender, amount);
+        IERC20(claimParams.token).safeTransfer(msg.sender, amount);
 
         emit UserClaimed(amount, userClaimedById[id].requestIds);
     }
@@ -252,7 +257,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         internal
         view
     {
-        _vailidateBasicInfo(token, brokerHash);
+        _validateBasicInfo(token, brokerHash);
 
         if (
             amount == 0 || (payloadType == PayloadType.LP_DEPOSIT && amount < minDepositForLp)
@@ -260,7 +265,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         ) revert InvalidDepositAmount();
     }
 
-    function _vailidateBasicInfo(address token, bytes32 brokerHash) internal view {
+    function _validateBasicInfo(address token, bytes32 brokerHash) internal view {
         if (!isAllowedToken[token]) revert TokenNotAllowed();
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();
     }

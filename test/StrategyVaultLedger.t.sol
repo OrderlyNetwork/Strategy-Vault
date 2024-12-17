@@ -27,17 +27,6 @@ contract StrategyVaultLedgerTest is Base {
     uint256 assetDecimal = 1e6;
     uint256 priceDecimal = 1e6;
     uint256 periodId;
-
-    address public userA = address(0x1);
-    address public userB = address(0x2);
-    address public spA = address(0x3);
-    address public spB = address(0x4);
-
-    bytes32 spA_id = keccak256(abi.encodePacked(spA));
-    bytes32 spB_id = keccak256(abi.encodePacked(spB));
-    bytes32 userA_id = keccak256(abi.encodePacked(userA));
-    bytes32 userB_id = keccak256(abi.encodePacked(userB));
-
     bytes32 vaultId;
 
     bytes32[] public spIds;
@@ -487,19 +476,6 @@ contract StrategyVaultLedgerTest is Base {
         AssetsDistribution[] memory assetsDistributions
     ) internal view returns (bytes memory) {
         bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, assetsDistributions));
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
-        bytes memory signature = abi.encodePacked(r, s, v);
-        return signature;
-    }
-
-    function _getUpdateUnclaimedSignature(
-        uint32 chainId,
-        uint256 _periodId,
-        bytes32 _vaultId,
-        UpdateUserClaim[] memory updateUserClaims
-    ) internal view returns (bytes memory) {
-        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _vaultId, updateUserClaims));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);

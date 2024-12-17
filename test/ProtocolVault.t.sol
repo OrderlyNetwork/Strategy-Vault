@@ -7,11 +7,13 @@ import {console} from "forge-std/console.sol";
 import {
     VaultType,
     RoleType,
+    ClaimParams,
     DepositParams,
     WithdrawParams,
     OperationData,
     UserClaimedInfo
 } from "../contracts/lib/types/VaultStruct.sol";
+import {UpdateUserClaim} from "../contracts/StrategyVaultLedger.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
 
@@ -105,7 +107,7 @@ contract TestProtocolVault is Base {
             amount: withdrawShares,
             brokerHash: ORDERLY_BROKER
         });
-        vm.prank(user); 
+        vm.prank(user);
         protocolVault.withdraw{value: nativeFee}(withdrawParams);
 
         //LZ
@@ -133,7 +135,7 @@ contract TestProtocolVault is Base {
         //Initialize
         svLedger.setFundSshares(spId, shares);
         //Withdraw
-        
+
         vm.prank(sp);
         uint256 withdrawShares = 10e6;
         WithdrawParams memory withdrawParams = WithdrawParams({
@@ -170,16 +172,37 @@ contract TestProtocolVault is Base {
         verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
     }
 
-    // function deposit(PayloadType payloadType, uint256 amount, address _user) public {
-    //     uint256 nativeFee = getEstimateFee();
-    //     DepositParams memory depositParams = DepositParams({
-    //         payloadType: payloadType,
-    //         receiver: _user,
-    //         token: address(mockToken),
-    //         amount: amount,
-    //         brokerHash: ORDERLY_BROKER
-    //     });
-    //     // Call deposit function
-    //     protocolVault.deposit{value: nativeFee}(depositParams);
-    // }
+    function testLPClaim() public {
+        //update user claim info
+        uint256 assetDecimal = 1e6;
+        uint256 periodId;
+        bytes32 vaultId;
+
+        UpdateUserClaim[] memory updateUserClaims = new UpdateUserClaim[](2);
+        updateUserClaims[0] =
+            UpdateUserClaim({userId: userA_id, amount: 1000 * assetDecimal, requestId: keccak256(abi.encode(1))});
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, updateUserClaims);
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, updateUserClaims, signature);
+
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        assertEq(userClaimedInfo_A.unClaimedAssets, 1000 * assetDecimal);
+        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
+
+        //LP claim 
+        mockToken.mint(address(protocolVault), 100000e6);
+        uint256 amount = 100e6;
+
+        ClaimParams memory claimParams =
+            ClaimParams({roleType: RoleType.LP, token: address(mockToken), amount: amount, brokerHash: ORDERLY_BROKER});
+        vm.prank(userA);
+        protocolVault.claim(claimParams);
+    }
 }
