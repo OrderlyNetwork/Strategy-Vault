@@ -483,7 +483,7 @@ contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     }
     //--------------------------------------CONFIG--------------------------------------------
 
-    function setFeeRate(bytes32[] calldata strategyProviderIds) external {}
+    function setFeeRate(bytes32[] calldata strategyProviderIds) external onlyOwner{}
 
     function setCrossChainManagerAddress(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;
