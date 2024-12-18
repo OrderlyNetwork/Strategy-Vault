@@ -13,7 +13,7 @@ import {
     OperationData,
     UserClaimedInfo
 } from "../contracts/lib/types/VaultStruct.sol";
-import {UpdateUserClaim} from "../contracts/StrategyVaultLedger.sol";
+import {UpdateUserClaim} from "../contracts/ProtocolVaultLedger.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
 

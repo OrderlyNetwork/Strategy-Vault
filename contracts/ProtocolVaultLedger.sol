@@ -30,7 +30,7 @@ import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
 import {console} from "forge-std/console.sol";
 //todo emit not revert from cc
 
-contract StrategyVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
+contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
     using Math for uint256;
 
     uint256 public priceDecimal;

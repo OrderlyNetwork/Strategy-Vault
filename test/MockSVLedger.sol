@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-import "../contracts/StrategyVaultLedger.sol";
+import "../contracts/ProtocolVaultLedger.sol";
 
-contract MockSVLedger is StrategyVaultLedger {
+contract MockSVLedger is ProtocolVaultLedger {
     function initializeStrategyFund(
         uint256 _mainShares,
         bytes32[] memory spIds,

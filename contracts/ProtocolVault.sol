@@ -315,14 +315,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     }
 
     function _getAccountId(address account, bytes32 brokerHash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(account, brokerHash));
+        return keccak256(abi.encode(account, brokerHash));
     }
 
     function _getStrategyProviderId(address strategyProvider, bytes32 brokerHash) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(address(this), strategyProvider, brokerHash));
+        return keccak256(abi.encode(address(this), strategyProvider, brokerHash));
     }
 
     function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(address(this), brokerHash));
+        return keccak256(abi.encode(address(this), brokerHash));
     }
 }

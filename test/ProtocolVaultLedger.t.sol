@@ -18,11 +18,11 @@ import {
     UpdateUserClaim,
     AllocateFundRes,
     StrategyFundState
-} from "../contracts/StrategyVaultLedger.sol";
+} from "../contracts/ProtocolVaultLedger.sol";
 import {UserClaimedInfo} from "../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-contract StrategyVaultLedgerTest is Base {
+contract ProtocolVaultTest is Base {
     uint256 shareDecimal = 1e6;
     uint256 assetDecimal = 1e6;
     uint256 priceDecimal = 1e6;
@@ -61,7 +61,7 @@ contract StrategyVaultLedgerTest is Base {
 
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-
+    
         vm.startPrank(operator);
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, updateUserClaims, signature);
 

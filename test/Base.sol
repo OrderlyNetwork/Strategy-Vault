@@ -11,7 +11,7 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
-import {StrategyVaultLedger, UpdateUserClaim} from "../contracts/StrategyVaultLedger.sol";
+import {ProtocolVaultLedger, UpdateUserClaim} from "../contracts/ProtocolVaultLedger.sol";
 import {MockSVLedger} from "./MockSVLedger.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
@@ -43,10 +43,10 @@ contract Base is TestHelperOz5 {
     address public spA = address(0x3);
     address public spB = address(0x4);
 
-    bytes32 spA_id = keccak256(abi.encodePacked(spA));
-    bytes32 spB_id = keccak256(abi.encodePacked(spB));
-    bytes32 userA_id = keccak256(abi.encodePacked(userA,ORDERLY_BROKER));
-    bytes32 userB_id = keccak256(abi.encodePacked(userB,ORDERLY_BROKER));
+    bytes32 spA_id = _getStrategyProviderId(spA, ORDERLY_BROKER);
+    bytes32 spB_id = _getStrategyProviderId(spB, ORDERLY_BROKER);
+    bytes32 userA_id = _getAccountId(userA, ORDERLY_BROKER);
+    bytes32 userB_id = _getAccountId(userB, ORDERLY_BROKER);
 
     address engine;
     uint256 enginePrivateKey;
@@ -61,6 +61,17 @@ contract Base is TestHelperOz5 {
     VaultCrossChainManager aVaultCrossChainManager;
     VaultCrossChainManager bVaultCrossChainManager;
 
+    function testGetComputation() public view {
+        // console.log("sp address", spA);
+        // console.log("protocol vault address", address(protocolVault));
+        // console.log("broker hash");
+        // console.logBytes32(ORDERLY_BROKER);
+        // console.log("sp id");
+
+        bytes32 spAid = _getStrategyProviderId(0x4A5c7C5633bAF55dDD46B6B9cAF084E839BDa895, ORDERLY_BROKER);
+        console.logBytes32(spAid);
+    }
+
     function setUp() public virtual override {
         // Call the base setup function from the TestHelperOz5 contract
         super.setUp();
@@ -71,7 +82,7 @@ contract Base is TestHelperOz5 {
         // Deploy the StrategyVaultLedger contract
         address svLedgerImpl = address(new MockSVLedger());
         address svLedgerProxy = address(
-            new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(StrategyVaultLedger.initialize.selector, owner))
+            new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(ProtocolVaultLedger.initialize.selector, owner))
         );
         svLedger = MockSVLedger(svLedgerProxy);
         vm.prank(owner);
@@ -197,15 +208,15 @@ contract Base is TestHelperOz5 {
     }
 
     function _getAccountId(address account, bytes32 brokerHash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(account, brokerHash));
+        return keccak256(abi.encode(account, brokerHash));
     }
 
     function _getStrategyProviderId(address strategyProvider, bytes32 brokerHash) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(address(protocolVault), strategyProvider, brokerHash));
+        return keccak256(abi.encode(address(protocolVault), strategyProvider, brokerHash));
     }
 
     function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(address(protocolVault), brokerHash));
+        return keccak256(abi.encode(address(protocolVault), brokerHash));
     }
 
     function _getUpdateUnclaimedSignature(
