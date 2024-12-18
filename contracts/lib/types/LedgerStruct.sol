@@ -30,7 +30,7 @@ struct StrategyFund {
     uint256 performanceFee;
     ///@dev fund assets after performance fee
     uint256 fundAssetsAfterFee;
-    ///@dev deposit assets that waiting for handle
+    ///@dev sp deposit assets that waiting for handle
     uint256 unAllocatedAssets;
     ///@dev withdraw shares that unallocated to assets
     uint256 frozenShares;

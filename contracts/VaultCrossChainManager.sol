@@ -32,7 +32,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     address public ledger;
     address public vault;
 
-    mapping(uint32 => uint32) public chainIdToEid;
+    mapping(uint256 => uint32) public chainIdToEid;
     mapping(PayloadType => LzOptions) public msgOptions;
 
     receive() external payable {}

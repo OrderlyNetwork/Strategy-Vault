@@ -53,9 +53,9 @@ struct OperationData {
     uint256 amount;
     ///@dev keccak256(abi.encodePacked(brokerHash, vault address))
     bytes32 vaultId;
-    ///@dev keccak256(abi.encodePacked(receiver, brokerHash))
+    ///@dev bytes32(0)for SP_Deposit, account id for LP_Deposit
     bytes32 accountId;
-    ///@dev bytes32(0)for LP_Deposit, keccak256(vault address, sp address, brokerHash)) for SP_Deposit
+    ///@dev bytes32(0)for LP_Deposit, sp id for SP_Deposit
     bytes32 strategyProviderId;
     ///@dev token hash
     bytes32 tokenHash;

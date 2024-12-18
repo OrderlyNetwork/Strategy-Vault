@@ -81,7 +81,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         crossChainManager = _crossChainManager;
         dexVault = _dexVault;
-        
+
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
 
@@ -100,7 +100,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         _validateDeposit(payloadType, token, amount, brokerHash);
 
-        //construct OperationData cross chain message
+        //construct cross chain message
         OperationData memory data = _getOperationData(payloadType, depositParams.receiver, amount, token, brokerHash);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: payloadType,
@@ -109,6 +109,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
             payload: abi.encode(data)
         });
 
+        chainNonce++;
         //transfer token to this contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -131,10 +132,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: payloadType,
-            srcChainId: uint32(block.chainid),
+            srcChainId: block.chainid,
             dstChainId: LEDGER_CHAIN_ID,
             payload: abi.encode(data)
         });
+
+        chainNonce++;
 
         //cross-chain message
         IVaultCrossChainManager(crossChainManager).sendMessage{value: msg.value}(message);
@@ -145,7 +148,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     function claim(ClaimParams memory claimParams) external {
         bytes32 id;
         bytes32 brokerHash = claimParams.brokerHash;
-        
+
         if (claimParams.roleType == RoleType.LP) {
             id = _getAccountId(msg.sender, brokerHash);
         } else if (claimParams.roleType == RoleType.SP) {
@@ -285,7 +288,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         address token,
         bytes32 brokerHash
     ) internal view returns (OperationData memory) {
-        bytes32 vaultId = _getVaultId(brokerHash);
         bytes32 accountId;
         bytes32 strategyProviderId;
 
@@ -297,9 +299,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
             revert InvalidPayloadType();
         }
 
+        //construct OperationData cross chain message
+        bytes32 vaultId = _getVaultId(brokerHash);
         bytes32 tokenHash = keccak256(abi.encodePacked(token));
 
-        //construct OperationData cross chain message
         OperationData memory operationData = OperationData({
             vaultType: VaultType.PROTOCOL,
             sender: msg.sender,
