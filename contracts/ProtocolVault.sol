@@ -3,7 +3,8 @@ pragma solidity ^0.8.26;
 
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {
@@ -23,8 +24,6 @@ import {console} from "forge-std/console.sol";
 // import "hardhat/console.sol";
 
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
-    using SafeERC20 for IERC20;
-
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     uint32 constant LEDGER_CHAIN_ID = 291;
     uint32 constant LEDGER_EID = 30213;
@@ -104,14 +103,15 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         OperationData memory data = _getOperationData(payloadType, depositParams.receiver, amount, token, brokerHash);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: payloadType,
-            srcChainId: uint32(block.chainid),
+            srcChainId: block.chainid,
             dstChainId: LEDGER_CHAIN_ID,
             payload: abi.encode(data)
         });
 
         chainNonce++;
+
         //transfer token to this contract
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        SafeTransferLib.safeTransferFrom(ERC20(token), msg.sender, address(this), amount);
 
         //cross-chain
         IVaultCrossChainManager(crossChainManager).sendMessage{value: msg.value}(message);
@@ -165,7 +165,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         userClaimedById[id].unClaimedAssets -= amount;
 
         //transfer to user
-        IERC20(claimParams.token).safeTransfer(msg.sender, amount);
+        SafeTransferLib.safeTransfer(ERC20(claimParams.token), msg.sender, amount);
 
         emit UserClaimed(amount, userClaimedById[id].requestIds);
     }

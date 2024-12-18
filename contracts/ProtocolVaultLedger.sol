@@ -109,29 +109,32 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         bytes32 accountId = operationData.accountId;
         bytes32 spId = operationData.strategyProviderId;
 
+        //gas optimization
         Account storage account = accountById[accountId];
         StrategyFund storage strategyFund = strategyFundById[spId];
 
+        uint256 amount = operationData.amount;
+
         if (payloadType == PayloadType.LP_DEPOSIT) {
-            account.unAllocatedAssets += operationData.amount;
-            account.assets += operationData.amount;
+            account.unAllocatedAssets += amount;
+            account.assets += amount;
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
-            if (operationData.amount + account.frozenShares > account.shares) {
+            if (amount + account.frozenShares > account.shares) {
                 revert NotEnoughWithdrawShare();
             }
-            account.frozenShares += operationData.amount;
+            account.frozenShares += amount;
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             //check sp id is allowed
             if (!isAllowedStrategyProvider[spId]) {
                 revert NotAllowedStrategyProvider();
             }
             if (payloadType == PayloadType.SP_DEPOSIT) {
-                strategyFund.unAllocatedAssets += operationData.amount;
+                strategyFund.unAllocatedAssets += amount;
             } else {
-                if (operationData.amount + strategyFund.frozenShares > strategyFund.totalShares) {
+                if (amount + strategyFund.frozenShares > strategyFund.totalShares) {
                     revert NotEnoughWithdrawShare();
                 }
-                strategyFund.frozenShares += operationData.amount;
+                strategyFund.frozenShares += amount;
             }
         } else {
             revert InvalidPayloadType();
@@ -474,7 +477,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             payloadType: PayloadType.UPDATE_USER_CLAIM,
             srcChainId: uint32(block.chainid),
             dstChainId: chainId,
-            payload: abi.encode(periodId,updateUserClaims)
+            payload: abi.encode(periodId, updateUserClaims)
         });
         //cross-chain
         IVaultCrossChainManager(crossChainManager).sendMessage(message);
@@ -483,7 +486,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
     }
     //--------------------------------------CONFIG--------------------------------------------
 
-    function setFeeRate(bytes32[] calldata strategyProviderIds) external onlyOwner{}
+    function setFeeRate(bytes32[] calldata strategyProviderIds) external onlyOwner {}
 
     function setCrossChainManagerAddress(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;

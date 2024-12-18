@@ -13,7 +13,9 @@ enum PayloadType {
 struct StrategyVaultCCMessage {
     /// @dev payloadType is the type of the payload
     PayloadType payloadType;
+    /// @dev source chainId
     uint256 srcChainId;
+    /// @dev destination chainId
     uint256 dstChainId;
     /// @dev payload is the data to be sent
     bytes payload;
