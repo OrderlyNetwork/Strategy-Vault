@@ -67,6 +67,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function initialize(
+        address _dexVault,
         address _crossChainManager,
         address owner,
         address token,
@@ -79,7 +80,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         __UUPSUpgradeable_init();
 
         crossChainManager = _crossChainManager;
-
+        dexVault = _dexVault;
+        
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
 

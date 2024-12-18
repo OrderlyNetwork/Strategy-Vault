@@ -43,6 +43,8 @@ contract Base is TestHelperOz5 {
     address public spA = address(0x3);
     address public spB = address(0x4);
 
+    address public dexVault;
+
     bytes32 spA_id = _getStrategyProviderId(spA, ORDERLY_BROKER);
     bytes32 spB_id = _getStrategyProviderId(spB, ORDERLY_BROKER);
     bytes32 userA_id = _getAccountId(userA, ORDERLY_BROKER);
@@ -146,7 +148,13 @@ contract Base is TestHelperOz5 {
             new ERC1967Proxy(
                 protocolVaultImpl,
                 abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector, address(aVaultCrossChainManager), owner, address(mockToken), 0, 0
+                    ProtocolVault.initialize.selector,
+                    dexVault,
+                    address(aVaultCrossChainManager),
+                    owner,
+                    address(mockToken),
+                    0,
+                    0
                 )
             )
         );

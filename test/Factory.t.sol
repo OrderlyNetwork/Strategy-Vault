@@ -22,6 +22,8 @@ contract Create3FactoryTest is Test {
     MockERC20 mockToken;
 
     address vaultCrossChainManager = address(0x123);
+    address dexVault = address(0x456);
+
     bytes32 salt = keccak256(abi.encodePacked("test_salt"));
 
     address owner = address(0x01);
@@ -41,7 +43,13 @@ contract Create3FactoryTest is Test {
             abi.encode(
                 protocolVaultImpl,
                 abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector, address(vaultCrossChainManager), owner, address(mockToken), 0, 0
+                    ProtocolVault.initialize.selector,
+                    dexVault,
+                    address(vaultCrossChainManager),
+                    owner,
+                    address(mockToken),
+                    0,
+                    0
                 )
             )
         );
