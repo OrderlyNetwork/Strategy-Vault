@@ -10,7 +10,7 @@ import {OAppUpgradeable, MessagingFee, Origin} from "./lib/layerzero-v2/oapp/OAp
 
 // dev imports
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
-import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
+import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
@@ -80,7 +80,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             OperationData memory operationData = abi.decode(payload, (OperationData));
 
             //Call strategyVaultLedger
-            IStrategyVaultLedger(ledger).handleOpFromVault(
+            IProtocolVaultLedger(ledger).handleOpFromVault(
                 payloadType, strategyVaultCCmessage.srcChainId, operationData
             );
         } else if (payloadType == PayloadType.ASSETS_DISTRIBUTION) {

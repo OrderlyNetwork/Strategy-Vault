@@ -155,7 +155,7 @@ contract TestProtocolVault is Base {
         assertEq(sf.frozenShares, withdrawShares);
     }
 
-    function testFailedProtocolVaultLPWithdrawNotEnoughShares() public {
+    function testEmitFailedProtocolVaultLPWithdrawNotEnoughShares() public {
         uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
         uint256 withdrawShares = 10e6;
         WithdrawParams memory withdrawParams = WithdrawParams({

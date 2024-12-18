@@ -21,19 +21,17 @@ import {
 import {VaultType, OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
-interface IStrategyVaultLedger {
+interface IProtocolVaultLedger {
     error InvalidPeriodId();
     error InvalidCaller();
     error InsufficientBalance();
     error AlreadyAllocatedShare();
-    error NotEnoughWithdrawShare();
-    error InvalidPayloadType();
-    error NotAllowedStrategyProvider(); //0x4767d1b2
     error NotEnoughLPDeposit();
     error NotEnoughSPDeposit();
     error InvalidOpType();
     error InvalidTotalAssets();
-
+    error NotEnoughFrozenShare();
+    
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
         uint256 periodId,
@@ -58,6 +56,10 @@ interface IStrategyVaultLedger {
     event OperatorManagerSet(address operatorAddress);
     event AssetsDistrubuted(uint256 periodId, bytes32 vaultId);
     event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, UpdateUserClaim[] updateUserClaims);
+    event NotAllowedStrategyProvider(bytes32 spId);
+    event NotEnoughWithdrawShare();
+    event InvalidPayloadType();
+
     //--------------------------------------FROM VAULT-----------------------------------------
 
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData) external;

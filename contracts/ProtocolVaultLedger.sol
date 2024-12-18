@@ -26,11 +26,10 @@ import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
 import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
-import {IStrategyVaultLedger} from "./interfaces/IStrategyVaultLedger.sol";
+import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
 import {console} from "forge-std/console.sol";
-//todo emit not revert from cc
 
-contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrategyVaultLedger {
+contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVaultLedger {
     using Math for uint256;
 
     uint256 public priceDecimal;
@@ -120,24 +119,26 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
             account.assets += amount;
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
             if (amount + account.frozenShares > account.shares) {
-                revert NotEnoughWithdrawShare();
+                emit NotEnoughWithdrawShare();
             }
             account.frozenShares += amount;
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             //check sp id is allowed
             if (!isAllowedStrategyProvider[spId]) {
-                revert NotAllowedStrategyProvider();
+                //revert NotAllowedStrategyProvider();
+                emit NotAllowedStrategyProvider(spId);
             }
+
             if (payloadType == PayloadType.SP_DEPOSIT) {
                 strategyFund.unAllocatedAssets += amount;
             } else {
                 if (amount + strategyFund.frozenShares > strategyFund.totalShares) {
-                    revert NotEnoughWithdrawShare();
+                    emit NotEnoughWithdrawShare();
                 }
                 strategyFund.frozenShares += amount;
             }
         } else {
-            revert InvalidPayloadType();
+            emit InvalidPayloadType();
         }
 
         emit OperationHandled(payloadType, chainId, operationData);
@@ -607,7 +608,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         Account storage account = accountById[accountId];
 
         if (amount > account.frozenShares) {
-            revert NotEnoughWithdrawShare();
+            revert NotEnoughFrozenShare();
         }
 
         //effect
@@ -644,7 +645,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IStrat
         PendingState storage pendingState = strategyFund.pendingState;
 
         if (amount > strategyFund.frozenShares) {
-            revert NotEnoughWithdrawShare();
+            revert NotEnoughFrozenShare();
         }
         uint256 spWithdrawAmount =
             _convertToAssets(amount, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor);
