@@ -113,7 +113,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         StrategyFund storage strategyFund = strategyFundById[spId];
 
         uint256 amount = operationData.amount;
-
+        
         if (payloadType == PayloadType.LP_DEPOSIT) {
             account.unAllocatedAssets += amount;
             account.assets += amount;

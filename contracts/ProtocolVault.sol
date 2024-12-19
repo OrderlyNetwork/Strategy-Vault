@@ -26,7 +26,8 @@ import {console} from "forge-std/console.sol";
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     uint32 constant LEDGER_CHAIN_ID = 291;
-    uint32 constant LEDGER_EID = 30213;
+
+    uint32 public ledgerEid;
 
     address public dexVault;
     address public crossChainManager;
@@ -84,6 +85,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
 
+        ledgerEid = 30213;
         minDepositForLp = _minDepositForLp;
         minDepositForSp = _minDepositForSp;
     }
@@ -98,7 +100,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         PayloadType payloadType = depositParams.payloadType;
 
         _validateDeposit(payloadType, token, amount, brokerHash);
-
         //construct cross chain message
         OperationData memory data = _getOperationData(payloadType, depositParams.receiver, amount, token, brokerHash);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
@@ -125,7 +126,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         uint256 amount = withdrawParams.amount;
         PayloadType payloadType = withdrawParams.payloadType;
 
-        _validateBasicInfo(token, brokerHash);
+        _validateBasic(token, brokerHash);
 
         //construct OperationData
         OperationData memory data = _getOperationData(payloadType, msg.sender, amount, token, brokerHash);
@@ -232,6 +233,9 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     function emergencyWithdraw(address to, uint256 amount) external onlyOwner {
         //withdraw all token to owner
     }
+    function setLedgerEid(uint32 eid) external onlyOwner {
+        ledgerEid = eid;
+    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
@@ -240,7 +244,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         return userClaimedById[userId];
     }
 
-    function quoteOperation() external view returns (uint256) {
+    function quoteOperation() public view returns (uint256) {
         OperationData memory data = _getOperationData(PayloadType.LP_DEPOSIT, address(0), 0, address(0), ORDERLY_BROKER);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: PayloadType.LP_DEPOSIT,
@@ -251,7 +255,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         bytes memory lzMessage = abi.encode(message);
 
         (uint256 nativeFee,) =
-            IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, PayloadType.LP_DEPOSIT, false);
+            IVaultCrossChainManager(crossChainManager).quote(ledgerEid, lzMessage, PayloadType.LP_DEPOSIT, false);
         return nativeFee;
     }
     /*=========================================================================================
@@ -262,7 +266,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         internal
         view
     {
-        _validateBasicInfo(token, brokerHash);
+        _validateBasic(token, brokerHash);
 
         if (
             amount == 0 || (payloadType == PayloadType.LP_DEPOSIT && amount < minDepositForLp)
@@ -270,7 +274,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         ) revert InvalidDepositAmount();
     }
 
-    function _validateBasicInfo(address token, bytes32 brokerHash) internal view {
+    function _validateBasic(address token, bytes32 brokerHash) internal view {
+        if (msg.value < quoteOperation()) revert NotEnoughFee();
         if (!isAllowedToken[token]) revert TokenNotAllowed();
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();
     }

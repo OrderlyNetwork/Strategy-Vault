@@ -19,6 +19,7 @@ import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
 
 contract TestProtocolVault is Base {
     error NotEnoughWithdrawShare();
+    error NotEnoughFee();
 
     function setUp() public override {
         super.setUp();
@@ -196,7 +197,7 @@ contract TestProtocolVault is Base {
         assertEq(userClaimedInfo_A.unClaimedAssets, 1000 * assetDecimal);
         assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
 
-        //LP claim 
+        //LP claim
         mockToken.mint(address(protocolVault), 100000e6);
         uint256 amount = 100e6;
 
@@ -204,5 +205,43 @@ contract TestProtocolVault is Base {
             ClaimParams({roleType: RoleType.LP, token: address(mockToken), amount: amount, brokerHash: ORDERLY_BROKER});
         vm.prank(userA);
         protocolVault.claim(claimParams);
+    }
+
+    function testRevertProtocolVaultLPDepositWithoutVaule() public {
+        //deal eth to cc contract on ledger
+        vm.deal(address(aVaultCrossChainManager), 10 ether);
+
+        uint256 amount = 100e6;
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: user,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        // Call deposit function
+
+        vm.prank(user);
+
+        vm.expectRevert(NotEnoughFee.selector);
+        protocolVault.deposit{value: 0}(depositParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+        (
+            , // accountId
+            uint256 assets, // assets
+            , // shares
+            uint256 unAllocatedAssets,
+            , // frozenShares
+            , // pendingShares
+                // enableClaimedAssets
+        ) = svLedger.accountById(accountId);
+
+        assertEq(unAllocatedAssets, 0);
+        assertEq(assets, 0);
     }
 }

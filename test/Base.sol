@@ -159,11 +159,12 @@ contract Base is TestHelperOz5 {
             )
         );
         protocolVault = ProtocolVault(proxy);
-
+           vm.prank(owner);
+        protocolVault.setLedgerEid(ledgerEid);
         vm.prank(owner);
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
-
+     
         //config cc contract
         vm.startPrank(owner);
         aVaultCrossChainManager.setVault(address(protocolVault));
