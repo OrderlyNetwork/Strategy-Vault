@@ -19,9 +19,9 @@ import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossC
 import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
 
 contract TestProtocolVault is Base {
-    error NotEnoughWithdrawShare();
     error NotEnoughFee();
     error EnforcedPause();
+    error NotEnoughUnclaimedAssets();
 
     function setUp() public override {
         super.setUp();
@@ -293,25 +293,18 @@ contract TestProtocolVault is Base {
             brokerHash: ORDERLY_BROKER
         });
         vm.prank(user);
+
         vm.expectRevert(NotEnoughFee.selector);
         protocolVault.withdraw{value: 0}(withdrawParams);
+    }
 
-        //LZ
-        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+    function testRevertClaimNotEnough() public {
+        ClaimParams memory claimParams =
+            ClaimParams({roleType: RoleType.LP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
+        vm.prank(userA);
 
-        //Check
-        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
-        (
-            , // accountId
-            , // assets
-            , // shares
-            ,
-            uint256 frozenShares, // frozenShares
-            , // pendingShares
-                // enableClaimedAssets
-        ) = svLedger.accountById(accountId);
-        assertEq(frozenShares, 0);
-        assertEq(protocolVault.chainNonce(), 0);
+        vm.expectRevert(NotEnoughUnclaimedAssets.selector);
+        protocolVault.claim(claimParams);
     }
 
     function testRevertPause() public {

@@ -8,6 +8,8 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
+import {VaultDepositFE, IDexVault} from "./interfaces/IDexVault.sol";
+
 import {
     VaultType,
     RoleType,
@@ -26,6 +28,7 @@ import {console} from "forge-std/console.sol";
 
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
+    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
     uint256 constant LEDGER_CHAIN_ID = 291;
 
     uint32 public ledgerEid;
@@ -189,16 +192,16 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         onlyVaultCrossChainManager
     {
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
-        //console.log("welcome to depositToStrategy");
-        // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
-        //     .VaultDepositFE({
-        //         accountId: //SP id
-        //         brokerHash:
-        //         tokenHash:
-        //         tokenAmount:
-        //     });
+
+        VaultDepositFE memory depositDataFe = VaultDepositFE({
+            accountId: vaultId,
+            brokerHash: ORDERLY_BROKER,
+            tokenHash: USDC_HASH,
+            tokenAmount: uint128(amount)
+        });
+
         //cal dex
-        //     IDexVault(orderlyDexVault).deposit();
+        IDexVault(dexVault).depositTo(address(this), depositDataFe);
 
         emit DepositToStrategy(periodId, vaultId, receiver, amount);
     }
@@ -307,19 +310,16 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         }
 
         //construct OperationData cross chain message
-        bytes32 vaultId = _getVaultId(brokerHash);
-        bytes32 tokenHash = keccak256(abi.encodePacked(token));
-
         OperationData memory operationData = OperationData({
             vaultType: VaultType.PROTOCOL,
             sender: msg.sender,
             receiver: receiver,
             chainNonce: chainNonce,
             amount: amount,
-            vaultId: vaultId,
+            vaultId: _getVaultId(brokerHash),
             accountId: accountId,
             strategyProviderId: strategyProviderId,
-            tokenHash: tokenHash,
+            tokenHash: _getTokenHash(token),
             brokerHash: brokerHash
         });
 
@@ -336,5 +336,9 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
         return keccak256(abi.encode(address(this), brokerHash));
+    }
+
+    function _getTokenHash(address token) internal pure returns (bytes32) {
+        return keccak256(abi.encode(token));
     }
 }
