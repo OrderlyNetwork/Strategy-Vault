@@ -162,11 +162,13 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         }
 
         //check
-        uint256 amount = claimParams.amount;
-        _valitateClaim(id, amount);
+        uint256 amount = userClaimedById[id].unClaimedAssets;
+        if (amount == 0) {
+            revert NotEnoughUnclaimedAssets();
+        }
 
         //effect
-        userClaimedById[id].unClaimedAssets -= amount;
+        userClaimedById[id].unClaimedAssets = 0;
 
         //transfer to user
         SafeTransferLib.safeTransfer(ERC20(claimParams.token), msg.sender, amount);
@@ -186,7 +188,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         external
         onlyVaultCrossChainManager
     {
-
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
         //console.log("welcome to depositToStrategy");
         // VaultTypes.VaultDepositFE memory depositDataFe = VaultTypes
@@ -285,12 +286,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         if (msg.value < quoteOperation()) revert NotEnoughFee();
         if (!isAllowedToken[token]) revert TokenNotAllowed();
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();
-    }
-
-    function _valitateClaim(bytes32 id, uint256 amount) internal view {
-        if (amount > userClaimedById[id].unClaimedAssets) {
-            revert NotEnoughUnclaimedAssets();
-        }
     }
 
     function _getOperationData(

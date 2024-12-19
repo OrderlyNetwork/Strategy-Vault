@@ -37,7 +37,6 @@ struct WithdrawParams {
 struct ClaimParams {
     RoleType roleType;
     address token;
-    uint256 amount;
     bytes32 brokerHash;
 }
 struct OperationData {

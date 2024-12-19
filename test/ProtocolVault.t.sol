@@ -167,13 +167,12 @@ contract TestProtocolVault is Base {
 
     function testLPClaim() public {
         //update user claim info
-        uint256 assetDecimal = 1e6;
         uint256 periodId;
         bytes32 vaultId;
+        uint256 amount = 100e6;
 
         UpdateUserClaim[] memory updateUserClaims = new UpdateUserClaim[](2);
-        updateUserClaims[0] =
-            UpdateUserClaim({userId: userA_id, amount: 1000 * assetDecimal, requestId: keccak256(abi.encode(1))});
+        updateUserClaims[0] = UpdateUserClaim({userId: userA_id, amount: amount, requestId: keccak256(abi.encode(1))});
 
         bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, updateUserClaims);
         //deal eth to cc contract on ledger
@@ -186,20 +185,21 @@ contract TestProtocolVault is Base {
 
         //check
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
-        assertEq(userClaimedInfo_A.unClaimedAssets, 1000 * assetDecimal);
+        assertEq(userClaimedInfo_A.unClaimedAssets, amount);
         assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
 
         //LP claim
-        uint256 amount = 100e6;
         mockToken.mint(address(protocolVault), amount);
 
         ClaimParams memory claimParams =
-            ClaimParams({roleType: RoleType.LP, token: address(mockToken), amount: amount, brokerHash: ORDERLY_BROKER});
+            ClaimParams({roleType: RoleType.LP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         vm.prank(userA);
         protocolVault.claim(claimParams);
 
         //check
+        userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
+        assertEq(userClaimedInfo_A.unClaimedAssets, 0);
     }
 
     function testUnpause() public {
