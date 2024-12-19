@@ -4,6 +4,8 @@ pragma solidity ^0.8.26;
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
@@ -23,10 +25,10 @@ import {console} from "forge-std/console.sol";
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
-contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
+contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
-    uint32 constant LEDGER_CHAIN_ID = 291;
-    
+    uint256 constant LEDGER_CHAIN_ID = 291;
+
     uint32 public ledgerEid;
     address public dexVault;
     address public crossChainManager;
@@ -78,6 +80,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
 
         __UUPSUpgradeable_init();
 
+        __Pausable_init();
+
         crossChainManager = _crossChainManager;
         dexVault = _dexVault;
 
@@ -93,7 +97,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     *                                       EXTERNAL
     *=========================================================================================*/
 
-    function deposit(DepositParams memory depositParams) external payable {
+    function deposit(DepositParams memory depositParams) external payable whenNotPaused {
         bytes32 brokerHash = depositParams.brokerHash;
         address token = depositParams.token;
         uint256 amount = depositParams.amount;
@@ -120,7 +124,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         emit OperationExecuted(payloadType, data);
     }
 
-    function withdraw(WithdrawParams memory withdrawParams) external payable {
+    function withdraw(WithdrawParams memory withdrawParams) external payable whenNotPaused {
         bytes32 brokerHash = withdrawParams.brokerHash;
         address token = withdrawParams.token;
         uint256 amount = withdrawParams.amount;
@@ -146,7 +150,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         emit OperationExecuted(payloadType, data);
     }
 
-    function claim(ClaimParams memory claimParams) external {
+    function claim(ClaimParams memory claimParams) external whenNotPaused {
         bytes32 id;
         bytes32 brokerHash = claimParams.brokerHash;
 
@@ -229,12 +233,17 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     function setMinDepositForSP(uint256 amount) external onlyOwner {
         minDepositForSp = amount;
     }
+
     function setLedgerEid(uint32 eid) external onlyOwner {
         ledgerEid = eid;
     }
 
-    function emergencyWithdraw(address to, uint256 amount) external onlyOwner {
-        //withdraw all token to owner
+    function emergencyPause() public whenNotPaused onlyOwner {
+        _pause();
+    }
+
+    function emergencyUnpause() public whenPaused onlyOwner {
+        _unpause();
     }
     /*=========================================================================================
     *                                       VIEW
@@ -248,8 +257,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         OperationData memory data = _getOperationData(PayloadType.LP_DEPOSIT, address(0), 0, address(0), ORDERLY_BROKER);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: PayloadType.LP_DEPOSIT,
-            srcChainId: uint32(block.chainid),
-            dstChainId: uint32(LEDGER_CHAIN_ID),
+            srcChainId: block.chainid,
+            dstChainId: LEDGER_CHAIN_ID,
             payload: abi.encode(data)
         });
         bytes memory lzMessage = abi.encode(message);

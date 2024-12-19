@@ -20,6 +20,7 @@ import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
 contract TestProtocolVault is Base {
     error NotEnoughWithdrawShare();
     error NotEnoughFee();
+    error EnforcedPause();
 
     function setUp() public override {
         super.setUp();
@@ -193,6 +194,27 @@ contract TestProtocolVault is Base {
         protocolVault.claim(claimParams);
     }
 
+    function testUnpause() public {
+        vm.prank(owner);
+        protocolVault.emergencyPause();
+        vm.prank(owner);
+        protocolVault.emergencyUnpause();
+        
+        uint256 nativeFee = getEstimateFee(PayloadType.LP_DEPOSIT);
+        uint256 amount = 100e6;
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: user,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        // Call deposit function
+
+        vm.prank(user);
+        protocolVault.deposit{value: nativeFee}(depositParams);
+    }
+
     function testEmitFailedProtocolVaultLPWithdrawNotEnoughShares() public {
         uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
         uint256 withdrawShares = 10e6;
@@ -282,5 +304,20 @@ contract TestProtocolVault is Base {
         ) = svLedger.accountById(accountId);
         assertEq(frozenShares, 0);
         assertEq(protocolVault.chainNonce(), 0);
+    }
+
+    function testRevertPause() public {
+        vm.prank(owner);
+        protocolVault.emergencyPause();
+        vm.expectRevert(EnforcedPause.selector);
+        protocolVault.deposit{value: 0}(
+            DepositParams({
+                payloadType: PayloadType.LP_DEPOSIT,
+                receiver: user,
+                token: address(mockToken),
+                amount: 100e6,
+                brokerHash: ORDERLY_BROKER
+            })
+        );
     }
 }
