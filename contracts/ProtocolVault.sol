@@ -26,8 +26,7 @@ import {console} from "forge-std/console.sol";
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVault {
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     uint32 constant LEDGER_CHAIN_ID = 291;
-
-    uint32 public ledgerEid;
+    uint32 constant LEDGER_EID = 30213;
 
     address public dexVault;
     address public crossChainManager;
@@ -85,7 +84,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
 
-        ledgerEid = 30213;
         minDepositForLp = _minDepositForLp;
         minDepositForSp = _minDepositForSp;
     }
@@ -233,9 +231,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
     function emergencyWithdraw(address to, uint256 amount) external onlyOwner {
         //withdraw all token to owner
     }
-    function setLedgerEid(uint32 eid) external onlyOwner {
-        ledgerEid = eid;
-    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
@@ -255,7 +250,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVau
         bytes memory lzMessage = abi.encode(message);
 
         (uint256 nativeFee,) =
-            IVaultCrossChainManager(crossChainManager).quote(ledgerEid, lzMessage, PayloadType.LP_DEPOSIT, false);
+            IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, PayloadType.LP_DEPOSIT, false);
         return nativeFee;
     }
     /*=========================================================================================
