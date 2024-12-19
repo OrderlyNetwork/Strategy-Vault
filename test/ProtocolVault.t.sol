@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Base} from "./Base.sol";
 import {console} from "forge-std/console.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {
     VaultType,
@@ -69,7 +70,9 @@ contract TestProtocolVault is Base {
         ) = svLedger.accountById(accountId);
         assertEq(unAllocatedAssets, amount);
         assertEq(assets, amount);
+
         assertEq(protocolVault.chainNonce(), 1);
+        assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), amount);
     }
 
     function testProtocolVaultSPDeposit() public {
@@ -95,7 +98,9 @@ contract TestProtocolVault is Base {
 
         StrategyFund memory sf = svLedger.getStrategyFund(spId);
         assertEq(sf.unAllocatedAssets, amount);
+
         assertEq(protocolVault.chainNonce(), 1);
+        assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), amount);
     }
 
     function testProtocolVaultLPWithdraw() public {
@@ -185,13 +190,16 @@ contract TestProtocolVault is Base {
         assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
 
         //LP claim
-        mockToken.mint(address(protocolVault), 100000e6);
         uint256 amount = 100e6;
+        mockToken.mint(address(protocolVault), amount);
 
         ClaimParams memory claimParams =
             ClaimParams({roleType: RoleType.LP, token: address(mockToken), amount: amount, brokerHash: ORDERLY_BROKER});
         vm.prank(userA);
         protocolVault.claim(claimParams);
+
+        //check
+        assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
     }
 
     function testUnpause() public {
@@ -199,7 +207,7 @@ contract TestProtocolVault is Base {
         protocolVault.emergencyPause();
         vm.prank(owner);
         protocolVault.emergencyUnpause();
-        
+
         uint256 nativeFee = getEstimateFee(PayloadType.LP_DEPOSIT);
         uint256 amount = 100e6;
         DepositParams memory depositParams = DepositParams({

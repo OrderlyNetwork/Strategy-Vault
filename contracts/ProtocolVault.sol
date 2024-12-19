@@ -5,7 +5,6 @@ import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/acces
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
