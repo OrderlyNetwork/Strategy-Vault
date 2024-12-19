@@ -68,6 +68,7 @@ contract TestProtocolVault is Base {
         ) = svLedger.accountById(accountId);
         assertEq(unAllocatedAssets, amount);
         assertEq(assets, amount);
+        assertEq(protocolVault.chainNonce(), 1);
     }
 
     function testProtocolVaultSPDeposit() public {
@@ -93,6 +94,7 @@ contract TestProtocolVault is Base {
 
         StrategyFund memory sf = svLedger.getStrategyFund(spId);
         assertEq(sf.unAllocatedAssets, amount);
+        assertEq(protocolVault.chainNonce(), 1);
     }
 
     function testProtocolVaultLPWithdraw() public {
@@ -154,23 +156,7 @@ contract TestProtocolVault is Base {
         StrategyFund memory sf = svLedger.getStrategyFund(spId);
 
         assertEq(sf.frozenShares, withdrawShares);
-    }
-
-    function testEmitFailedProtocolVaultLPWithdrawNotEnoughShares() public {
-        uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
-        uint256 withdrawShares = 10e6;
-        WithdrawParams memory withdrawParams = WithdrawParams({
-            payloadType: PayloadType.LP_WITHDRAW,
-            token: address(mockToken),
-            amount: withdrawShares,
-            brokerHash: ORDERLY_BROKER
-        });
-        protocolVault.withdraw{value: nativeFee}(withdrawParams);
-
-        //LZ
-        // vm.expectRevert(NotEnoughWithdrawShare.selector);
-
-        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+        assertEq(protocolVault.chainNonce(), 1);
     }
 
     function testLPClaim() public {
@@ -207,7 +193,25 @@ contract TestProtocolVault is Base {
         protocolVault.claim(claimParams);
     }
 
-    function testFailProtocolVaultLPDepositWithoutVaule() public {
+    function testEmitFailedProtocolVaultLPWithdrawNotEnoughShares() public {
+        uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
+        uint256 withdrawShares = 10e6;
+        WithdrawParams memory withdrawParams = WithdrawParams({
+            payloadType: PayloadType.LP_WITHDRAW,
+            token: address(mockToken),
+            amount: withdrawShares,
+            brokerHash: ORDERLY_BROKER
+        });
+        protocolVault.withdraw{value: nativeFee}(withdrawParams);
+        assertEq(protocolVault.chainNonce(), 1);
+
+        //LZ
+        // vm.expectRevert(NotEnoughWithdrawShare.selector);
+
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+    }
+
+    function testRevertProtocolVaultLPDepositWithoutVaule() public {
         //deal eth to cc contract on ledger
         vm.deal(address(aVaultCrossChainManager), 10 ether);
 
@@ -223,7 +227,7 @@ contract TestProtocolVault is Base {
 
         vm.prank(user);
 
-        //vm.expectRevert(NotEnoughFee.selector);
+        vm.expectRevert(NotEnoughFee.selector);
         protocolVault.deposit{value: 0}(depositParams);
 
         //LZ
@@ -243,6 +247,40 @@ contract TestProtocolVault is Base {
 
         assertEq(unAllocatedAssets, 0);
         assertEq(assets, 0);
+        assertEq(protocolVault.chainNonce(), 0);
     }
-    
+
+    function testRevertProtocolVaultLPWithdrawWithoutVaule() public {
+        uint256 shares = 100e6;
+        //Initialize
+        svLedger.setAccountShares(_getAccountId(user, ORDERLY_BROKER), shares);
+        //Withdraw
+        uint256 withdrawShares = 10e6;
+        WithdrawParams memory withdrawParams = WithdrawParams({
+            payloadType: PayloadType.LP_WITHDRAW,
+            token: address(mockToken),
+            amount: withdrawShares,
+            brokerHash: ORDERLY_BROKER
+        });
+        vm.prank(user);
+        vm.expectRevert(NotEnoughFee.selector);
+        protocolVault.withdraw{value: 0}(withdrawParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+        (
+            , // accountId
+            , // assets
+            , // shares
+            ,
+            uint256 frozenShares, // frozenShares
+            , // pendingShares
+                // enableClaimedAssets
+        ) = svLedger.accountById(accountId);
+        assertEq(frozenShares, 0);
+        assertEq(protocolVault.chainNonce(), 0);
+    }
 }

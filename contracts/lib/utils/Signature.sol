@@ -98,7 +98,7 @@ library Signature {
     }
 
     function verifyUpdateUnclaimed(
-        uint32 chainId,
+        uint256 chainId,
         uint256 periodId,
         bytes32 vaultId,
         UpdateUserClaim[] memory updateUserClaims,

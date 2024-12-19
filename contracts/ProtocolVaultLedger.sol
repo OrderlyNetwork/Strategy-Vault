@@ -455,7 +455,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             //cross chain message
             StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
                 payloadType: PayloadType.ASSETS_DISTRIBUTION,
-                srcChainId: uint32(block.chainid),
+                srcChainId: block.chainid,
                 dstChainId: assetsDistributions[i].chainId,
                 payload: abi.encode(periodId, assetsDistribution)
             });
@@ -468,7 +468,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     /// @notice update user unClaimed assets info on a specific chain
     function updateUnclaimed(
-        uint32 chainId,
+        uint256 chainId,
         uint256 periodId,
         bytes32 vaultId,
         UpdateUserClaim[] memory updateUserClaims,
@@ -480,7 +480,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         //cross chain message
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: PayloadType.UPDATE_USER_CLAIM,
-            srcChainId: uint32(block.chainid),
+            srcChainId: block.chainid,
             dstChainId: chainId,
             payload: abi.encode(periodId, updateUserClaims)
         });

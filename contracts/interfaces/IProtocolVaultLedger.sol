@@ -31,7 +31,7 @@ interface IProtocolVaultLedger {
     error InvalidOpType();
     error InvalidTotalAssets();
     error NotEnoughFrozenShare();
-    
+
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
         uint256 periodId,
@@ -100,7 +100,7 @@ interface IProtocolVaultLedger {
         bytes calldata signature
     ) external;
     function updateUnclaimed(
-        uint32 chainId,
+        uint256 chainId,
         uint256 periodId,
         bytes32 vaultId,
         UpdateUserClaim[] memory updateUserClaims,

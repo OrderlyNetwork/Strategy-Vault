@@ -145,7 +145,7 @@ struct Strategy {
 
 struct AssetsDistribution {
     ///@dev chainId
-    uint32 chainId;
+    uint256 chainId;
     ///@dev assets to be distributed on a chain
     uint256 assets;
 }
