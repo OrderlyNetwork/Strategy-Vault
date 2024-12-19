@@ -187,7 +187,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         external
         onlyVaultCrossChainManager
     {
-        //console.log("welcome to depositToStrategy");
 
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
         //console.log("welcome to depositToStrategy");

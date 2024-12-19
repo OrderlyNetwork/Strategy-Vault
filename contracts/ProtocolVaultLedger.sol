@@ -58,8 +58,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     mapping(bytes32 => StrategyFund) public strategyFundById;
     /// @dev account information by account id
     mapping(bytes32 => Account) public accountById;
-    /// @dev Determines whether the operation corresponding to the requestId is executed by the contract
+    /// @dev Determines whether the operation corresponding to the requestId is executed
     mapping(bytes32 => bool) public isOpHandeled;
+    /// @dev Determines whether the claim corresponding to the requestId is executed
     mapping(bytes32 => bool) public isClaimedHandled;
 
     /// @notice Require only operator can call
@@ -113,7 +114,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         StrategyFund storage strategyFund = strategyFundById[spId];
 
         uint256 amount = operationData.amount;
-        
+
         if (payloadType == PayloadType.LP_DEPOSIT) {
             account.unAllocatedAssets += amount;
             account.assets += amount;
@@ -477,17 +478,25 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         _check(periodId);
         Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, updateUserClaims, signature, engine);
 
+        //ignore handled claim info
+        UpdateUserClaim[] memory userClaims = new UpdateUserClaim[](updateUserClaims.length);
+        for (uint256 i = 0; i < updateUserClaims.length; i++) {
+            if (!isClaimedHandled[updateUserClaims[i].requestId]) {
+                userClaims[i] = updateUserClaims[i];
+                isClaimedHandled[updateUserClaims[i].requestId] = true;
+            }
+        }
         //cross chain message
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
             payloadType: PayloadType.UPDATE_USER_CLAIM,
             srcChainId: block.chainid,
             dstChainId: chainId,
-            payload: abi.encode(periodId, updateUserClaims)
+            payload: abi.encode(periodId, userClaims)
         });
         //cross-chain
         IVaultCrossChainManager(crossChainManager).sendMessage(message);
 
-        emit UnclaimedAssetsUpdated(periodId, vaultId, updateUserClaims);
+        emit UnclaimedAssetsUpdated(periodId, vaultId, userClaims);
     }
     //--------------------------------------CONFIG--------------------------------------------
 
