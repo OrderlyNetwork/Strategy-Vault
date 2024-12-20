@@ -16,19 +16,19 @@ import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
 import {AssetsDistribution, UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
 import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
-import {console} from "forge-std/console.sol";
 
 /**
  * todo:
  *  - lz gas estimate OptionsBuilder 2. set block
- * - lz send require vault equal quote fee
- *
  */
 contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     error InvalidPayloadType();
 
     using OptionsBuilder for bytes;
 
+    uint256 constant LEDGER_CHAIN_ID = 291;
+    uint32 constant LEDGER_EID = 30213;
+    
     address public ledger;
     address public vault;
 
@@ -47,7 +47,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     function initialize(address endpoint, address delegate) external virtual initializer {
         __initializeOApp(endpoint, delegate);
 
-        chainIdToEid[291] = 30213;
+        // Set default orderly chainId to eid mapping
+        chainIdToEid[LEDGER_CHAIN_ID] = LEDGER_EID;
     }
 
     function sendMessage(StrategyVaultCCMessage memory message) external payable {
