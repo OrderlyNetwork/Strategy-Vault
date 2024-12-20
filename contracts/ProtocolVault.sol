@@ -9,7 +9,6 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {VaultDepositFE, IDexVault} from "./interfaces/IDexVault.sol";
-
 import {
     VaultType,
     RoleType,
@@ -21,7 +20,6 @@ import {
 } from "./lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
-import {console} from "forge-std/console.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -35,8 +33,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     address public dexVault;
     address public crossChainManager;
 
+    /// @dev Incremental nonce for user deposit and withdraw operation
     uint256 public chainNonce;
+    /// @dev Minimum deposit amount for LP
     uint256 minDepositForLp;
+    /// @dev Minimum deposit amount for SP
     uint256 minDepositForSp;
 
     /// @dev User Id => UserClaimedInfo
@@ -45,6 +46,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     mapping(address => bool) public isAllowedToken;
     /// @dev Broker Id => isAllowed
     mapping(bytes32 => bool) public isAllowedBroker;
+    /// @dev allowed strategy
+    mapping(address => bool) public isAllowedStrategy;
     /// @dev Token => Token hash : keccak256(abi.encodePacked(token_string))
     mapping(address => bytes32) public tokenToHash;
 
@@ -62,9 +65,9 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     }
 
     /// @notice Require only dex vault can call
-    modifier onlyDexVault() {
-        if (msg.sender != dexVault) {
-            revert InvalidDexVault();
+    modifier allowedStrategy() {
+        if (!isAllowedStrategy[msg.sender]) {
+            revert InvalidStrategy();
         }
         _;
     }
@@ -91,6 +94,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
+        isAllowedStrategy[_dexVault] = true;
 
         ledgerEid = 30213;
 
@@ -101,6 +105,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     *                                       EXTERNAL
     *=========================================================================================*/
 
+    //--------------------------------------FROM USER-----------------------------------------
     function deposit(DepositParams memory depositParams) external payable whenNotPaused {
         bytes32 brokerHash = depositParams.brokerHash;
         address token = depositParams.token;
@@ -183,13 +188,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     }
 
     //--------------------------------------FROM DEX-----------------------------------------
-
-    function depositFromStrategy(uint256 periodId, address sender, uint256 amount) external onlyDexVault {
+    function depositFromStrategy(uint256 periodId, address sender, uint256 amount) external allowedStrategy {
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
         emit DepositFromStrategy(periodId, vaultId, sender, amount);
     }
-    //--------------------------------------FROM Ledger-----------------------------------------
 
+    //--------------------------------------FROM LEDGER-----------------------------------------
     function depositToStrategy(uint256 periodId, address receiver, uint256 amount)
         external
         onlyVaultCrossChainManager

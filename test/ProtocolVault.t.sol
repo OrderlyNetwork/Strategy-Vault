@@ -188,6 +188,7 @@ contract TestProtocolVault is Base {
         assertEq(userClaimedInfo_A.unClaimedAssets, amount);
         assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
 
+        uint256 userBalanceBefore = IERC20(mockToken).balanceOf(userA);
         //LP claim
         mockToken.mint(address(protocolVault), amount);
 
@@ -199,6 +200,7 @@ contract TestProtocolVault is Base {
         //check
         userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
+        assertEq(IERC20(mockToken).balanceOf(userA), amount + userBalanceBefore);
         assertEq(userClaimedInfo_A.unClaimedAssets, 0);
         assertEq(userClaimedInfo_A.requestIds.length, 0);
     }
