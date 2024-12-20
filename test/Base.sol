@@ -12,8 +12,8 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {ProtocolVaultLedger, UpdateUserClaim} from "../contracts/ProtocolVaultLedger.sol";
-import {MockSVLedger} from "./MockSVLedger.sol";
-import {MockDexVault} from "./MockDexVault.sol";
+import {MockSVLedger} from "./mock/MockSVLedger.sol";
+import {MockDexVault} from "./mock/MockDexVault.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";

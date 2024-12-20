@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
-import {VaultDepositFE} from "../contracts/interfaces/IDexVault.sol";
+import {VaultDepositFE} from "../../contracts/interfaces/IDexVault.sol";
 
 
 contract MockDexVault {
