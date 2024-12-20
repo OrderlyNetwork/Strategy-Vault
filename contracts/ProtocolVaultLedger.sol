@@ -30,6 +30,7 @@ import {console} from "forge-std/console.sol";
 
 contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVaultLedger {
     using Math for uint256;
+
     uint256 public constant FEE_BASE = 100;
 
     uint256 public priceDecimal;
@@ -194,15 +195,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
 
                 if (assetPerShare > strategyFund.hwm) {
-                    performanceFee =
-                        (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[spId] / FEE_BASE / 10 ** priceDecimal;
+                    performanceFee = (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[spId] / FEE_BASE
+                        / 10 ** priceDecimal;
                     feeShares =
                         _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
 
                     strategyFund.performanceFee = performanceFee;
                 }
             }
-            
+
             //Update pending state
             strategyFund.pendingState.pendingTotalAssets = fundAssets;
             strategyFund.fundAssetsAfterFee = fundAssets - performanceFee;
@@ -236,29 +237,32 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
         uint256 amount;
         for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
-            bytes32 requsstId = updateUserLedgerParams[i].operation.requestId;
+            bytes32 requestId = updateUserLedgerParams[i].operation.requestId;
 
-            if (!isOpHandeled[requsstId]) {
+            if (!isOpHandeled[requestId]) {
                 Operation memory operation = updateUserLedgerParams[i].operation;
+                bytes32 id = operation.id;
+                uint256 operationAmount = operation.amount;
                 OperationType operationType = updateUserLedgerParams[i].operationType;
+
                 if (operationType == OperationType.LP_DEPOSIT) {
                     //handle LP deposit
-                    amount = _handleLpDeposit(operation.id, operation.amount);
+                    amount = _handleLpDeposit(id, operationAmount);
                 } else if (operationType == OperationType.LP_WITHDRAW) {
                     //handle LP withdraw
-                    amount = _handleLpWithdraw(operation.id, operation.amount);
+                    amount = _handleLpWithdraw(id, operationAmount);
                 } else if (operationType == OperationType.SP_DEPOSIT) {
                     //handle SP deposit
-                    amount = _handleSPDeposit(operation.id, operation.amount);
+                    amount = _handleSPDeposit(id, operationAmount);
                 } else if (operationType == OperationType.SP_WITHDRAW) {
                     //handle SP withdraw
-                    amount = _handleSpWithdraw(operation.id, operation.amount);
+                    amount = _handleSpWithdraw(id, operationAmount);
                 } else {
                     revert InvalidOpType();
                 }
 
                 operationRes[i] = OperationRes({id: operation.id, requestId: operation.requestId, amount: amount});
-                isOpHandeled[operation.requestId] = true;
+                isOpHandeled[requestId] = true;
             }
         }
 
@@ -307,7 +311,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 totalWithdrawAssets: withdrawAssets,
                 totalWithdrawShares: pendingLpWithdrawShares
             });
-        } else {
+        } else if (strategyProviderIds.length > 1) {
             for (uint256 i = 0; i < strategyProviderIds.length; i++) {
                 strategyFund = strategyFundById[strategyProviderIds[i]];
                 allocateFundRes[i].strategyProviderId = strategyProviderIds[i];
@@ -318,7 +322,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     Math.Rounding.Floor
                 );
             }
-
             //allocate deposit
             if (pendingLpDepositAssets > 0) {
                 for (uint256 i = 0; i < strategyProviderIds.length; i++) {
