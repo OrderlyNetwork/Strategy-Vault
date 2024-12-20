@@ -228,7 +228,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         uint256 periodId,
         bytes32 vaultId,
         UpdateLedgerParams[] calldata updateUserLedgerParams,
-        bytes memory signature
+        bytes calldata signature
     ) external onlyOperator {
         _check(periodId);
         Signature.verifyUpdateLPAndStrategyFund(periodId, vaultId, updateUserLedgerParams, signature, engine);
@@ -270,7 +270,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         uint256 periodId,
         bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
-        bytes memory signature
+        bytes calldata signature
     ) external onlyOperator {
         _check(periodId);
         Signature.verifyAllocatToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
@@ -387,7 +387,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         uint256 periodId,
         bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
-        bytes memory signature
+        bytes calldata signature
     ) external onlyOperator {
         _check(periodId);
         Signature.verifySettleMainAndStrategyFunds(periodId, vaultId, strategyProviderIds, signature, engine);
@@ -421,7 +421,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit MainAndStrategyFundsSettled(periodId, vaultId, mainShares, strategyFundStates);
     }
 
-    function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes memory signature)
+    function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes calldata signature)
         external
         onlyOperator
     {
@@ -440,7 +440,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit AccountSettled(periodId, vaultId, accountStates);
     }
 
-    function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature) external onlyOperator {
+    function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external onlyOperator {
         if (periodId != latestPeriodId + 1) {
             revert InvalidPeriodId();
         }
@@ -487,7 +487,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         uint256 periodId,
         bytes32 vaultId,
         UpdateUserClaim[] memory updateUserClaims,
-        bytes memory signature
+        bytes calldata signature
     ) external onlyOperator {
         _check(periodId);
         Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, updateUserClaims, signature, engine);
