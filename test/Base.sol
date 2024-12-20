@@ -64,12 +64,6 @@ contract Base is TestHelperOz5 {
     MockDexVault mockDexVault;
 
     function testGetComputation() public view {
-        // console.log("sp address", spA);
-        // console.log("protocol vault address", address(protocolVault));
-        // console.log("broker hash");
-        // console.logBytes32(ORDERLY_BROKER);
-        // console.log("sp id");
-
         bytes32 spAid = _getStrategyProviderId(0x4A5c7C5633bAF55dDD46B6B9cAF084E839BDa895, ORDERLY_BROKER);
         console.logBytes32(spAid);
     }

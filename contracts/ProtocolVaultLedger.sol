@@ -26,7 +26,6 @@ import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
-import {console} from "forge-std/console.sol";
 
 contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVaultLedger {
     using Math for uint256;
