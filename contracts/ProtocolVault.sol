@@ -133,7 +133,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit OperationExecuted(payloadType, data);
     }
 
-    function withdraw(WithdrawParams memory withdrawParams) external payable whenNotPaused {
+    function withdraw(WithdrawParams memory withdrawParams) external payable {
         bytes32 brokerHash = withdrawParams.brokerHash;
         address token = withdrawParams.token;
         uint256 amount = withdrawParams.amount;
@@ -159,7 +159,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit OperationExecuted(payloadType, data);
     }
 
-    function claim(ClaimParams memory claimParams) external whenNotPaused {
+    function claim(ClaimParams memory claimParams) external {
         bytes32 id;
         bytes32 brokerHash = claimParams.brokerHash;
 
