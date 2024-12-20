@@ -38,8 +38,9 @@ contract ProtocolVaultTest is Base {
     }
 
     function testDistributeAssetsToOneChain() public {
+        uint256 amount = 1000 * assetDecimal;
         AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
-        assetsDistributions[0] = AssetsDistribution({chainId: evmChainId, assets: 1000 * assetDecimal});
+        assetsDistributions[0] = AssetsDistribution({chainId: evmChainId, assets: amount});
         bytes memory signature = _getDistributeAssetsSignature(periodId, vaultId, assetsDistributions);
 
         //deal eth to cc contract on ledger
@@ -48,6 +49,9 @@ contract ProtocolVaultTest is Base {
 
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        assertEq(mockDexVault.amount(), amount);
     }
 
     function testUpdateUnclaimed() public {
@@ -61,7 +65,7 @@ contract ProtocolVaultTest is Base {
 
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-    
+
         vm.startPrank(operator);
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, updateUserClaims, signature);
 

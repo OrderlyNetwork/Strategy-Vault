@@ -45,6 +45,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     mapping(address => bool) public isAllowedToken;
     /// @dev Broker Id => isAllowed
     mapping(bytes32 => bool) public isAllowedBroker;
+    /// @dev Token => Token hash : keccak256(abi.encodePacked(token_string))
+    mapping(address => bytes32) public tokenToHash;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -172,6 +174,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
         //effect
         userClaimedById[id].unClaimedAssets = 0;
+        delete userClaimedById[id].requestIds;
 
         //transfer to user
         SafeTransferLib.safeTransfer(ERC20(claimParams.token), msg.sender, amount);
@@ -291,13 +294,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();
     }
 
-    function _getOperationData(
-        PayloadType payloadType,
-        address receiver,
-        uint256 amount,
-        address token,
-        bytes32 brokerHash
-    ) internal view returns (OperationData memory) {
+    function _getOperationData(PayloadType payloadType, address receiver, uint256 amount, address, bytes32 brokerHash)
+        internal
+        view
+        returns (OperationData memory)
+    {
         bytes32 accountId;
         bytes32 strategyProviderId;
 
@@ -319,7 +320,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             vaultId: _getVaultId(brokerHash),
             accountId: accountId,
             strategyProviderId: strategyProviderId,
-            tokenHash: _getTokenHash(token),
+            tokenHash: USDC_HASH,
             brokerHash: brokerHash
         });
 
@@ -336,9 +337,5 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
         return keccak256(abi.encode(address(this), brokerHash));
-    }
-
-    function _getTokenHash(address token) internal pure returns (bytes32) {
-        return keccak256(abi.encode(token));
     }
 }

@@ -42,10 +42,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     uint256 public mainShares;
     uint256 public mainAssetsAfterFee;
-
+    // @dev the latest period id that contract handle
     uint256 public latestPeriodId;
 
     address public crossChainManager;
+    /// @dev address of interact with ledger
     address public operator;
     /// @dev address of upload data to contract
     address public engine;
@@ -70,8 +71,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         }
         _;
     }
-    /// @notice Require only crossChainManager can call
 
+    /// @notice Require only crossChainManager can call
     modifier onlyVaultCrossChainManager() {
         if (msg.sender != crossChainManager) {
             revert InvalidCaller();

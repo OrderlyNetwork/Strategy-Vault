@@ -200,6 +200,7 @@ contract TestProtocolVault is Base {
         userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
         assertEq(userClaimedInfo_A.unClaimedAssets, 0);
+        assertEq(userClaimedInfo_A.requestIds.length, 0);
     }
 
     function testUnpause() public {

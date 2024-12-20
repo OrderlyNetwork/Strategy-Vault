@@ -13,6 +13,7 @@ import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {ProtocolVaultLedger, UpdateUserClaim} from "../contracts/ProtocolVaultLedger.sol";
 import {MockSVLedger} from "./MockSVLedger.sol";
+import {MockDexVault} from "./MockDexVault.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
@@ -43,8 +44,6 @@ contract Base is TestHelperOz5 {
     address public spA = address(0x3);
     address public spB = address(0x4);
 
-    address public dexVault;
-
     bytes32 spA_id = _getStrategyProviderId(spA, ORDERLY_BROKER);
     bytes32 spB_id = _getStrategyProviderId(spB, ORDERLY_BROKER);
     bytes32 userA_id = _getAccountId(userA, ORDERLY_BROKER);
@@ -62,6 +61,7 @@ contract Base is TestHelperOz5 {
     MockSVLedger svLedger;
     VaultCrossChainManager aVaultCrossChainManager;
     VaultCrossChainManager bVaultCrossChainManager;
+    MockDexVault mockDexVault;
 
     function testGetComputation() public view {
         // console.log("sp address", spA);
@@ -142,6 +142,9 @@ contract Base is TestHelperOz5 {
         //Deploy the MockERC20 contract and approve
         mockToken = new MockERC20("mockToken", "MTK", 6);
 
+        //deploy dex vault
+        mockDexVault = new MockDexVault();
+
         //Deploy the ProtocolVault contract
         address protocolVaultImpl = address(new ProtocolVault());
         address proxy = address(
@@ -149,7 +152,7 @@ contract Base is TestHelperOz5 {
                 protocolVaultImpl,
                 abi.encodeWithSelector(
                     ProtocolVault.initialize.selector,
-                    dexVault,
+                    address(mockDexVault),
                     address(aVaultCrossChainManager),
                     owner,
                     address(mockToken),
