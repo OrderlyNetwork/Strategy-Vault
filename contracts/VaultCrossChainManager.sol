@@ -61,7 +61,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     }
 
     function _lzReceive(
-        Origin calldata _origin,
+        Origin calldata,
         bytes32, /*_guid*/
         bytes calldata _message,
         address, /*_executor*/

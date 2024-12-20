@@ -80,7 +80,6 @@ contract ProtocolVaultTest is Base {
         assertEq(userClaimedInfo_B.unClaimedAssets, 1000 * assetDecimal);
         assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(2)));
     }
-    //forge t --match-test testUpgradeFundAssetsSignature -vv
 
     function testUpgradeFundAssetsSignature() public {
         initialize();
@@ -95,7 +94,6 @@ contract ProtocolVaultTest is Base {
         svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
     }
 
-    //forge t --match-test testUpdateLedger -vv
     function testUpdateLedger() public {
         initialize();
         bytes32[] memory accountIds = new bytes32[](1);

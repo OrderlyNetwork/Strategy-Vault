@@ -25,11 +25,10 @@ contract MockSVLedger is ProtocolVaultLedger {
             strategyFundById[spIds[i]].totalShares = mainSharesInFund[i] + spSharesInFund[i];
             strategyFundById[spIds[i]].hwm = hwm;
         }
+        feeRateOfFund[spIds[0]] = 10;
+        feeRateOfFund[spIds[1]] = 20;
         mainShares = _mainShares;
         pendingMainShares = _mainShares;
-
-        feeRateOfFund[0] = 10;
-        feeRateOfFund[1] = 20;
     }
 
     function getFundHWM(bytes32[] calldata strategyProviderIds) external view returns (uint256[] memory) {

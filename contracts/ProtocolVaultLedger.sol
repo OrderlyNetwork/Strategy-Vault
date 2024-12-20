@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
 import {
     Account,
     StrategyFund,
@@ -31,6 +30,7 @@ import {console} from "forge-std/console.sol";
 
 contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVaultLedger {
     using Math for uint256;
+    uint256 public constant FEE_BASE = 100;
 
     uint256 public priceDecimal;
     uint256 public shareDecimal;
@@ -51,8 +51,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @dev address of upload data to contract
     address public engine;
 
-    /// @dev fee rate of each strategy fund
-    mapping(uint256 => uint256) public feeRateOfFund;
+    /// @dev fee rate of each strategy fund by vault id
+    mapping(bytes32 => uint256) public feeRateOfFund;
     /// @dev allowed strategy provider
     mapping(bytes32 => bool) public isAllowedStrategyProvider;
     /// @dev strategy fund information by strategy provider id
@@ -103,7 +103,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     *=========================================================================================*/
 
     //--------------------------------------FROM VAULT-----------------------------------------
-    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData)
+    /// @notice Handles operations from vault
+    /// @param payloadType The type of operation
+    /// @param chainId The source chain ID
+    /// @param operationData The operation data
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external
         onlyVaultCrossChainManager
     {
@@ -132,7 +136,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 emit NotAllowedStrategyProvider(spId);
                 return;
             }
-
             if (payloadType == PayloadType.SP_DEPOSIT) {
                 strategyFund.unAllocatedAssets += amount;
             } else {
@@ -150,23 +153,30 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit OperationHandled(payloadType, chainId, operationData);
     }
 
-    //--------------------------------------FROM BE--------------------------------------------
+    //--------------------------------------FROM Operator--------------------------------------------
+    /// @notice Operator upload NAV of each strategy fund at first of the period
+    /// @param periodId period id
+    /// @param vaultId vault id
+    /// @param strategyFundAssets strategy fund assets info
+    /// @param signature signature of BE
     function updateStrategyFundAssets(
         uint256 periodId,
         bytes32 vaultId,
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
-        bytes memory signature
+        bytes calldata signature
     ) external onlyOperator {
         _check(periodId);
         Signature.verifyUpdateFundAssets(periodId, vaultId, strategyFundAssets, signature, engine);
+
         uint256 assetsAfterFee;
         //for event
         UpdateStrategyFundAssetsRes[] memory updateStrategyFundAssetsRes =
             new UpdateStrategyFundAssetsRes[](strategyFundAssets.length);
 
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
+            bytes32 spId = strategyFundAssets[i].strategyProviderId;
             //gas optimization
-            StrategyFund storage strategyFund = strategyFundById[strategyFundAssets[i].strategyProviderId];
+            StrategyFund storage strategyFund = strategyFundById[spId];
             PendingState storage pendingState = strategyFund.pendingState;
 
             //reset performance fee
@@ -178,18 +188,21 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             //Performance Fee
             uint256 performanceFee;
             uint256 feeShares;
-            uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
 
-            if (assetPerShare > strategyFund.hwm) {
-                performanceFee =
-                    (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[i] / 100 / 10 ** priceDecimal;
+            //avoid stack too deep
+            {
+                uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
 
-                feeShares =
-                    _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
+                if (assetPerShare > strategyFund.hwm) {
+                    performanceFee =
+                        (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[spId] / FEE_BASE / 10 ** priceDecimal;
+                    feeShares =
+                        _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
 
-                strategyFund.performanceFee = performanceFee;
+                    strategyFund.performanceFee = performanceFee;
+                }
             }
-
+            
             //Update pending state
             strategyFund.pendingState.pendingTotalAssets = fundAssets;
             strategyFund.fundAssetsAfterFee = fundAssets - performanceFee;
@@ -501,7 +514,14 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     }
     //--------------------------------------CONFIG--------------------------------------------
 
-    function setFeeRate(bytes32[] calldata strategyProviderIds) external onlyOwner {}
+    function setFeeRate(bytes32[] calldata strategyProviderIds, uint256[] calldata feeRates) external onlyOwner {
+        if (strategyProviderIds.length != feeRates.length) {
+            revert InvalidInput();
+        }
+        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+            feeRateOfFund[strategyProviderIds[i]] = feeRates[i];
+        }
+    }
 
     function setCrossChainManagerAddress(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;

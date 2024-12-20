@@ -31,7 +31,8 @@ interface IProtocolVaultLedger {
     error InvalidOpType();
     error InvalidTotalAssets();
     error NotEnoughFrozenShare();
-
+    error InvalidInput();
+    
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
         uint256 periodId,
