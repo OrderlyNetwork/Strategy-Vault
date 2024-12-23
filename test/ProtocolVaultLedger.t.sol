@@ -37,6 +37,11 @@ contract ProtocolVaultTest is Base {
         spIds.push(spB_id);
     }
 
+    function testSetOperator() public {
+        vm.prank(owner);
+        svLedger.setOperatorManager(operator);
+    }
+
     function testDistributeAssetsToOneChain() public {
         uint256 amount = 1000 * assetDecimal;
         AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
