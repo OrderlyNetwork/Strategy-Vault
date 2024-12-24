@@ -31,6 +31,7 @@ interface IProtocolVault {
     error BrokerNotAllowed();
     error NotEnoughFee();
     error InvalidAdmin();
+    error VaultClosed();
     
     function deposit(DepositParams memory depositParams) external payable;
     function withdraw(WithdrawParams memory withdrawParams) external payable;

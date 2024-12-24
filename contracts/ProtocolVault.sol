@@ -11,6 +11,7 @@ import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {VaultDepositFE, IDexVault} from "./interfaces/IDexVault.sol";
 import {
     VaultType,
+    VaultState,
     RoleType,
     ClaimParams,
     DepositParams,
@@ -29,6 +30,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
     uint256 constant LEDGER_CHAIN_ID = 291;
 
+    VaultState public vaultState;
     uint32 public ledgerEid;
     address public dexVault;
     address public crossChainManager;
@@ -268,6 +270,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     function emergencyUnpause() public whenPaused onlyOwner {
         _unpause();
     }
+
+    function setVaultState(VaultState _vaultState) public onlyOwner {
+        vaultState = _vaultState;
+    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
@@ -307,6 +313,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     }
 
     function _validateBasic(address token, bytes32 brokerHash) internal view {
+        if (vaultState == VaultState.CLOSED) revert VaultClosed();
         if (msg.value < quoteOperation()) revert NotEnoughFee();
         if (!isAllowedToken[token]) revert TokenNotAllowed();
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();

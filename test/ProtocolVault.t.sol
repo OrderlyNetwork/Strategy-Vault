@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {
     VaultType,
+    VaultState,
     RoleType,
     ClaimParams,
     DepositParams,
@@ -22,6 +23,7 @@ contract TestProtocolVault is Base {
     error NotEnoughFee();
     error EnforcedPause();
     error NotEnoughUnclaimedAssets();
+    error VaultClosed();
 
     function setUp() public override {
         super.setUp();
@@ -331,6 +333,21 @@ contract TestProtocolVault is Base {
         vm.prank(user);
         protocolVault.emergencyPause();
         vm.expectRevert(EnforcedPause.selector);
+        protocolVault.deposit{value: 0}(
+            DepositParams({
+                payloadType: PayloadType.LP_DEPOSIT,
+                receiver: user,
+                token: address(mockToken),
+                amount: 100e6,
+                brokerHash: ORDERLY_BROKER
+            })
+        );
+    }
+    function testRevertCloseVault() public {
+        vm.prank(owner);
+        protocolVault.setVaultState(VaultState.CLOSED);
+
+        vm.expectRevert(VaultClosed.selector);
         protocolVault.deposit{value: 0}(
             DepositParams({
                 payloadType: PayloadType.LP_DEPOSIT,

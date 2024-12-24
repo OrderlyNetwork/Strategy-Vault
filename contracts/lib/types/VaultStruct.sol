@@ -15,7 +15,6 @@ enum RoleType {
 
 enum VaultState {
     OPEN,
-    SHUTDOWN,
     CLOSED
 }
 
@@ -39,6 +38,7 @@ struct ClaimParams {
     address token;
     bytes32 brokerHash;
 }
+
 struct OperationData {
     ///@dev USER or PROTOCOL
     VaultType vaultType;
