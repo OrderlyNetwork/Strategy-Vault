@@ -273,6 +273,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function setVaultState(VaultState _vaultState) public onlyOwner {
         vaultState = _vaultState;
+
+        emit VaultStateChanged(_vaultState);
     }
     /*=========================================================================================
     *                                       VIEW

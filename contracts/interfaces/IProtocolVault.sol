@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {
     VaultType,
     RoleType,
+    VaultState,
     ClaimParams,
     OperationData,
     DepositParams,
@@ -19,6 +20,7 @@ interface IProtocolVault {
     event DepositFromStrategy(uint256 periodId, bytes32 vaultId, address sender, uint256 amount);
     event UnClaimedUpdated(uint256 periodId, UpdateUserClaim[] updateUserClaims);
     event DepositToStrategy(uint256 periodId, bytes32 vaultId, address receiver, uint256 amount);
+    event VaultStateChanged(VaultState state);
 
     error NotAllowedToken();
     error InvalidDepositAmount();
@@ -32,7 +34,7 @@ interface IProtocolVault {
     error NotEnoughFee();
     error InvalidAdmin();
     error VaultClosed();
-    
+
     function deposit(DepositParams memory depositParams) external payable;
     function withdraw(WithdrawParams memory withdrawParams) external payable;
     function claim(ClaimParams memory claimParams) external;
