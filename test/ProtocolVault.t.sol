@@ -324,4 +324,21 @@ contract TestProtocolVault is Base {
             })
         );
     }
+
+    function testAdminPause() public {
+        vm.prank(owner);
+        protocolVault.setAdmin(user, true);
+        vm.prank(user);
+        protocolVault.emergencyPause();
+        vm.expectRevert(EnforcedPause.selector);
+        protocolVault.deposit{value: 0}(
+            DepositParams({
+                payloadType: PayloadType.LP_DEPOSIT,
+                receiver: user,
+                token: address(mockToken),
+                amount: 100e6,
+                brokerHash: ORDERLY_BROKER
+            })
+        );
+    }
 }

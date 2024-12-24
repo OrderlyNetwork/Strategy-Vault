@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/Ownable2Step.sol";
 /// @notice Enables deploying contracts using CREATE3. Each deployer (msg.sender) has
 /// its own namespace for deployed addresses.
 
-contract ContractFactory is Ownable2Step {
+contract VaultManager is Ownable2Step {
     mapping(address => bool) public isManager;
 
     error NoAccess();

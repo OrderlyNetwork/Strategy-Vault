@@ -40,6 +40,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     /// @dev Minimum deposit amount for SP
     uint256 minDepositForSp;
 
+    /// @dev Admin address => isAllowed
+    mapping(address => bool) public isAllowedAdmin;
     /// @dev User Id => UserClaimedInfo
     mapping(bytes32 => UserClaimedInfo) public userClaimedById;
     /// @dev Token => isAllowed
@@ -68,6 +70,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     modifier allowedStrategy() {
         if (!isAllowedStrategy[msg.sender]) {
             revert InvalidStrategy();
+        }
+        _;
+    }
+
+    /// @notice Require only admin can call
+    modifier onlyOwnerOrAdmin() {
+        if (!isAllowedAdmin[msg.sender] && msg.sender != owner()) {
+            revert InvalidAdmin();
         }
         _;
     }
@@ -133,7 +143,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit OperationExecuted(payloadType, data);
     }
 
-    function withdraw(WithdrawParams memory withdrawParams) external payable {
+    function withdraw(WithdrawParams memory withdrawParams) external payable whenNotPaused {
         bytes32 brokerHash = withdrawParams.brokerHash;
         address token = withdrawParams.token;
         uint256 amount = withdrawParams.amount;
@@ -159,7 +169,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit OperationExecuted(payloadType, data);
     }
 
-    function claim(ClaimParams memory claimParams) external {
+    function claim(ClaimParams memory claimParams) external whenNotPaused {
         bytes32 id;
         bytes32 brokerHash = claimParams.brokerHash;
 
@@ -247,7 +257,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         ledgerEid = eid;
     }
 
-    function emergencyPause() public whenNotPaused onlyOwner {
+    function setAdmin(address admin, bool isAllowed) external onlyOwner {
+        isAllowedAdmin[admin] = isAllowed;
+    }
+
+    function emergencyPause() public whenNotPaused onlyOwnerOrAdmin {
         _pause();
     }
 
