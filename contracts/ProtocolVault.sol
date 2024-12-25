@@ -32,11 +32,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     uint32 constant LEDGER_EID = 30213;
 
     VaultState public vaultState;
-    uint32 public ledgerEid;
     address public dexVault;
     address public crossChainManager;
 
-    /// @dev Incremental nonce for user deposit and withdraw operation
+    /// @dev Incremental nonce for user deposit and withdraw operation,used for requestId on ledger
     uint256 public chainNonce;
     /// @dev Minimum deposit amount for LP
     uint256 minDepositForLp;
@@ -254,10 +253,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         minDepositForSp = amount;
     }
 
-    function setLedgerEid(uint32 eid) external onlyOwner {
-        ledgerEid = eid;
-    }
-
     function setAdmin(address admin, bool isAllowed) external onlyOwner {
         isAllowedAdmin[admin] = isAllowed;
     }
@@ -294,10 +289,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         bytes memory lzMessage = abi.encode(message);
 
         (uint256 nativeFee,) =
-            IVaultCrossChainManager(crossChainManager).quote(ledgerEid, lzMessage, PayloadType.LP_DEPOSIT, false);
+            IVaultCrossChainManager(crossChainManager).quote(LEDGER_EID, lzMessage, PayloadType.LP_DEPOSIT, false);
         return nativeFee;
     }
-    /*=========================================================================================
+    /*========================================================`=================================
     *                                       INTERNAL
     *=========================================================================================*/
 

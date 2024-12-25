@@ -135,7 +135,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 //revert NotAllowedStrategyProvider();
                 emit NotAllowedStrategyProvider(spId);
                 return;
-            }
+            }   
             if (payloadType == PayloadType.SP_DEPOSIT) {
                 strategyFund.unAllocatedAssets += amount;
             } else {

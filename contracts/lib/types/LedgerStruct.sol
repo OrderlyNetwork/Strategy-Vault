@@ -92,7 +92,7 @@ enum OperationType {
 struct Operation {
     /// @dev account ID or strategy provider ID
     bytes32 id;
-    /// @dev operation requestId
+    /// @dev operation requestId, calculate by EVM chainId and chainNonce
     bytes32 requestId;
     /// @dev deposit assets or withdraw share
     uint256 amount;

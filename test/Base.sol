@@ -156,8 +156,8 @@ contract Base is TestHelperOz5 {
             )
         );
         protocolVault = ProtocolVault(proxy);
-        vm.prank(owner);
-        protocolVault.setLedgerEid(2);
+        //vm.prank(owner);
+        // protocolVault.setLedgerEid(2);
         vm.prank(owner);
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
