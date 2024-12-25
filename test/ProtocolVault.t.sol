@@ -246,62 +246,62 @@ contract TestProtocolVault is Base {
         verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
     }
 
-    function testRevertProtocolVaultLPDepositWithoutVaule() public {
-        //deal eth to cc contract on ledger
-        vm.deal(address(aVaultCrossChainManager), 10 ether);
+    // function testRevertProtocolVaultLPDepositWithoutVaule() public {
+    //     //deal eth to cc contract on ledger
+    //     vm.deal(address(aVaultCrossChainManager), 10 ether);
 
-        uint256 amount = 100e6;
-        DepositParams memory depositParams = DepositParams({
-            payloadType: PayloadType.LP_DEPOSIT,
-            receiver: user,
-            token: address(mockToken),
-            amount: amount,
-            brokerHash: ORDERLY_BROKER
-        });
-        // Call deposit function
+    //     uint256 amount = 100e6;
+    //     DepositParams memory depositParams = DepositParams({
+    //         payloadType: PayloadType.LP_DEPOSIT,
+    //         receiver: user,
+    //         token: address(mockToken),
+    //         amount: amount,
+    //         brokerHash: ORDERLY_BROKER
+    //     });
+    //     // Call deposit function
 
-        vm.prank(user);
+    //     vm.prank(user);
 
-        vm.expectRevert(NotEnoughFee.selector);
-        protocolVault.deposit{value: 0}(depositParams);
+    //     vm.expectRevert(NotEnoughFee.selector);
+    //     protocolVault.deposit{value: 0}(depositParams);
 
-        //LZ
-        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+    //     //LZ
+    //     verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
 
-        //Check
-        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
-        (
-            , // accountId
-            uint256 assets, // assets
-            , // shares
-            uint256 unAllocatedAssets,
-            , // frozenShares
-            , // pendingShares
-                // enableClaimedAssets
-        ) = svLedger.accountById(accountId);
+    //     //Check
+    //     bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+    //     (
+    //         , // accountId
+    //         uint256 assets, // assets
+    //         , // shares
+    //         uint256 unAllocatedAssets,
+    //         , // frozenShares
+    //         , // pendingShares
+    //             // enableClaimedAssets
+    //     ) = svLedger.accountById(accountId);
 
-        assertEq(unAllocatedAssets, 0);
-        assertEq(assets, 0);
-        assertEq(protocolVault.chainNonce(), 0);
-    }
+    //     assertEq(unAllocatedAssets, 0);
+    //     assertEq(assets, 0);
+    //     assertEq(protocolVault.chainNonce(), 0);
+    // }
 
-    function testRevertProtocolVaultLPWithdrawWithoutVaule() public {
-        uint256 shares = 100e6;
-        //Initialize
-        svLedger.setAccountShares(_getAccountId(user, ORDERLY_BROKER), shares);
-        //Withdraw
-        uint256 withdrawShares = 10e6;
-        WithdrawParams memory withdrawParams = WithdrawParams({
-            payloadType: PayloadType.LP_WITHDRAW,
-            token: address(mockToken),
-            amount: withdrawShares,
-            brokerHash: ORDERLY_BROKER
-        });
-        vm.prank(user);
+    // function testRevertProtocolVaultLPWithdrawWithoutVaule() public {
+    //     uint256 shares = 100e6;
+    //     //Initialize
+    //     svLedger.setAccountShares(_getAccountId(user, ORDERLY_BROKER), shares);
+    //     //Withdraw
+    //     uint256 withdrawShares = 10e6;
+    //     WithdrawParams memory withdrawParams = WithdrawParams({
+    //         payloadType: PayloadType.LP_WITHDRAW,
+    //         token: address(mockToken),
+    //         amount: withdrawShares,
+    //         brokerHash: ORDERLY_BROKER
+    //     });
+    //     vm.prank(user);
 
-        vm.expectRevert(NotEnoughFee.selector);
-        protocolVault.withdraw{value: 0}(withdrawParams);
-    }
+    //     vm.expectRevert(NotEnoughFee.selector);
+    //     protocolVault.withdraw{value: 0}(withdrawParams);
+    // }
 
     function testRevertClaimNotEnough() public {
         ClaimParams memory claimParams =

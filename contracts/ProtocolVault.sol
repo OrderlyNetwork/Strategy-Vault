@@ -29,6 +29,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
     uint256 constant LEDGER_CHAIN_ID = 291;
+    uint32 constant LEDGER_EID = 30213;
 
     VaultState public vaultState;
     uint32 public ledgerEid;
@@ -107,8 +108,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
         isAllowedStrategy[_dexVault] = true;
-
-        ledgerEid = 30213;
 
         minDepositForLp = _minDepositForLp;
         minDepositForSp = _minDepositForSp;
@@ -316,7 +315,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function _validateBasic(address token, bytes32 brokerHash) internal view {
         if (vaultState == VaultState.CLOSED) revert VaultClosed();
-        if (msg.value < quoteOperation()) revert NotEnoughFee();
         if (!isAllowedToken[token]) revert TokenNotAllowed();
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();
     }
