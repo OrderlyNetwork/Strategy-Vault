@@ -16,7 +16,6 @@ contract VaultManager is Ownable2Step {
     event ContractDeployed(address deployedContract);
 
     constructor(address owner) Ownable(owner) {
-        _transferOwnership(owner);
     }
 
     modifier onlyManager() {
