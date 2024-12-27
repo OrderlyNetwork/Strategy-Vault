@@ -17,13 +17,15 @@ import {
 } from "../contracts/lib/types/VaultStruct.sol";
 import {UpdateUserClaim} from "../contracts/ProtocolVaultLedger.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
-import {Account, StrategyFund} from "../contracts/lib/types/LedgerStruct.sol";
+import {AccountToken, StrategyFundToken} from "../contracts/lib/types/LedgerStruct.sol";
 
 contract TestProtocolVault is Base {
     error NotEnoughFee();
     error EnforcedPause();
     error NotEnoughUnclaimedAssets();
     error VaultClosed();
+
+    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
 
     function setUp() public override {
         super.setUp();
@@ -62,14 +64,13 @@ contract TestProtocolVault is Base {
         //Check
         bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
         (
-            , // accountId
             uint256 assets, // assets
             , // shares
             uint256 unAllocatedAssets,
             , // frozenShares
             , // pendingShares
                 // enableClaimedAssets
-        ) = svLedger.accountById(accountId);
+        ) = svLedger.accountTokenInfo(accountId,USDC_HASH);
         assertEq(unAllocatedAssets, amount);
         assertEq(assets, amount);
 
@@ -98,7 +99,7 @@ contract TestProtocolVault is Base {
         //Check
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
 
-        StrategyFund memory sf = svLedger.getStrategyFund(spId);
+        StrategyFundToken memory sf = svLedger.getStrategyFund(spId);
         assertEq(sf.unAllocatedAssets, amount);
 
         assertEq(protocolVault.chainNonce(), 1);
@@ -127,14 +128,13 @@ contract TestProtocolVault is Base {
         //Check
         bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
         (
-            , // accountId
             , // assets
             , // shares
             ,
             uint256 frozenShares, // frozenShares
             , // pendingShares
                 // enableClaimedAssets
-        ) = svLedger.accountById(accountId);
+        ) = svLedger.accountTokenInfo(accountId,USDC_HASH);
         assertEq(frozenShares, withdrawShares);
     }
 
@@ -161,7 +161,7 @@ contract TestProtocolVault is Base {
         verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
 
         //Check
-        StrategyFund memory sf = svLedger.getStrategyFund(spId);
+        StrategyFundToken memory sf = svLedger.getStrategyFund(spId);
 
         assertEq(sf.frozenShares, withdrawShares);
         assertEq(protocolVault.chainNonce(), 1);
@@ -343,6 +343,7 @@ contract TestProtocolVault is Base {
             })
         );
     }
+
     function testRevertCloseVault() public {
         vm.prank(owner);
         protocolVault.setVaultState(VaultState.CLOSED);

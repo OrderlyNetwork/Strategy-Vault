@@ -2,8 +2,8 @@
 pragma solidity ^0.8.26;
 
 import {
-    Account,
-    StrategyFund,
+    AccountToken,
+    StrategyFundToken,
     UpdateStrategyFundAssetsParams,
     UpdateStrategyFundAssetsRes,
     PendingState,

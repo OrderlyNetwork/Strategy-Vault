@@ -13,17 +13,16 @@ contract MockSVLedger is ProtocolVaultLedger {
         uint256 hwm
     ) external {
         for (uint256 i = 0; i < spIds.length; i++) {
-            strategyFundById[spIds[i]].strategyProviderId = spIds[i];
-            strategyFundById[spIds[i]].pendingState.pendingMainShares = mainSharesInFund[i];
-            strategyFundById[spIds[i]].pendingState.pendingStrategyProviderShares = spSharesInFund[i];
-            strategyFundById[spIds[i]].pendingState.pendingTotalAssets = fundAssets[i];
-            strategyFundById[spIds[i]].pendingState.pendingTotalShares = mainSharesInFund[i] + spSharesInFund[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingMainShares = mainSharesInFund[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingStrategyProviderShares = spSharesInFund[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingTotalAssets = fundAssets[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingTotalShares = mainSharesInFund[i] + spSharesInFund[i];
 
-            strategyFundById[spIds[i]].mainShares = mainSharesInFund[i];
-            strategyFundById[spIds[i]].strategyProviderShares = spSharesInFund[i];
-            strategyFundById[spIds[i]].totalAssets = fundAssets[i];
-            strategyFundById[spIds[i]].totalShares = mainSharesInFund[i] + spSharesInFund[i];
-            strategyFundById[spIds[i]].hwm = hwm;
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].mainShares = mainSharesInFund[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].strategyProviderShares = spSharesInFund[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].totalAssets = fundAssets[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].totalShares = mainSharesInFund[i] + spSharesInFund[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].hwm = hwm;
         }
         feeRateOfFund[spIds[0]] = 10;
         feeRateOfFund[spIds[1]] = 20;
@@ -40,58 +39,58 @@ contract MockSVLedger is ProtocolVaultLedger {
     }
 
     function setAccountShares(bytes32 accountId, uint256 amount) external {
-        accountById[accountId].shares = amount;
+        accountTokenInfo[accountId][USDC_HASH].shares = amount;
     }
 
     function setFundSshares(bytes32 strategyProviderIds, uint256 amount) external {
-        strategyFundById[strategyProviderIds].totalShares = amount;
+        strategyFundTokenInfo[strategyProviderIds][USDC_HASH].totalShares = amount;
     }
 
     function setAccountState(bytes32 accountId, uint256 unAllocatedAssets, uint256 frozenShares, uint256 pendingShares)
         external
     {
-        accountById[accountId].unAllocatedAssets = unAllocatedAssets;
-        accountById[accountId].frozenShares = frozenShares;
-        accountById[accountId].pendingShares = pendingShares;
+        accountTokenInfo[accountId][USDC_HASH].unAllocatedAssets = unAllocatedAssets;
+        accountTokenInfo[accountId][USDC_HASH].frozenShares = frozenShares;
+        accountTokenInfo[accountId][USDC_HASH].pendingShares = pendingShares;
     }
 
     function setSPUnallocatedAssets(bytes32[] memory spIds, uint256 assets) external {
         for (uint256 i = 0; i < spIds.length; i++) {
-            strategyFundById[spIds[i]].unAllocatedAssets = assets;
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].unAllocatedAssets = assets;
         }
     }
 
     function setAccountFrozenShares(bytes32[] memory accountIds, uint256 shares) external {
         for (uint256 i = 0; i < accountIds.length; i++) {
-            accountById[accountIds[i]].frozenShares = shares;
+            accountTokenInfo[accountIds[i]][USDC_HASH].frozenShares = shares;
         }
     }
 
     function setSPUnallocatedShares(bytes32[] memory spIds, uint256 shares) external {
         for (uint256 i = 0; i < spIds.length; i++) {
-            strategyFundById[spIds[i]].frozenShares = shares;
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].frozenShares = shares;
         }
     }
 
     function setAccountPendingShares(bytes32[] memory accountIds, uint256 shares) external {
         for (uint256 i = 0; i < accountIds.length; i++) {
-            accountById[accountIds[i]].pendingShares = shares;
+            accountTokenInfo[accountIds[i]][USDC_HASH].pendingShares = shares;
         }
     }
 
     function _calculateHWM(bytes32[] calldata strategyProviderIds) internal view returns (uint256[] memory) {
-        StrategyFund memory strategyFund;
+        StrategyFundToken memory strategyFundToken;
         uint256[] memory hwms = new uint256[](strategyProviderIds.length);
 
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            strategyFund = strategyFundById[strategyProviderIds[i]];
-            uint256 hwm = strategyFund.hwm;
-            uint256 totalShares = strategyFund.totalShares;
+            strategyFundToken = strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH];
+            uint256 hwm = strategyFundToken.hwm;
+            uint256 totalShares = strategyFundToken.totalShares;
 
-            if (strategyFund.performanceFee > 0) {
-                hwm = strategyFund.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
+            if (strategyFundToken.performanceFee > 0) {
+                hwm = strategyFundToken.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
             } else {
-                uint256 pendingTotalShares = strategyFund.pendingState.pendingTotalShares;
+                uint256 pendingTotalShares = strategyFundToken.pendingState.pendingTotalShares;
                 //New issued shares greater than 0
                 if (pendingTotalShares > totalShares) {
                     //uint256 newSharePriceAfterFee = strategyFundsAssetsAfterFee[i] / strategyFundsTemTotalShares[i];
@@ -100,8 +99,8 @@ contract MockSVLedger is ProtocolVaultLedger {
                     //calculate new hwm
                     hwm = (
                         (
-                            strategyFund.hwm * totalShares / 10 ** priceDecimal
-                                + newTotalIssuedShares * strategyFund.fundAssetsAfterFee / totalShares
+                            strategyFundToken.hwm * totalShares / 10 ** priceDecimal
+                                + newTotalIssuedShares * strategyFundToken.fundAssetsAfterFee / totalShares
                         )
                     ) * 10 ** priceDecimal / pendingTotalShares;
                 }

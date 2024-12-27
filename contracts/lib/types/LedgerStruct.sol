@@ -4,9 +4,7 @@ pragma solidity ^0.8.26;
 import {VaultType} from "./VaultStruct.sol";
 //--------------------------------------Ledger Storage--------------------------------------------
 
-struct Account {
-    ///@dev keccak256(abi.encodePacked(user address, brokerhash))
-    bytes32 accountId;
+struct AccountToken {
     ///@dev account assets amount
     uint256 assets;
     ///@dev account shares amount
@@ -21,9 +19,7 @@ struct Account {
     uint256 enableClaimedAssets;
 }
 
-struct StrategyFund {
-    ///@dev keccak256(vault address, sp address, brokerHash))
-    bytes32 strategyProviderId;
+struct StrategyFundToken {  
     ///@dev pending state during a period
     PendingState pendingState;
     ///@dev performance fee during a period

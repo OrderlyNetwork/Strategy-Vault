@@ -5,8 +5,8 @@ import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/acces
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {
-    Account,
-    StrategyFund,
+    AccountToken,
+    StrategyFundToken,
     UpdateStrategyFundAssetsParams,
     UpdateStrategyFundAssetsRes,
     PendingState,
@@ -31,6 +31,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     using Math for uint256;
 
     uint256 public constant FEE_BASE = 100;
+    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
 
     uint256 public priceDecimal;
     uint256 public shareDecimal;
@@ -56,9 +57,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @dev allowed strategy provider
     mapping(bytes32 => bool) public isAllowedStrategyProvider;
     /// @dev strategy fund information by strategy provider id
-    mapping(bytes32 => StrategyFund) public strategyFundById;
+    mapping(bytes32 => mapping(bytes32 => StrategyFundToken)) public strategyFundTokenInfo;
     /// @dev account information by account id
-    mapping(bytes32 => Account) public accountById;
+    mapping(bytes32 => mapping(bytes32 => AccountToken)) public accountTokenInfo;
     /// @dev Determines whether the operation corresponding to the requestId is executed
     mapping(bytes32 => bool) public isOpHandeled;
     /// @dev Determines whether the claim corresponding to the requestId is executed
@@ -115,35 +116,35 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         bytes32 spId = operationData.strategyProviderId;
 
         //gas optimization
-        Account storage account = accountById[accountId];
-        StrategyFund storage strategyFund = strategyFundById[spId];
+        AccountToken storage accountToken = accountTokenInfo[accountId][operationData.tokenHash];
+        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[spId][operationData.tokenHash];
 
         uint256 amount = operationData.amount;
 
         if (payloadType == PayloadType.LP_DEPOSIT) {
-            account.unAllocatedAssets += amount;
-            account.assets += amount;
+            accountToken.unAllocatedAssets += amount;
+            accountToken.assets += amount;
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
-            if (amount + account.frozenShares > account.shares) {
+            if (amount + accountToken.frozenShares > accountToken.shares) {
                 emit NotEnoughWithdrawShare();
                 return;
             }
-            account.frozenShares += amount;
+            accountToken.frozenShares += amount;
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             //check sp id is allowed
             if (!isAllowedStrategyProvider[spId]) {
                 //revert NotAllowedStrategyProvider();
                 emit NotAllowedStrategyProvider(spId);
                 return;
-            }   
+            }
             if (payloadType == PayloadType.SP_DEPOSIT) {
-                strategyFund.unAllocatedAssets += amount;
+                strategyFundToken.unAllocatedAssets += amount;
             } else {
-                if (amount + strategyFund.frozenShares > strategyFund.totalShares) {
+                if (amount + strategyFundToken.frozenShares > strategyFundToken.totalShares) {
                     emit NotEnoughWithdrawShare();
                     return;
                 }
-                strategyFund.frozenShares += amount;
+                strategyFundToken.frozenShares += amount;
             }
         } else {
             emit InvalidPayloadType();
@@ -176,14 +177,14 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
             bytes32 spId = strategyFundAssets[i].strategyProviderId;
             //gas optimization
-            StrategyFund storage strategyFund = strategyFundById[spId];
-            PendingState storage pendingState = strategyFund.pendingState;
+            StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[spId][USDC_HASH];
+            PendingState storage pendingState = strategyFundToken.pendingState;
 
             //reset performance fee
-            strategyFund.performanceFee = 0;
+            strategyFundToken.performanceFee = 0;
 
             uint256 fundAssets = strategyFundAssets[i].totalAssets;
-            uint256 fundShares = strategyFund.totalShares;
+            uint256 fundShares = strategyFundToken.totalShares;
 
             //Performance Fee
             uint256 performanceFee;
@@ -193,22 +194,23 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             {
                 uint256 assetPerShare = fundAssets * 10 ** priceDecimal / fundShares;
 
-                if (assetPerShare > strategyFund.hwm) {
-                    performanceFee = (assetPerShare - strategyFund.hwm) * fundShares * feeRateOfFund[spId] / FEE_BASE
-                        / 10 ** priceDecimal;
+                if (assetPerShare > strategyFundToken.hwm) {
+                    performanceFee = (assetPerShare - strategyFundToken.hwm) * fundShares * feeRateOfFund[spId]
+                        / FEE_BASE / 10 ** priceDecimal;
                     feeShares =
                         _convertToShares(performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor);
 
-                    strategyFund.performanceFee = performanceFee;
+                    strategyFundToken.performanceFee = performanceFee;
                 }
             }
 
             //Update pending state
-            strategyFund.pendingState.pendingTotalAssets = fundAssets;
-            strategyFund.fundAssetsAfterFee = fundAssets - performanceFee;
+            strategyFundToken.pendingState.pendingTotalAssets = fundAssets;
+            strategyFundToken.fundAssetsAfterFee = fundAssets - performanceFee;
             pendingState.pendingStrategyProviderShares += feeShares;
             pendingState.pendingTotalShares = fundShares + feeShares;
-            assetsAfterFee += strategyFund.mainShares * (fundAssets - performanceFee) / strategyFund.totalShares;
+            assetsAfterFee +=
+                strategyFundToken.mainShares * (fundAssets - performanceFee) / strategyFundToken.totalShares;
 
             //Add to event
             updateStrategyFundAssetsRes[i] = UpdateStrategyFundAssetsRes({
@@ -278,29 +280,32 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         _check(periodId);
         Signature.verifyAllocatToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
 
-        StrategyFund storage strategyFund;
+        StrategyFundToken storage strategyFundToken;
         uint256 totalMainAssetsInFund;
 
         //for event
         AllocateFundRes[] memory allocateFundRes = new AllocateFundRes[](strategyProviderIds.length);
 
         if (strategyProviderIds.length == 1) {
-            strategyFund = strategyFundById[strategyProviderIds[0]];
+            strategyFundToken = strategyFundTokenInfo[strategyProviderIds[0]][USDC_HASH];
 
             //deposit
             uint256 distributeDepositShares = _convertToShares(
-                pendingLpDepositAssets, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor
+                pendingLpDepositAssets,
+                strategyFundToken.fundAssetsAfterFee,
+                strategyFundToken.totalShares,
+                Math.Rounding.Floor
             );
-            strategyFund.pendingState.pendingTotalAssets += pendingLpDepositAssets;
-            strategyFund.pendingState.pendingTotalShares += distributeDepositShares;
-            strategyFund.pendingState.pendingMainShares += distributeDepositShares;
+            strategyFundToken.pendingState.pendingTotalAssets += pendingLpDepositAssets;
+            strategyFundToken.pendingState.pendingTotalShares += distributeDepositShares;
+            strategyFundToken.pendingState.pendingMainShares += distributeDepositShares;
 
             //withdraw
             uint256 withdrawAssets =
                 _convertToAssets(pendingLpWithdrawShares, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
-            strategyFund.pendingState.pendingTotalAssets -= withdrawAssets;
-            strategyFund.pendingState.pendingMainShares -= pendingLpWithdrawShares;
-            strategyFund.pendingState.pendingTotalShares -= pendingLpWithdrawShares;
+            strategyFundToken.pendingState.pendingTotalAssets -= withdrawAssets;
+            strategyFundToken.pendingState.pendingMainShares -= pendingLpWithdrawShares;
+            strategyFundToken.pendingState.pendingTotalShares -= pendingLpWithdrawShares;
 
             //event
             allocateFundRes[0] = AllocateFundRes({
@@ -312,24 +317,24 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             });
         } else if (strategyProviderIds.length > 1) {
             for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                strategyFund = strategyFundById[strategyProviderIds[i]];
+                strategyFundToken = strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH];
                 allocateFundRes[i].strategyProviderId = strategyProviderIds[i];
                 totalMainAssetsInFund += _convertToAssets(
-                    strategyFund.mainShares,
-                    strategyFund.fundAssetsAfterFee,
-                    strategyFund.totalShares,
+                    strategyFundToken.mainShares,
+                    strategyFundToken.fundAssetsAfterFee,
+                    strategyFundToken.totalShares,
                     Math.Rounding.Floor
                 );
             }
             //allocate deposit
             if (pendingLpDepositAssets > 0) {
                 for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                    strategyFund = strategyFundById[strategyProviderIds[i]];
+                    strategyFundToken = strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH];
 
                     uint256 mainAssetsInFund = _convertToAssets(
-                        strategyFund.mainShares,
-                        strategyFund.fundAssetsAfterFee,
-                        strategyFund.totalShares,
+                        strategyFundToken.mainShares,
+                        strategyFundToken.fundAssetsAfterFee,
+                        strategyFundToken.totalShares,
                         Math.Rounding.Floor
                     );
                     uint256 distributeDepositAssets =
@@ -337,13 +342,13 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
                     uint256 distributeDepositShares = _convertToShares(
                         distributeDepositAssets,
-                        strategyFund.fundAssetsAfterFee,
-                        strategyFund.totalShares,
+                        strategyFundToken.fundAssetsAfterFee,
+                        strategyFundToken.totalShares,
                         Math.Rounding.Floor
                     );
-                    strategyFund.pendingState.pendingTotalAssets += distributeDepositAssets;
-                    strategyFund.pendingState.pendingTotalShares += distributeDepositShares;
-                    strategyFund.pendingState.pendingMainShares += distributeDepositShares;
+                    strategyFundToken.pendingState.pendingTotalAssets += distributeDepositAssets;
+                    strategyFundToken.pendingState.pendingTotalShares += distributeDepositShares;
+                    strategyFundToken.pendingState.pendingMainShares += distributeDepositShares;
 
                     //event
                     allocateFundRes[i].totalDepositAssets = distributeDepositAssets;
@@ -356,25 +361,25 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     _convertToAssets(pendingLpWithdrawShares, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
 
                 for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                    strategyFund = strategyFundById[strategyProviderIds[i]];
+                    strategyFundToken = strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH];
 
                     uint256 mainAssetsInFund = _convertToAssets(
-                        strategyFund.mainShares,
-                        strategyFund.fundAssetsAfterFee,
-                        strategyFund.totalShares,
+                        strategyFundToken.mainShares,
+                        strategyFundToken.fundAssetsAfterFee,
+                        strategyFundToken.totalShares,
                         Math.Rounding.Floor
                     );
                     uint256 distributeWithdrawAssets =
                         withdrawAssets.mulDiv(mainAssetsInFund, totalMainAssetsInFund, Math.Rounding.Ceil);
                     uint256 distributeWithdrawShares = _convertToShares(
                         distributeWithdrawAssets,
-                        strategyFund.fundAssetsAfterFee,
-                        strategyFund.totalShares,
+                        strategyFundToken.fundAssetsAfterFee,
+                        strategyFundToken.totalShares,
                         Math.Rounding.Floor
                     );
-                    strategyFund.pendingState.pendingTotalAssets -= distributeWithdrawAssets;
-                    strategyFund.pendingState.pendingMainShares -= distributeWithdrawShares;
-                    strategyFund.pendingState.pendingTotalShares -= distributeWithdrawShares;
+                    strategyFundToken.pendingState.pendingTotalAssets -= distributeWithdrawAssets;
+                    strategyFundToken.pendingState.pendingMainShares -= distributeWithdrawShares;
+                    strategyFundToken.pendingState.pendingTotalShares -= distributeWithdrawShares;
                     //event
                     allocateFundRes[i].totalWithdrawAssets = distributeWithdrawAssets;
                     allocateFundRes[i].totalWithdrawShares = distributeWithdrawShares;
@@ -399,24 +404,24 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
         //settle strategy fund
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            StrategyFund storage strategyFund = strategyFundById[strategyProviderIds[i]];
+            StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH];
 
             //hwm must be updated firstly
-            strategyFund.hwm = _calculateHWM(strategyProviderIds[i]);
+            strategyFundToken.hwm = _calculateHWM(strategyProviderIds[i]);
 
-            strategyFund.totalShares = strategyFund.pendingState.pendingTotalShares;
-            strategyFund.totalAssets = strategyFund.pendingState.pendingTotalAssets;
-            strategyFund.mainShares = strategyFund.pendingState.pendingMainShares;
-            strategyFund.strategyProviderShares = strategyFund.pendingState.pendingStrategyProviderShares;
+            strategyFundToken.totalShares = strategyFundToken.pendingState.pendingTotalShares;
+            strategyFundToken.totalAssets = strategyFundToken.pendingState.pendingTotalAssets;
+            strategyFundToken.mainShares = strategyFundToken.pendingState.pendingMainShares;
+            strategyFundToken.strategyProviderShares = strategyFundToken.pendingState.pendingStrategyProviderShares;
 
             //emit event
             strategyFundStates[i] = StrategyFundState({
                 strategyProviderId: strategyProviderIds[i],
-                totalShares: strategyFund.totalShares,
-                totalAssets: strategyFund.totalAssets,
-                mainShares: strategyFund.mainShares,
-                strategyProviderShares: strategyFund.strategyProviderShares,
-                hwm: strategyFund.hwm
+                totalShares: strategyFundToken.totalShares,
+                totalAssets: strategyFundToken.totalAssets,
+                mainShares: strategyFundToken.mainShares,
+                strategyProviderShares: strategyFundToken.strategyProviderShares,
+                hwm: strategyFundToken.hwm
             });
         }
 
@@ -432,11 +437,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
         AccountState[] memory accountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
-            Account storage account = accountById[accountIds[i]];
-            account.shares = account.pendingShares;
+            AccountToken storage accountToken = accountTokenInfo[accountIds[i]][USDC_HASH];
+            accountToken.shares = accountToken.pendingShares;
 
             //for event
-            accountStates[i] = AccountState({accountId: accountIds[i], shares: account.shares});
+            accountStates[i] = AccountState({accountId: accountIds[i], shares: accountToken.shares});
         }
 
         emit AccountSettled(periodId, vaultId, accountStates);
@@ -568,15 +573,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
 
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            StrategyFund storage strategyFund = strategyFundById[strategyProviderIds[i]];
+            StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH];
 
             uint256 hwm = _calculateHWM(strategyProviderIds[i]);
             strategyFundStates[i] = StrategyFundState({
                 strategyProviderId: strategyProviderIds[i],
-                totalShares: strategyFund.totalShares,
-                totalAssets: strategyFund.totalAssets,
-                mainShares: strategyFund.mainShares,
-                strategyProviderShares: strategyFund.strategyProviderShares,
+                totalShares: strategyFundToken.totalShares,
+                totalAssets: strategyFundToken.totalAssets,
+                mainShares: strategyFundToken.mainShares,
+                strategyProviderShares: strategyFundToken.strategyProviderShares,
                 hwm: hwm
             });
         }
@@ -587,8 +592,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         _check(periodId);
         AccountState[] memory accountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
-            Account storage account = accountById[accountIds[i]];
-            accountStates[i] = AccountState({accountId: accountIds[i], shares: account.shares});
+            AccountToken storage accountToken = accountTokenInfo[accountIds[i]][USDC_HASH];
+            accountStates[i] = AccountState({accountId: accountIds[i], shares: accountToken.shares});
         }
         return accountStates;
     }
@@ -609,8 +614,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         return _convertToAssets(shares, _totalAssets, _toatlShares, Math.Rounding.Floor);
     }
 
-    function getStrategyFund(bytes32 spId) public view returns (StrategyFund memory) {
-        return strategyFundById[spId];
+    function getStrategyFund(bytes32 spId) public view returns (StrategyFundToken memory) {
+        return strategyFundTokenInfo[spId][USDC_HASH];
     }
     /*=========================================================================================
     *                                       INTERNAL
@@ -623,16 +628,16 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     }
 
     function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
-        Account storage account = accountById[accountId];
+        AccountToken storage accountToken = accountTokenInfo[accountId][USDC_HASH];
 
-        if (amount > account.unAllocatedAssets) {
+        if (amount > accountToken.unAllocatedAssets) {
             revert NotEnoughLPDeposit();
         }
 
         uint256 depositShares = _convertToShares(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
         //effect
-        account.pendingShares += depositShares;
-        account.unAllocatedAssets -= amount;
+        accountToken.pendingShares += depositShares;
+        accountToken.unAllocatedAssets -= amount;
 
         pendingMainShares += depositShares;
         pendingLpDepositAssets += amount;
@@ -641,17 +646,17 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     }
 
     function _handleLpWithdraw(bytes32 accountId, uint256 amount) internal returns (uint256) {
-        Account storage account = accountById[accountId];
+        AccountToken storage accountToken = accountTokenInfo[accountId][USDC_HASH];
 
-        if (amount > account.frozenShares) {
+        if (amount > accountToken.frozenShares) {
             revert NotEnoughFrozenShare();
         }
 
         //effect
         uint256 withdrawAssets = _convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
 
-        account.pendingShares -= amount;
-        account.frozenShares -= amount;
+        accountToken.pendingShares -= amount;
+        accountToken.frozenShares -= amount;
         pendingMainShares -= amount;
         pendingLpWithdrawShares += amount;
 
@@ -660,58 +665,59 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function _handleSPDeposit(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
         //gas optimization
-        StrategyFund storage strategyFund = strategyFundById[strategyProviderId];
-        PendingState storage pendingState = strategyFund.pendingState;
-        if (amount > strategyFund.unAllocatedAssets) {
+        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[strategyProviderId][USDC_HASH];
+        PendingState storage pendingState = strategyFundToken.pendingState;
+        if (amount > strategyFundToken.unAllocatedAssets) {
             revert NotEnoughSPDeposit();
         }
-        uint256 depositShares =
-            _convertToShares(amount, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor);
+        uint256 depositShares = _convertToShares(
+            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
+        );
 
         pendingState.pendingTotalShares += depositShares;
         pendingState.pendingStrategyProviderShares += depositShares;
         pendingState.pendingTotalAssets += amount;
-        strategyFund.unAllocatedAssets -= amount;
+        strategyFundToken.unAllocatedAssets -= amount;
         return depositShares;
     }
 
     function _handleSpWithdraw(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
         //gas optimization
-        StrategyFund storage strategyFund = strategyFundById[strategyProviderId];
-        PendingState storage pendingState = strategyFund.pendingState;
+        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[strategyProviderId][USDC_HASH];
+        PendingState storage pendingState = strategyFundToken.pendingState;
 
-        if (amount > strategyFund.frozenShares) {
+        if (amount > strategyFundToken.frozenShares) {
             revert NotEnoughFrozenShare();
         }
-        uint256 spWithdrawAmount =
-            _convertToAssets(amount, strategyFund.fundAssetsAfterFee, strategyFund.totalShares, Math.Rounding.Floor);
+        uint256 spWithdrawAmount = _convertToAssets(
+            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
+        );
 
         //effect
         pendingState.pendingTotalShares -= amount;
         pendingState.pendingStrategyProviderShares -= amount;
         pendingState.pendingTotalAssets -= spWithdrawAmount;
-        strategyFund.frozenShares -= amount;
+        strategyFundToken.frozenShares -= amount;
         return spWithdrawAmount;
     }
 
     function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
-        StrategyFund memory strategyFund;
-        strategyFund = strategyFundById[strategyProviderId];
+        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[strategyProviderId][USDC_HASH];
 
-        uint256 hwm = strategyFund.hwm;
-        uint256 totalShares = strategyFund.totalShares;
-        if (strategyFund.performanceFee > 0) {
-            hwm = strategyFund.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
+        uint256 hwm = strategyFundToken.hwm;
+        uint256 totalShares = strategyFundToken.totalShares;
+        if (strategyFundToken.performanceFee > 0) {
+            hwm = strategyFundToken.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
         } else {
-            uint256 pendingTotalShares = strategyFund.pendingState.pendingTotalShares;
+            uint256 pendingTotalShares = strategyFundToken.pendingState.pendingTotalShares;
             //New issued shares greater than 0
             if (pendingTotalShares > totalShares) {
                 uint256 newTotalIssuedShares = pendingTotalShares - totalShares;
                 //calculate new hwm
                 hwm = (
                     (
-                        strategyFund.hwm * totalShares / 10 ** priceDecimal
-                            + newTotalIssuedShares * strategyFund.fundAssetsAfterFee / totalShares
+                        strategyFundToken.hwm * totalShares / 10 ** priceDecimal
+                            + newTotalIssuedShares * strategyFundToken.fundAssetsAfterFee / totalShares
                     )
                 ) * 10 ** priceDecimal / pendingTotalShares;
             }

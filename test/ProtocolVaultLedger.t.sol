@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import {Base} from "./Base.sol";
 import {console} from "forge-std/console.sol";
 import {
-    Account,
-    StrategyFund,
+    AccountToken,
+    StrategyFundToken,
     UpdateStrategyFundAssetsParams,
     UpdateStrategyFundAssetsRes,
     PendingState,
@@ -364,8 +364,8 @@ contract ProtocolVaultTest is Base {
     }
 
     function consolePendingState() public view {
-        StrategyFund memory strategyFundA = svLedger.getStrategyFund(spA_id);
-        StrategyFund memory strategyFundB = svLedger.getStrategyFund(spB_id);
+        StrategyFundToken memory strategyFundA = svLedger.getStrategyFund(spA_id);
+        StrategyFundToken memory strategyFundB = svLedger.getStrategyFund(spB_id);
 
         console.log("Total Assets A: %d", strategyFundA.pendingState.pendingTotalAssets);
         console.log("Total Assets B: %d", strategyFundB.pendingState.pendingTotalAssets);
@@ -389,8 +389,8 @@ contract ProtocolVaultTest is Base {
     }
 
     function consoleState() public view {
-        StrategyFund memory strategyFundA = svLedger.getStrategyFund(spA_id);
-        StrategyFund memory strategyFundB = svLedger.getStrategyFund(spB_id);
+        StrategyFundToken memory strategyFundA = svLedger.getStrategyFund(spA_id);
+        StrategyFundToken memory strategyFundB = svLedger.getStrategyFund(spB_id);
 
         console.log("Total Assets A: %d", strategyFundA.totalAssets);
         console.log("Total Assets B: %d", strategyFundB.totalAssets);

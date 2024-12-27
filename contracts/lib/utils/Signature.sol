@@ -4,8 +4,8 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {
-    Account,
-    StrategyFund,
+    AccountToken,
+    StrategyFundToken,
     UpdateStrategyFundAssetsParams,
     UpdateStrategyFundAssetsRes,
     PendingState,
