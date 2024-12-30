@@ -8,15 +8,15 @@ import "@openzeppelin/contracts/access/Ownable2Step.sol";
 /// @notice Enables deploying contracts using CREATE3. Each deployer (msg.sender) has
 /// its own namespace for deployed addresses.
 
-contract VaultManager is Ownable2Step {
+contract VaultFactory is Ownable2Step {
+    /// @dev manager has access to deploy contract to avoid contract address collision
     mapping(address => bool) public isManager;
 
     error NoAccess();
 
     event ContractDeployed(address deployedContract);
 
-    constructor(address owner) Ownable(owner) {
-    }
+    constructor(address owner) Ownable(owner) {}
 
     modifier onlyManager() {
         if (msg.sender != owner() && !isManager[msg.sender]) {
@@ -27,7 +27,7 @@ contract VaultManager is Ownable2Step {
 
     function deploy(bytes32 salt, bytes memory creationCode) external onlyManager returns (address) {
         // hash salt with the deployer address to give each deployer its own namespace
-        salt = keccak256(abi.encodePacked(msg.sender, salt));
+        salt = keccak256(abi.encodePacked(salt));
         address contractAddress = CREATE3.deployDeterministic(creationCode, salt);
 
         emit ContractDeployed(contractAddress);
@@ -36,7 +36,7 @@ contract VaultManager is Ownable2Step {
 
     function getDeployed(bytes32 salt) external view returns (address) {
         // hash salt with keythe deployer address to give each deployer its own namespace
-        salt = keccak256(abi.encodePacked(msg.sender, salt));
+        salt = keccak256(abi.encodePacked(salt));
         return CREATE3.predictDeterministicAddress(salt);
     }
 

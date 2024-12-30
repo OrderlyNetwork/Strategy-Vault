@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "forge-std/Test.sol";
-import {VaultManager} from "../contracts/VaultManager.sol";
+import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 
 contract MockERC20 is ERC20 {
@@ -17,7 +17,7 @@ contract MockERC20 is ERC20 {
 }
 
 contract Create3FactoryTest is Test {
-    VaultManager factory;
+    VaultFactory factory;
     ProtocolVault protocolVault;
     MockERC20 mockToken;
 
@@ -32,7 +32,7 @@ contract Create3FactoryTest is Test {
     error NoAccess();
 
     function setUp() public {
-        factory = new VaultManager(owner);
+        factory = new VaultFactory(owner);
     }
 
     function testDeployProtocolVaultContractByCreate3() public {
@@ -58,6 +58,7 @@ contract Create3FactoryTest is Test {
         address deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
 
+        assertEq(factory.getDeployed(salt), deployedAddress);
         assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
         assertEq(protocolVault.owner(), owner);
         assertEq(protocolVault.isAllowedToken(address(mockToken)), true);
