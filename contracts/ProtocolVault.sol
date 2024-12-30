@@ -220,7 +220,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         });
 
         //cal dex
-        IDexVault(dexVault).depositTo(address(this), depositDataFe);
+        uint256 fee = IDexVault(dexVault).getDepositFee(address(this), depositDataFe);
+        IDexVault(dexVault).depositTo{value: fee}(address(this), depositDataFe);
 
         emit DepositToStrategy(periodId, vaultId, receiver, amount);
     }

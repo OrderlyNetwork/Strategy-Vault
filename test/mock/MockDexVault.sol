@@ -9,4 +9,8 @@ contract MockDexVault {
     function depositTo(address, VaultDepositFE calldata data) external payable {
         amount = data.tokenAmount;
     }
+
+    function getDepositFee(address, VaultDepositFE calldata) external pure returns (uint256) {
+        return 0;
+    }
 }
