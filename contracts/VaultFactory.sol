@@ -18,14 +18,14 @@ contract VaultFactory is Ownable2Step {
 
     constructor(address owner) Ownable(owner) {}
 
-    modifier onlyManager() {
+    modifier onlyManagerOrOwner() {
         if (msg.sender != owner() && !isManager[msg.sender]) {
             revert NoAccess();
         }
         _;
     }
 
-    function deploy(bytes32 salt, bytes memory creationCode) external onlyManager returns (address) {
+    function deploy(bytes32 salt, bytes memory creationCode) external onlyManagerOrOwner returns (address) {
         // hash salt with the deployer address to give each deployer its own namespace
         salt = keccak256(abi.encodePacked(salt));
         address contractAddress = CREATE3.deployDeterministic(creationCode, salt);

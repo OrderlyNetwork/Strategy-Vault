@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
-// oz imports
-
-// import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-
 // lz imports
 import {OptionsBuilder} from "./lib/layerzero-v2/oapp/libs/OptionsBuilder.sol";
 import {OAppUpgradeable, MessagingFee, Origin} from "./lib/layerzero-v2/oapp/OAppUpgradeable.sol";
