@@ -262,7 +262,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     revert InvalidOpType();
                 }
 
-                operationRes[i] = OperationRes({id: operation.id, requestId: operation.requestId, amount: amount});
+                operationRes[i] = OperationRes({
+                    id: operation.id,
+                    requestId: operation.requestId,
+                    amount: amount,
+                    operationType: operationType
+                });
                 isOpHandeled[requestId] = true;
             }
         }

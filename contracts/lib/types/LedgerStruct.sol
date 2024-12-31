@@ -19,7 +19,7 @@ struct AccountToken {
     uint256 enableClaimedAssets;
 }
 
-struct StrategyFundToken {  
+struct StrategyFundToken {
     ///@dev pending state during a period
     PendingState pendingState;
     ///@dev performance fee during a period
@@ -103,9 +103,11 @@ struct OperationRes {
     bytes32 requestId;
     /// @dev deposit shares or withdraw assets by computed
     uint256 amount;
+    /// @dev operation type
+    OperationType operationType;
 }
-///@notice Event for handle fund allocation
 
+///@notice Event for handle fund allocation
 struct AllocateFundRes {
     ///@dev keccak256(vault address, sp address, brokerHash))
     bytes32 strategyProviderId;
