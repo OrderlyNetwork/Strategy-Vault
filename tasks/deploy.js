@@ -68,7 +68,7 @@ async function deployCrossChainManager(env) {
     //deploy impl
     const VaultCrossChainManager = await ethers.getContractFactory("VaultCrossChainManager");
     const implAddr = await deployCrossChainManagerImpl(VaultCrossChainManager);
-    //const implAddr = "0xaB0986141F54D788EAA574D6e3cF212E632Aa044";
+    //const implAddr = "0x661c6Ed18B4B6c55b41b86D8ab4ad7f12C7Ef396";
 
     const [owner] = await ethers.getSigners();
 
@@ -93,7 +93,7 @@ async function deployProtocolVault(env) {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
-    //const implAddr = "0x774106343d68B9Fe006807Ba164F964D2808aC1f";
+    //const implAddr = "0x6C2f996B5EE1F4786F5Ec6EDA27358298d4B2254";
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
@@ -115,6 +115,8 @@ async function deployProtocolVault(env) {
 async function deployProtocolVaultImpl(ProtocolVault) {
     const ProtocolVaultContract = await ProtocolVault.deploy();
     const implAddr = ProtocolVaultContract.target;
+    await ProtocolVaultContract.waitForDeployment();
+
     console.log("ProtocolVaultContract Impl deployed to:", implAddr);
 
     return implAddr;
@@ -122,6 +124,8 @@ async function deployProtocolVaultImpl(ProtocolVault) {
 async function deployCrossChainManagerImpl(VaultCrossChainManager) {
     const VaultCrossChainManagerContract = await VaultCrossChainManager.deploy();
     const implAddr = VaultCrossChainManagerContract.target;
+    await VaultCrossChainManagerContract.waitForDeployment();
+
     console.log("VaultCrossChainManager Impl deployed to:", implAddr);
 
     return implAddr;
@@ -192,8 +196,10 @@ function updateAddressConfig(env, contractName, address) {
         }
 
         if (config[env][contractName] && config[env][contractName] === address) {
-            console.log(`Address for ${contractName} in ${env} environment already exists and matches. Skipping update.`);
+            console.log(`✅ Address for ${contractName} in ${env} environment already exists and matches. Skipping update.`);
             return;
+        } else if (config[env][contractName] && config[env][contractName] !== address) {
+            console.log(`⚠️ Address for ${contractName} in ${env} environment already exists but does not match. `);
         }
 
         config[env][contractName] = address;

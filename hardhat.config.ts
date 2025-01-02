@@ -50,7 +50,7 @@ module.exports = {
       accounts: [PRIVATE_KEY],
     },
     sepolia: {
-      url: "https://rpc.sepolia.org",
+      url: "https://gateway.tenderly.co/public/sepolia",
       accounts: [PRIVATE_KEY],
     },
     orderly_sepolia: {
