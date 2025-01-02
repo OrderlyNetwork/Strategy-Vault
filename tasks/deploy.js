@@ -2,12 +2,24 @@ const fs = require('fs');
 const path = require('path');
 const deployment = require('../deployment.json');
 const config = require('./config.json');
+const { task } = require('hardhat/config');
 
 const ERC1967ProxyPath = path.join(__dirname, '../scripts/utils/ERC1967Proxy.json');
 const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
 
 // 定义部署任务  
-task("deploy", "Deploy strategy vault contracts")
+task("deploy-evm", "Deploy strategy vault contracts")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await deployCrossChainManager(taskArgs.env);
+        await deployProtocolVault(taskArgs.env);
+    });
+
+task("deploy-orderly", "Deploy orderly contract")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
         const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
@@ -16,7 +28,27 @@ task("deploy", "Deploy strategy vault contracts")
         }
         await deployProtocolLedger(taskArgs.env);
         await deployCrossChainManager(taskArgs.env);
-        await deployProtocolVault(taskArgs.env);
+
+    });
+
+task("deploy-pvledger", "Deploy ProtocolVaultLedger contract")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await deployProtocolLedger(taskArgs.env);
+    });
+
+task("deploy-ccmanager", "Deploy CrossChainManager contract")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await deployCrossChainManager(taskArgs.env);
     });
 
 async function deployProtocolLedger(env) {
