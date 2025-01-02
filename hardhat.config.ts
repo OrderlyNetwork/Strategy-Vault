@@ -21,12 +21,52 @@ module.exports = {
     },
   },
   networks: {
+    mainnet: {
+      url: "https://eth-mainnet.alchemyapi.io/v2/ygq0_STO_nrASY4_eq3I1JMyY1aLiViw",
+      accounts: [PRIVATE_KEY],
+    },
+    bsc: {
+      url: "https://bsc-dataseed4.ninicoin.io",
+      accounts: [PRIVATE_KEY],
+    },
+    polygon: {
+      url: "https://polygon-mainnet.g.alchemy.com/v2/xW-oS8VD9ND03JvtAj-C1kPvvGNud8zo",
+      accounts: [PRIVATE_KEY],
+    },
+    avax: {
+      url: "https://api.avax.network/ext/bc/C/rpc",
+      accounts: [PRIVATE_KEY],
+    },
+    arb: {
+      url: "https://arb1.arbitrum.io/rpc",
+      accounts: [PRIVATE_KEY],
+    },
+    op: {
+      url: "https://optimism.llamarpc.com",
+      accounts: [PRIVATE_KEY],
+    },
+    base: {
+      url: "https://mainnet.base.org",
+      accounts: [PRIVATE_KEY],
+    },
     sepolia: {
       url: "https://rpc.sepolia.org",
       accounts: [PRIVATE_KEY],
     },
     orderly_sepolia: {
       url: "https://testnet-rpc.orderly.org",
+      accounts: [PRIVATE_KEY],
+    },
+    linea: {
+      url: "https://rpc.linea.build/",
+      accounts: [PRIVATE_KEY],
+    },
+    scroll: {
+      url: "https://rpc.scroll.io/",
+      accounts: [PRIVATE_KEY],
+    },
+    manta: {
+      url: "https://pacific-rpc.manta.network/http",
       accounts: [PRIVATE_KEY],
     },
     arb_sepolia: {

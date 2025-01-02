@@ -7,8 +7,7 @@ const { task } = require('hardhat/config');
 const ERC1967ProxyPath = path.join(__dirname, '../scripts/utils/ERC1967Proxy.json');
 const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
 
-// 定义部署任务  
-task("deploy-evm", "Deploy strategy vault contracts")
+task("deploy-evm", "Deploy strategy vault contracts on EVM")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
         const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
@@ -19,7 +18,7 @@ task("deploy-evm", "Deploy strategy vault contracts")
         await deployProtocolVault(taskArgs.env);
     });
 
-task("deploy-orderly", "Deploy orderly contract")
+task("deploy-orderly", "Deploy orderly contract on Orderly")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
         const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];

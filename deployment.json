@@ -6,7 +6,7 @@
     "owner": "",
     "protocolVault": "0x42Dc266dE15dfF7f4ba7e38C23534E273ad8BCF9",
     "crossChainManager": "0x0F52817019D9945A6Fa4Ccf8f2002Fc7857c4A7d",
-    "pvLedger": "0xa29b3959ea6cD7a0c1086f5c55bbF078dc9C32ee"
+    "pvLedger": "0x8E1ea1d6ae0a785e8046A79441871B01FD1cCE76"
   },
   "qa": {
     "pvledger": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
@@ -17,6 +17,6 @@
   "mainnet": {
     "pvledger": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
   },
-  "factory": "0xf8A4dCAcF0E604Ebc17975b984C13bF2cD540aA7",
+  "factory": "0x2b1e9a839a873e05eee8d90c6aff7aa3e724e6cf",
   "deployedNetwork": {}
 }
