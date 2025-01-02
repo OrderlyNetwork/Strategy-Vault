@@ -16,7 +16,7 @@ contract VaultFactory is Ownable2Step {
 
     event ContractDeployed(address deployedContract);
 
-    constructor() Ownable(msg.sender) {}
+    constructor(address owner) Ownable(owner) {}
 
     modifier onlyManagerOrOwner() {
         if (msg.sender != owner() && !isManager[msg.sender]) {

@@ -32,7 +32,7 @@ contract Create3FactoryTest is Test {
     error NoAccess();
 
     function setUp() public {
-        factory = new VaultFactory();
+        factory = new VaultFactory(owner);
     }
 
     function testDeployProtocolVaultContractByCreate3() public {
@@ -46,9 +46,8 @@ contract Create3FactoryTest is Test {
             )
         );
         //owner deploy
-        address deployedAddress = factory.deploy(salt, bytecode);
         vm.startPrank(owner);
-
+        address deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
         protocolVault.setCrossChainManager(vaultCrossChainManager);
 
@@ -60,14 +59,15 @@ contract Create3FactoryTest is Test {
         //manager deploy
         address[] memory managers = new address[](1);
         managers[0] = manager;
-        vm.stopPrank();
         factory.setManagers(managers, true);
+        vm.stopPrank();
 
         salt = keccak256(abi.encodePacked("test_salt_manager"));
         vm.prank(manager);
         deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
         vm.prank(owner);
+
         protocolVault.setCrossChainManager(vaultCrossChainManager);
         assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
     }
@@ -108,7 +108,6 @@ contract Create3FactoryTest is Test {
             )
         );
         //expect to fail with reason NoAccess()
-        vm.prank(owner);
         vm.expectRevert(NoAccess.selector);
         factory.deploy(salt, bytecode);
     }
