@@ -6,7 +6,7 @@
     "owner": "",
     "protocolVault": "0x42Dc266dE15dfF7f4ba7e38C23534E273ad8BCF9",
     "crossChainManager": "0x0F52817019D9945A6Fa4Ccf8f2002Fc7857c4A7d",
-    "pvLedger": "0xaDBF9c0cde445dFF4Dcfd51Ec1dA45cB93Cdb065"
+    "pvLedger": "0xa29b3959ea6cD7a0c1086f5c55bbF078dc9C32ee"
   },
   "qa": {
     "pvledger": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
