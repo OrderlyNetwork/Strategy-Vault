@@ -4,7 +4,7 @@ const { ethers, network } = require("hardhat");
 
 async function main() {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
-    const ProtocolVaultContract = await UpgradableCounter.deploy();
+    const ProtocolVaultContract = await ProtocolVault.deploy();
     
     const implAddr = ProtocolVaultContract.target;
     console.log("ProtocolVaultContract Impl deployed to:", implAddr);

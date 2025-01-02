@@ -2,7 +2,6 @@ const { ethers } = require("hardhat")
 
 async function main() {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
-    const protocol_vault_bytecode = (await ethers.getContractFactory("ProtocolVault")).bytecode;
     const proxy_bytecode = (await ethers.getContractFactory("ERC1967Proxy")).bytecode;
     
     

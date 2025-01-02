@@ -1,0 +1,22 @@
+{
+  "dev": {
+    "pv_salt": "0x0000000000000000000000000000000000000000000000000000000000000008",
+    "cc_salt": "0x0000000000000000000000000000000000000000000000000000000000000009",
+    "dex": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "owner": "",
+    "protocolVault": "",
+    "crossChainManager": "",
+    "pvLedger": ""
+  },
+  "qa": {
+    "pvledger": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+  },
+  "staging": {
+    "pvledger": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+  },
+  "mainnet": {
+    "pvledger": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+  },
+  "factory": "0xf8A4dCAcF0E604Ebc17975b984C13bF2cD540aA7",
+  "deployedNetwork": {}
+}

@@ -1,6 +1,7 @@
 import { HardhatUserConfig, vars } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
+import "./tasks/deploy.js";
 
 const config: HardhatUserConfig = {
   solidity: "0.8.26",
@@ -28,6 +29,10 @@ module.exports = {
       url: "https://testnet-rpc.orderly.org",
       accounts: [PRIVATE_KEY],
     },
+    arb_sepolia: {
+      url: "https://gateway.tenderly.co/public/sepolia",
+      accounts: [PRIVATE_KEY],
+    }
   },
   etherscan: {
     apiKey: {

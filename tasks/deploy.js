@@ -1,0 +1,196 @@
+const fs = require('fs');
+const path = require('path');
+const deployment = require('../deployment.json');
+const config = require('./config.json');
+
+const ERC1967ProxyPath = path.join(__dirname, '../scripts/utils/ERC1967Proxy.json');
+const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
+
+// 定义部署任务  
+task("deploy", "Deploy strategy vault contracts")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await deployProtocolLedger(taskArgs.env);
+        await deployCrossChainManager(taskArgs.env);
+        await deployProtocolVault(taskArgs.env);
+
+    });
+
+async function deployProtocolLedger(env) {
+    const [owner] = await ethers.getSigners();
+
+    //deoloy PVLedger contract
+    const PVLedger = await ethers.getContractFactory("ProtocolVaultLedger");
+    const PVLedgerProxy = await upgrades.deployProxy(PVLedger, [owner.address], {
+        initializer: 'initialize'
+    });
+    const proxyAddress = await PVLedgerProxy.target;
+
+    console.log(`PVLedgerProxy deployed to ${proxyAddress}`);
+
+    await PVLedgerProxy.waitForDeployment();
+
+    updateAddressConfig(env, 'pvLedger', proxyAddress);
+}
+async function deployCrossChainManager(env) {
+    //deploy impl
+    const VaultCrossChainManager = await ethers.getContractFactory("VaultCrossChainManager");
+    const implAddr = await deployCrossChainManagerImpl(VaultCrossChainManager);
+    //const implAddr = "0xaB0986141F54D788EAA574D6e3cF212E632Aa044";
+
+    const [owner] = await ethers.getSigners();
+
+    //Deploy contract by factory
+    const bytecode = getCrossChainManagerBytecode(VaultCrossChainManager, implAddr, owner.address);
+    const salt = deployment[env].cc_salt;
+
+    const VaultFactory = await ethers.getContractAt(
+        "VaultFactory",
+        deployment.factory
+    )
+    const tx = await VaultFactory.deploy(salt, bytecode)
+    await tx.wait()
+
+    console.log("CrossChainManager deployed Done");
+    const crossChainManagerAddr = await VaultFactory.getDeployed(salt);
+    updateAddressConfig(env, 'crossChainManager', crossChainManagerAddr);
+
+}
+async function deployProtocolVault(env) {
+    //deploy impl
+    const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
+
+    const implAddr = await deployProtocolVaultImpl(ProtocolVault);
+    //const implAddr = "0x774106343d68B9Fe006807Ba164F964D2808aC1f";
+    const [owner] = await ethers.getSigners();
+
+    //Deploy contract by factory
+    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address);
+    const salt = deployment[env].pv_salt;
+
+    const VaultFactory = await ethers.getContractAt(
+        "VaultFactory",
+        deployment.factory
+    )
+    const tx = await VaultFactory.deploy(salt, bytecode)
+    await tx.wait()
+
+    console.log("ProtocolVault deployed Done");
+    const ProtocolVaultAddr = await VaultFactory.getDeployed(salt);
+    updateAddressConfig(env, 'protocolVault', ProtocolVaultAddr);
+}
+
+async function deployProtocolVaultImpl(ProtocolVault) {
+    const ProtocolVaultContract = await ProtocolVault.deploy();
+    const implAddr = ProtocolVaultContract.target;
+    console.log("ProtocolVaultContract Impl deployed to:", implAddr);
+
+    return implAddr;
+}
+async function deployCrossChainManagerImpl(VaultCrossChainManager) {
+    const VaultCrossChainManagerContract = await VaultCrossChainManager.deploy();
+    const implAddr = VaultCrossChainManagerContract.target;
+    console.log("VaultCrossChainManager Impl deployed to:", implAddr);
+
+    return implAddr;
+}
+function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr) {
+    //get usdc address 
+    const currentNetwork = hre.network.name;
+    const tokenAddress = config[currentNetwork].USDC
+    if (!tokenAddress) {
+        throw new Error(`No USDC address found for network: ${currentNetwork}`);
+    }
+    console.log(`USDC Address for ${currentNetwork}: ${tokenAddress}`);
+    const minDepositForLp = 0;
+    const minDepositForSp = 0;
+
+    const initializeData = ProtocolVault.interface.encodeFunctionData(
+        "initialize",
+        [
+            deployment.dev.dex,
+            ownerAddr,
+            tokenAddress,
+            minDepositForLp,
+            minDepositForSp
+        ]
+    );
+    const constructorArgs = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "bytes"],
+        [implAddr, initializeData]
+    );
+
+    //final bytecode
+    const bytecode = ethers.concat([
+        ERC1967ProxyArtifact.bytecode,
+        constructorArgs
+    ]);
+    return bytecode;
+}
+function getCrossChainManagerBytecode(VaultCrossChainManager, implAddr, ownerAddr) {
+    const currentNetwork = hre.network.name;
+    const initializeData = VaultCrossChainManager.interface.encodeFunctionData(
+        "initialize",
+        [
+            config[currentNetwork].endpoint,
+            ownerAddr,//owner as delegate 
+        ]
+    );
+    const constructorArgs = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "bytes"],
+        [implAddr, initializeData]
+    );
+
+    //final bytecode
+    const bytecode = ethers.concat([
+        ERC1967ProxyArtifact.bytecode,
+        constructorArgs
+    ]);
+    return bytecode;
+}
+function updateAddressConfig(env, contractName, address) {
+    const configPath = path.join(process.cwd(), 'deployment.json');
+
+    try {
+        let config = require(configPath);
+        config = JSON.parse(JSON.stringify(config));
+
+        if (!config[env]) {
+            config[env] = {};
+        }
+
+        //to lower case 
+        const contractKey = contractName
+
+        if (config[env][contractKey]) {
+            //address exist 
+            if (config[env][contractKey] == address) {
+                //doesn't need to update
+                console.log(`Address for ${contractName} in ${env} environment already exists and matches. Skipping update.`);
+                return;
+            } else {
+                //error 
+                throw new Error(`Existing address for ${contractName} in ${env} environment does not match:   
+                Existing: ${config[env][contractKey]}  
+                New:      ${address}`);
+            }
+        }
+
+        //address doesn't exist, update
+        config[env][contractKey] = address;
+        fs.writeFileSync(
+            configPath,
+            JSON.stringify(config, null, 2)
+        );
+
+        console.log(`✅${contractName}: ${address} write in ${env} environment`);
+    } catch (error) {
+        console.error(`Error updating address config: ${error.message}`);
+        throw error;
+    }
+}
+
