@@ -17,7 +17,6 @@ task("deploy", "Deploy strategy vault contracts")
         await deployProtocolLedger(taskArgs.env);
         await deployCrossChainManager(taskArgs.env);
         await deployProtocolVault(taskArgs.env);
-
     });
 
 async function deployProtocolLedger(env) {
@@ -31,8 +30,6 @@ async function deployProtocolLedger(env) {
     const proxyAddress = await PVLedgerProxy.target;
 
     console.log(`PVLedgerProxy deployed to ${proxyAddress}`);
-
-    await PVLedgerProxy.waitForDeployment();
 
     updateAddressConfig(env, 'pvLedger', proxyAddress);
 }
@@ -156,38 +153,26 @@ function updateAddressConfig(env, contractName, address) {
     const configPath = path.join(process.cwd(), 'deployment.json');
 
     try {
-        let config = require(configPath);
-        config = JSON.parse(JSON.stringify(config));
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        let config = JSON.parse(configContent);
 
         if (!config[env]) {
             config[env] = {};
         }
 
-        //to lower case 
-        const contractKey = contractName
-
-        if (config[env][contractKey]) {
-            //address exist 
-            if (config[env][contractKey] == address) {
-                //doesn't need to update
-                console.log(`Address for ${contractName} in ${env} environment already exists and matches. Skipping update.`);
-                return;
-            } else {
-                //error 
-                throw new Error(`Existing address for ${contractName} in ${env} environment does not match:   
-                Existing: ${config[env][contractKey]}  
-                New:      ${address}`);
-            }
+        if (config[env][contractName] && config[env][contractName] === address) {
+            console.log(`Address for ${contractName} in ${env} environment already exists and matches. Skipping update.`);
+            return;
         }
 
-        //address doesn't exist, update
-        config[env][contractKey] = address;
+        config[env][contractName] = address;
+
         fs.writeFileSync(
             configPath,
             JSON.stringify(config, null, 2)
         );
 
-        console.log(`✅${contractName}: ${address} write in ${env} environment`);
+        console.log(`✅ ${contractName}: ${address} written in ${env} environment`);
     } catch (error) {
         console.error(`Error updating address config: ${error.message}`);
         throw error;
