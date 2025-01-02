@@ -90,7 +90,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function initialize(
         address _dexVault,
-        address _crossChainManager,
         address owner,
         address token,
         uint256 _minDepositForLp,
@@ -103,7 +102,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
         __Pausable_init();
 
-        crossChainManager = _crossChainManager;
         dexVault = _dexVault;
 
         isAllowedBroker[ORDERLY_BROKER] = true;

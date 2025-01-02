@@ -147,7 +147,6 @@ contract Base is TestHelperOz5 {
                 abi.encodeWithSelector(
                     ProtocolVault.initialize.selector,
                     address(mockDexVault),
-                    address(aVaultCrossChainManager),
                     owner,
                     address(mockToken),
                     0,
@@ -156,7 +155,8 @@ contract Base is TestHelperOz5 {
             )
         );
         protocolVault = ProtocolVault(proxy);
-        //vm.prank(owner);
+        vm.prank(owner);
+        protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
         // protocolVault.setLedgerEid(2);
         vm.prank(owner);
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);

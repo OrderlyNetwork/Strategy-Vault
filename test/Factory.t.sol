@@ -42,21 +42,14 @@ contract Create3FactoryTest is Test {
             type(ERC1967Proxy).creationCode,
             abi.encode(
                 protocolVaultImpl,
-                abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector,
-                    dexVault,
-                    address(vaultCrossChainManager),
-                    owner,
-                    address(mockToken),
-                    0,
-                    0
-                )
+                abi.encodeWithSelector(ProtocolVault.initialize.selector, dexVault, owner, address(mockToken), 0, 0)
             )
         );
         //owner deploy
         vm.startPrank(owner);
         address deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
+        protocolVault.setCrossChainManager(vaultCrossChainManager);
 
         assertEq(factory.getDeployed(salt), deployedAddress);
         assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
@@ -73,7 +66,8 @@ contract Create3FactoryTest is Test {
         vm.prank(manager);
         deployedAddress = factory.deploy(salt, bytecode);
         protocolVault = ProtocolVault(deployedAddress);
-
+        vm.prank(owner);
+        protocolVault.setCrossChainManager(vaultCrossChainManager);
         assertEq(protocolVault.crossChainManager(), vaultCrossChainManager);
     }
 
