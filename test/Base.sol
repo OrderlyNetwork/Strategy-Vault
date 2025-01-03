@@ -130,7 +130,7 @@ contract Base is TestHelperOz5 {
         bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 120000, 0);
         bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 200000, 0);
 
-        svLedger.setCrossChainManagerAddress(address(bVaultCrossChainManager));
+        svLedger.setCrossChainManager(address(bVaultCrossChainManager));
         vm.stopPrank();
 
         //Deploy the MockERC20 contract and approve

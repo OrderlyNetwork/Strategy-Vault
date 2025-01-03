@@ -535,7 +535,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         }
     }
 
-    function setCrossChainManagerAddress(address _crossChainManager) external onlyOwner {
+    function setCrossChainManager(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;
 
         emit CrossChainManagerAddressSet(_crossChainManager);
