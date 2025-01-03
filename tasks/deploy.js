@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const deployment = require('../deployment.json');
-const config = require('./config.json');
+const config = require('../config.json');
 const { task } = require('hardhat/config');
 
 const ERC1967ProxyPath = path.join(__dirname, '../scripts/utils/ERC1967Proxy.json');

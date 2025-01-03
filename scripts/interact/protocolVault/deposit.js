@@ -1,0 +1,42 @@
+const { ethers } = require("hardhat")
+const deployment = require('../../../deployment.json');
+const config = require('../../../config.json');
+
+
+async function main() {
+  //!need to change with your env
+  const env = "dev";
+  const currentNetwork = hre.network.name;
+  const [sender] = await ethers.getSigners();
+  const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
+  const value = ethers.parseUnits("0.1", 6);
+  const protocolVault = await ethers.getContractAt(
+    "ProtocolVault",
+    deployment[env].protocolVault
+  )
+  // Define the parameters
+  const depositParams = {
+    payloadType: 0, //LP Deposit
+    receiver: sender.address,
+    token: config[currentNetwork].USDC,
+    amount: value,
+    brokerHash: orderlyHash
+  };
+  // console.log("Deposit Params: ", depositParams)
+
+  //approve
+  // const token = await ethers.getContractAt("IERC20", config[currentNetwork].USDC);
+  // tx = await token.approve(deployment[env].protocolVault, value);
+  // await tx.wait()
+  // console.log("Approve done")
+
+  //deposit
+  // const nativeFee = 1190048;
+  tx = await protocolVault.deposit(depositParams, { value: ethers.parseUnits("0.01", 18) }); // Replace with actual value if needed
+  await tx.wait()
+  console.log("Deposit done")
+}
+
+main()
+
+

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const deployment = require('../deployment.json');
-const config = require('./config.json');
+const config = require('../config.json');
 const { keccak256, AbiCoder } = require("ethers");
 
 task("config-evm", "Config strategy vault contracts on EVM")
@@ -32,7 +32,15 @@ task("config-orderly", "Deploy strategy vault contracts on Orderly")
         console.log("✅ ----------------------Orderly CrossChainManager Config Done----------------------")
 
     });
-
+task("config-evm-cc", "Config EVM CrossChainManager") 
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await configEVMCrossChainManager(taskArgs.env);
+    });
 async function configProtocolVaultLedger(env) {
     //get the contract instance
     const pvLedgerContract = await ethers.getContractAt(
@@ -130,7 +138,7 @@ async function configEVMCrossChainManager(env) {
     const currentNetwork = hre.network.name;
 
     //todo doesn't need to set on mainnet
-    tx = await ccManagerContract.setEid(4460, 40200);
+    tx = await ccManagerContract.setEid(291, 40200);
     await tx.wait()
     console.log("EID set successfully")
 

@@ -116,6 +116,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     *=========================================================================================*/
 
     //--------------------------------------FROM USER-----------------------------------------
+    /**
+     * @notice Allows a user to deposit funds into the vault.
+     * @dev This function can only be called when the contract is not paused.
+     * @param depositParams The parameters required for the deposit, encapsulated in a struct.
+     */
     function deposit(DepositParams memory depositParams) external payable whenNotPaused {
         bytes32 brokerHash = depositParams.brokerHash;
         address token = depositParams.token;
