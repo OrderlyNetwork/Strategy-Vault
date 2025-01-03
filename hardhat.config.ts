@@ -2,6 +2,7 @@ import { HardhatUserConfig, vars } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "./tasks/deploy.js";
+import "./tasks/config.js";
 
 const config: HardhatUserConfig = {
   solidity: "0.8.26",

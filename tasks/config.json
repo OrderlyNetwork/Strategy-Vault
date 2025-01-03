@@ -1,12 +1,14 @@
 {
     "eth": {
         "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "endpoint": "0x1a44076050125825900e736c501f859c50fE728c"
+        "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "eid": 30101
     },
     "op": {},
     "arb": {
         "USDC": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f"
+        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+        "eid": 40161
     },
     "polygon": {
         "USDC": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
@@ -14,17 +16,24 @@
     },
     "sepolia": {
         "USDC": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f"
+        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+        "eid": 40161
     },
     "hardhat": {
         "USDC": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f"
+        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+        "eid": 40161
     },
     "arb_sepolia": {
         "USDC": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
         "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f"
     },
     "orderly_sepolia": {
-        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f"
+        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+        "eid": 40200
+    },
+    "orderly": {
+        "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "eid": 30213
     }
 }
