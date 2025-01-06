@@ -24,7 +24,8 @@ interface IProtocolVault {
     event AllowedBrokerSet(bytes32 brokerHash, bool isAllowed);
     event AllowedTokenSet(address token, bool isAllowed);
     event AdminSet(address admin);
-    
+    event AllowedStrategySet(address strategy, bool isAllowed);
+
     error NotAllowedToken();
     error InvalidDepositAmount();
     error InvalidRoleType();

@@ -286,6 +286,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function setAllowedStrategy(address strategy, bool isAllowed) external onlyOwner {
         isAllowedStrategy[strategy] = isAllowed;
+
+        emit AllowedStrategySet(strategy, isAllowed);
     }
 
     function setTokenHash(address token, bytes32 hash) external onlyOwner {
