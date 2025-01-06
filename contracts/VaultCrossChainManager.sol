@@ -13,10 +13,7 @@ import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
 import {AssetsDistribution, UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
 import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
 
-/**
- * todo:
- *  - lz gas estimate OptionsBuilder 2. set block
- */
+
 contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     error InvalidPayloadType();
 
