@@ -264,6 +264,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function setAdmin(address admin, bool isAllowed) external onlyOwner {
         isAllowedAdmin[admin] = isAllowed;
+
+        emit AdminSet(admin);
     }
 
     function setLedgerEid(uint32 eid) external onlyOwner {
@@ -272,10 +274,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     function setAllowedToken(address token, bool isAllowed) external onlyOwner {
         isAllowedToken[token] = isAllowed;
+
+        emit AllowedTokenSet(token, isAllowed);
     }
 
     function setAllowedBroker(bytes32 brokerHash, bool isAllowed) external onlyOwner {
         isAllowedBroker[brokerHash] = isAllowed;
+
+        emit AllowedBrokerSet(brokerHash, isAllowed);
     }
 
     function setAllowedStrategy(address strategy, bool isAllowed) external onlyOwner {

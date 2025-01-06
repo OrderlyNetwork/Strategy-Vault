@@ -21,7 +21,10 @@ interface IProtocolVault {
     event UnClaimedUpdated(uint256 periodId, UpdateUserClaim[] updateUserClaims);
     event DepositToStrategy(uint256 periodId, bytes32 vaultId, address receiver, uint256 amount);
     event VaultStateChanged(VaultState state);
-
+    event AllowedBrokerSet(bytes32 brokerHash, bool isAllowed);
+    event AllowedTokenSet(address token, bool isAllowed);
+    event AdminSet(address admin);
+    
     error NotAllowedToken();
     error InvalidDepositAmount();
     error InvalidRoleType();
