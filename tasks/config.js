@@ -160,7 +160,7 @@ async function configEVMCrossChainManager(env) {
     console.log("Peer set successfully")
 
     //set option
-    tx = await ccManagerContract.setOptions(0, 12000, 0);
+    tx = await ccManagerContract.setOptions(0, 120000, 0);
     await tx.wait()
     console.log("Option set LP_DEPOSIT successfully")
 
