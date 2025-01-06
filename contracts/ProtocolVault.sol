@@ -29,7 +29,9 @@ import {UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
 
 /// @title ProtocolVault for user to deposit and withdraw assets
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
+    /// @dev keccak256(abi.encodePacked(broker string))
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
+    /// @dev keccak256(abi.encodePacked("USDC"))
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
     uint256 constant LEDGER_CHAIN_ID = 291;
 
