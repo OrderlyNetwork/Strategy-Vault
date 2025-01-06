@@ -1,18 +1,24 @@
 const { ethers } = require("hardhat")
+const deployment = require('../../../deployment.json');
+const config = require('../../../config.json');
 
 async function main() {
-    //address = "0xcf1A28986EF0759B62810247Ac267515F6CD2A30"
-    address = "0x4bce55a7a202239ec480fae27f206e7af8c5f20a"
+    //!need to change with your env
+    const env = "dev";
 
     const protocolVault = await ethers.getContractAt(
         "ProtocolVault",
-        address
-    )
-    
+        deployment[env].protocolVault
+      )
 
-    tx = await protocolVault.initialize(address);
-    await tx.wait();
-    console.log("ProtocolVault initialized")
+    //set ledger eid
+    tx = await protocolVault.setLedgerEid(40200);
+    await tx.wait()
+    console.log("setLedgerEid done")
+
+    tx = await protocolVault.setMinDepositForLP(0);
+    await tx.wait()
+    console.log("setMinDepositForLP done")
 }
 
 main()

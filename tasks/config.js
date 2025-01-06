@@ -41,6 +41,17 @@ task("config-evm-cc", "Config EVM CrossChainManager")
         }
         await configEVMCrossChainManager(taskArgs.env);
     });
+
+task("config-protocol-vault", "Config ProtocolVault") 
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await configProtocolVault(taskArgs.env);
+    });
+
 async function configProtocolVaultLedger(env) {
     //get the contract instance
     const pvLedgerContract = await ethers.getContractAt(

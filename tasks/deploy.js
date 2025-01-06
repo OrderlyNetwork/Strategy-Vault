@@ -29,6 +29,15 @@ task("deploy-orderly", "Deploy orderly contract on Orderly")
         await deployCrossChainManager(taskArgs.env);
 
     });
+task("deploy-protocolvault", "Deploy ProtocolVault contract")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await deployProtocolVault(taskArgs.env);
+    });
 
 task("deploy-pvledger", "Deploy ProtocolVaultLedger contract")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -93,7 +102,7 @@ async function deployProtocolVault(env) {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
-    //const implAddr = "0x6C2f996B5EE1F4786F5Ec6EDA27358298d4B2254";
+    //const implAddr = "0x1C35A1f43Dd5f52500f9e2158179A0C31c417ffE";
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
@@ -109,6 +118,7 @@ async function deployProtocolVault(env) {
 
     console.log("ProtocolVault deployed Done");
     const ProtocolVaultAddr = await VaultFactory.getDeployed(salt);
+
     updateAddressConfig(env, 'protocolVault', ProtocolVaultAddr);
 }
 
@@ -199,7 +209,8 @@ function updateAddressConfig(env, contractName, address) {
             console.log(`✅ Address for ${contractName} in ${env} environment already exists and matches. Skipping update.`);
             return;
         } else if (config[env][contractName] && config[env][contractName] !== address) {
-            console.log(`⚠️ Address for ${contractName} in ${env} environment already exists but does not match. `);
+            console.log(`⚠️ Address for ${contractName} in ${env} environment already exists but does not match. New address: ${address} `);
+            return;
         }
 
         config[env][contractName] = address;

@@ -30,12 +30,15 @@ async function main() {
   await tx.wait()
   console.log("Approve done")
 
+  //get lz fee
+  const nativeFee = await protocolVault.quoteOperation();
+  //console.log("Native Fee: ", nativeFee.toString())
   //deposit
   // const nativeFee = 1190048;
   //https://sepolia.etherscan.io/tx/0x3d3ddea4f139b7e234ae6d701d792dd6ab095cc44bf6f8f7a50c5e15a8d98dca
-  // tx = await protocolVault.deposit(depositParams, { value: ethers.parseUnits("0.01", 18) }); // Replace with actual value if needed
-  // await tx.wait()
-  // console.log("Deposit done")
+  tx = await protocolVault.deposit(depositParams, { value: nativeFee.toString() }); // Replace with actual value if needed
+  await tx.wait()
+  console.log("Deposit done with tx:", tx.hash)
 }
 
 main()
