@@ -27,7 +27,7 @@ import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
 
-/// @title protocol vault ledger 
+/// @title protocol vault ledger
 /// @notice This contract is used to record all information of protocol vault
 contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProtocolVaultLedger {
     using Math for uint256;
@@ -556,8 +556,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit AllowedStrategyProviderSet(vaultId, vault, sp, brokerHash, spId, knob);
     }
 
-    /// @notice Set the address of operatorManager contract
-    /// @param _operator new operatorManagerAddress
     function setOperatorManager(address _operator) public onlyOwner {
         operator = _operator;
 
@@ -566,6 +564,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function setEngine(address _engine) public onlyOwner {
         engine = _engine;
+    }
+
+    function setDecimal(uint256 _priceDecimal, uint256 _shareDecimal, uint256 _assetsDecimal) external onlyOwner {
+        priceDecimal = _priceDecimal;
+        shareDecimal = _shareDecimal;
+        assetsDecimal = _assetsDecimal;
     }
     /*=========================================================================================
     *                                       VIEW
