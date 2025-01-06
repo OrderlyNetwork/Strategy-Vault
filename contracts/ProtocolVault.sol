@@ -27,6 +27,7 @@ import {UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
+/// @title ProtocolVault for user to deposit and withdraw assets
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
@@ -36,7 +37,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     address public dexVault;
     address public crossChainManager;
 
-    /// @dev ledger eid for lz 
+    /// @dev ledger eid for lz
     uint32 public ledgerEid;
     /// @dev Incremental nonce for user deposit and withdraw operation,used for requestId on ledger
     uint256 public chainNonce;
@@ -55,7 +56,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     mapping(bytes32 => bool) public isAllowedBroker;
     /// @dev allowed strategy
     mapping(address => bool) public isAllowedStrategy;
-    /// @dev Token => Token hash : keccak256(abi.encodePacked(token_string))
+    /// @dev Token => Token hash by keccak256(abi.encodePacked(token_string))
     mapping(address => bytes32) public tokenToHash;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -268,7 +269,23 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     function setLedgerEid(uint32 eid) external onlyOwner {
         ledgerEid = eid;
     }
-    
+
+    function setAllowedToken(address token, bool isAllowed) external onlyOwner {
+        isAllowedToken[token] = isAllowed;
+    }
+
+    function setAllowedBroker(bytes32 brokerHash, bool isAllowed) external onlyOwner {
+        isAllowedBroker[brokerHash] = isAllowed;
+    }
+
+    function setAllowedStrategy(address strategy, bool isAllowed) external onlyOwner {
+        isAllowedStrategy[strategy] = isAllowed;
+    }
+
+    function setTokenHash(address token, bytes32 hash) external onlyOwner {
+        tokenToHash[token] = hash;
+    }
+
     function emergencyPause() public whenNotPaused onlyOwnerOrAdmin {
         _pause();
     }
