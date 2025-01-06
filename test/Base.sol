@@ -145,20 +145,14 @@ contract Base is TestHelperOz5 {
             new ERC1967Proxy(
                 protocolVaultImpl,
                 abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector,
-                    address(mockDexVault),
-                    owner,
-                    address(mockToken),
-                    0,
-                    0
+                    ProtocolVault.initialize.selector, address(mockDexVault), owner, address(mockToken), 0, 0
                 )
             )
         );
         protocolVault = ProtocolVault(proxy);
-        vm.prank(owner);
+        vm.startPrank(owner);
         protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
-        // protocolVault.setLedgerEid(2);
-        vm.prank(owner);
+        protocolVault.setLedgerEid(ledgerEid);
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
 

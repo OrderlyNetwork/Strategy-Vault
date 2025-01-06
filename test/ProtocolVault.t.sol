@@ -44,7 +44,7 @@ contract TestProtocolVault is Base {
     }
 
     function testProtocolVaultLPDeposit() public {
-        uint256 nativeFee = getEstimateFee(PayloadType.LP_DEPOSIT);
+        uint256 nativeFee = protocolVault.quoteOperation();
         uint256 amount = 100e6;
         DepositParams memory depositParams = DepositParams({
             payloadType: PayloadType.LP_DEPOSIT,
@@ -70,7 +70,7 @@ contract TestProtocolVault is Base {
             , // frozenShares
             , // pendingShares
                 // enableClaimedAssets
-        ) = svLedger.accountTokenInfo(accountId,USDC_HASH);
+        ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
         assertEq(unAllocatedAssets, amount);
         assertEq(assets, amount);
 
@@ -134,7 +134,7 @@ contract TestProtocolVault is Base {
             uint256 frozenShares, // frozenShares
             , // pendingShares
                 // enableClaimedAssets
-        ) = svLedger.accountTokenInfo(accountId,USDC_HASH);
+        ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
         assertEq(frozenShares, withdrawShares);
     }
 
