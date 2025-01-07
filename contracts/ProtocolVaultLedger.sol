@@ -48,6 +48,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     // @dev the latest period id that contract handle
     uint256 public latestPeriodId;
 
+    /// @dev address of cross chain manager
     address public crossChainManager;
     /// @dev address of interact with ledger
     address public operator;
@@ -127,25 +128,18 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             accountToken.unAllocatedAssets += amount;
             accountToken.assets += amount;
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
-            if (amount + accountToken.frozenShares > accountToken.shares) {
-                emit NotEnoughWithdrawShare();
-                return;
-            }
+            _checkWithdraw(amount, accountToken.frozenShares, accountToken.shares);
             accountToken.frozenShares += amount;
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             //check sp id is allowed
             if (!isAllowedStrategyProvider[spId]) {
-                //revert NotAllowedStrategyProvider();
                 emit NotAllowedStrategyProvider(spId);
                 return;
             }
             if (payloadType == PayloadType.SP_DEPOSIT) {
                 strategyFundToken.unAllocatedAssets += amount;
             } else {
-                if (amount + strategyFundToken.frozenShares > strategyFundToken.totalShares) {
-                    emit NotEnoughWithdrawShare();
-                    return;
-                }
+                _checkWithdraw(amount, strategyFundToken.frozenShares, strategyFundToken.totalShares);
                 strategyFundToken.frozenShares += amount;
             }
         } else {
@@ -635,6 +629,13 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     function _check(uint256 periodId) internal view {
         if (periodId != latestPeriodId) {
             revert InvalidPeriodId();
+        }
+    }
+
+    function _checkWithdraw(uint256 withdrawAmount, uint256 frozenAmount, uint256 totalAmount) internal {
+        if (withdrawAmount + frozenAmount > totalAmount) {
+            emit NotEnoughWithdrawShare();
+            return;
         }
     }
 
