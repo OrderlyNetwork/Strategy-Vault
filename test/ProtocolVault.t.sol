@@ -22,7 +22,7 @@ import {AccountToken, StrategyFundToken} from "../contracts/lib/types/LedgerStru
 contract TestProtocolVault is Base {
     error NotEnoughFee();
     error EnforcedPause();
-    error NotEnoughUnclaimedAssets();
+    error NotEnoughUnclaimedAssets(uint256 amount);
     error VaultClosed();
 
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
@@ -308,7 +308,7 @@ contract TestProtocolVault is Base {
             ClaimParams({roleType: RoleType.LP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         vm.prank(userA);
 
-        vm.expectRevert(NotEnoughUnclaimedAssets.selector);
+        vm.expectRevert(abi.encodeWithSelector(NotEnoughUnclaimedAssets.selector, 0));
         protocolVault.claim(claimParams);
     }
 

@@ -85,7 +85,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     /// @notice Require only admin can call
     modifier onlyOwnerOrAdmin() {
         if (!isAllowedAdmin[msg.sender] && msg.sender != owner()) {
-            revert InvalidAdmin();
+            revert InvalidOwnerOrAdmin();
         }
         _;
     }
@@ -194,7 +194,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         //check
         uint256 amount = userClaimedById[id].unClaimedAssets;
         if (amount == 0) {
-            revert NotEnoughUnclaimedAssets();
+            revert NotEnoughUnclaimedAssets(amount);
         }
 
         //effect
@@ -344,13 +344,13 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         if (
             amount == 0 || (payloadType == PayloadType.LP_DEPOSIT && amount < minDepositForLp)
                 || (payloadType == PayloadType.SP_DEPOSIT && amount < minDepositForSp)
-        ) revert InvalidDepositAmount();
+        ) revert InvalidDepositAmount(amount);
     }
 
     function _validateBasic(address token, bytes32 brokerHash) internal view {
         if (vaultState == VaultState.CLOSED) revert VaultClosed();
-        if (!isAllowedToken[token]) revert TokenNotAllowed();
-        if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();
+        if (!isAllowedToken[token]) revert TokenNotAllowed(token);
+        if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed(brokerHash);
     }
 
     function _getOperationData(PayloadType payloadType, address receiver, uint256 amount, address, bytes32 brokerHash)
@@ -366,7 +366,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             strategyProviderId = _getStrategyProviderId(receiver, brokerHash);
         } else {
-            revert InvalidPayloadType();
+            revert InvalidPayloadType(payloadType);
         }
 
         //construct OperationData cross chain message

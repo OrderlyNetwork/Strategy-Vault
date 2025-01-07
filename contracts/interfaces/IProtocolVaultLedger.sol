@@ -23,16 +23,17 @@ import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
 interface IProtocolVaultLedger {
     error InvalidPeriodId();
-    error InvalidCaller();
+    error InvalidOperator();
+    error InvalidVaultCrossChainManager();
     error InsufficientBalance();
     error AlreadyAllocatedShare();
-    error NotEnoughLPDeposit();
+    error NotEnoughLPDeposit(uint256 amount);
     error NotEnoughSPDeposit();
-    error InvalidOpType();
+    error InvalidOpType(OperationType opType);
     error InvalidTotalAssets();
-    error NotEnoughFrozenShare();
+    error NotEnoughFrozenShare(uint256 amount);
     error InvalidInput();
-    
+
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
         uint256 periodId,

@@ -70,7 +70,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @notice Require only operator can call
     modifier onlyOperator() {
         if (msg.sender != operator) {
-            revert InvalidCaller();
+            revert InvalidOperator();
         }
         _;
     }
@@ -78,7 +78,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @notice Require only crossChainManager can call
     modifier onlyVaultCrossChainManager() {
         if (msg.sender != crossChainManager) {
-            revert InvalidCaller();
+            revert InvalidVaultCrossChainManager();
         }
         _;
     }
@@ -261,7 +261,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     //handle SP withdraw
                     amount = _handleSpWithdraw(id, operationAmount);
                 } else {
-                    revert InvalidOpType();
+                    revert InvalidOpType(operationType);
                 }
 
                 operationRes[i] = OperationRes({
@@ -642,7 +642,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         AccountToken storage accountToken = accountTokenInfo[accountId][USDC_HASH];
 
         if (amount > accountToken.unAllocatedAssets) {
-            revert NotEnoughLPDeposit();
+            revert NotEnoughLPDeposit(amount);
         }
 
         uint256 depositShares = _convertToShares(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
@@ -660,7 +660,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         AccountToken storage accountToken = accountTokenInfo[accountId][USDC_HASH];
 
         if (amount > accountToken.frozenShares) {
-            revert NotEnoughFrozenShare();
+            revert NotEnoughFrozenShare(amount);
         }
 
         //effect
@@ -698,7 +698,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         PendingState storage pendingState = strategyFundToken.pendingState;
 
         if (amount > strategyFundToken.frozenShares) {
-            revert NotEnoughFrozenShare();
+            revert NotEnoughFrozenShare(amount);
         }
         uint256 spWithdrawAmount = _convertToAssets(
             amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor

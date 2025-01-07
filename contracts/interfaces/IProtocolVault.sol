@@ -27,16 +27,16 @@ interface IProtocolVault {
     event AllowedStrategySet(address strategy, bool isAllowed);
 
     error NotAllowedToken();
-    error InvalidDepositAmount();
+    error InvalidDepositAmount(uint256 amount);
     error InvalidRoleType();
-    error NotEnoughUnclaimedAssets();
+    error NotEnoughUnclaimedAssets(uint256 amount);
     error InvalidCrossChainManager();
     error InvalidStrategy();
-    error InvalidPayloadType();
-    error TokenNotAllowed();
-    error BrokerNotAllowed();
+    error InvalidPayloadType(PayloadType payloadType);
+    error TokenNotAllowed(address token);
+    error BrokerNotAllowed(bytes32 brokerHash);
     error NotEnoughFee();
-    error InvalidAdmin();
+    error InvalidOwnerOrAdmin();
     error VaultClosed();
 
     function deposit(DepositParams memory depositParams) external payable;
