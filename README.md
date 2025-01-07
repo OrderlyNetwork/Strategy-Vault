@@ -1,66 +1,35 @@
-## Foundry
+# Strategy Vault
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Specification
+https://wootraders.atlassian.net/wiki/spaces/ORDER/pages/872644767/Strategy+Vault+Contract+Design+MVP
 
-Foundry consists of:
+## Dependences
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+```shell
+$ yarn
+```
 
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
+## Build
 
 ```shell
 $ forge build
 ```
+or 
 
-### Test
+```shell
+$ npx hardhat compile
+```
+
+## Test
 
 ```shell
 $ forge test
 ```
 
-### Format
+## Deploy
 
 ```shell
-$ forge fmt
+$ npx hardhat deploy-evm --env < env > --network < network >
+$ npx hardhat deploy-orderly --env < env > --network < network >
 ```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
