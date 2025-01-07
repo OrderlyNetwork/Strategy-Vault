@@ -151,7 +151,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     }
 
     //--------------------------------------FROM Operator--------------------------------------------
-    /// @notice Operator upload NAV of each strategy fund at first of the period
+    /// @notice Operator upload NAV of each strategy fund and compute performance fee at first of the period
     /// @param periodId period id
     /// @param vaultId vault id
     /// @param strategyFundAssets strategy fund assets info
@@ -222,6 +222,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit StrategyFundAssetsUpdate(periodId, vaultId, mainAssetsAfterFee, updateStrategyFundAssetsRes);
     }
 
+    /// @notice Operator update LP and strategy fund info
+    /// @param periodId period id
+    /// @param vaultId vault id
+    /// @param updateUserLedgerParams update user ledger info
+    /// @param signature signature of BE
     function updateLPAndStrategyFund(
         uint256 periodId,
         bytes32 vaultId,
@@ -272,6 +277,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit LPAndStrategyFundUpdated(periodId, vaultId, operationRes);
     }
 
+    /// @notice Operator allocate all lp deposit and withdraw to strategy funds after handle all lp operation
+    /// @param periodId period id
+    /// @param vaultId vault id
+    /// @param strategyProviderIds each strategy provider id
+    /// @param signature signature of BE
     function allocatToFunds(
         uint256 periodId,
         bytes32 vaultId,
@@ -391,6 +401,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit FundAllocated(periodId, vaultId, strategyProviderIds, allocateFundRes);
     }
 
+    /// @notice Operator settle main and strategy fund info after check all operations
+    /// @param periodId period id
+    /// @param vaultId vault id
+    /// @param strategyProviderIds each strategy provider id
+    /// @param signature signature of BE
     function settleMainAndStrategyFunds(
         uint256 periodId,
         bytes32 vaultId,
@@ -429,6 +444,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit MainAndStrategyFundsSettled(periodId, vaultId, mainShares, strategyFundStates);
     }
 
+    /// @notice Operator settle all LP infos after check all operations
+    /// @param periodId period id
+    /// @param vaultId vault id
+    /// @param accountIds each account id
+    /// @param signature signature of BE
     function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes calldata signature)
         external
         onlyOperator
@@ -448,6 +468,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit AccountSettled(periodId, vaultId, accountStates);
     }
 
+    /// @notice Operator update period id after last period finish
+    /// @param periodId new period id
+    /// @param vaultId vault id
+    /// @param signature signature signature of BE
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external onlyOperator {
         if (periodId != latestPeriodId + 1) {
             revert InvalidPeriodId();
@@ -461,6 +485,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit PeriodIdUpdated(periodId, vaultId);
     }
 
+    /// @notice Operator distribute withdraw assets to strategy
+    /// @param periodId period id
+    /// @param vaultId vault id
+    /// @param assetsDistributions distribute infos
+    /// @param signature signature signature of BE
     function distributeAssets(
         uint256 periodId,
         bytes32 vaultId,
@@ -489,7 +518,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit AssetsDistrubuted(periodId, vaultId);
     }
 
-    /// @notice update user unClaimed assets info on a specific chain
+    /// @notice Operator update unclaimed assets after funds transfer to protocol vault
+    /// @param chainId chain id that unclaimed assets will be updated
+    /// @param periodId period id
+    /// @param vaultId  vault id
+    /// @param updateUserClaims update uers claim infos
+    /// @param signature signature signature of BE
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
