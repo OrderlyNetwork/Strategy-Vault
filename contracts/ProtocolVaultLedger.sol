@@ -237,9 +237,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         Signature.verifyUpdateLPAndStrategyFund(periodId, vaultId, updateUserLedgerParams, signature, engine);
 
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
-        uint256 amount;
+
+        //handle lp operation
         for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
             bytes32 requestId = updateUserLedgerParams[i].operation.requestId;
+            uint256 amount;
 
             if (!isOpHandeled[requestId]) {
                 Operation memory operation = updateUserLedgerParams[i].operation;
