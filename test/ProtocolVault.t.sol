@@ -68,8 +68,7 @@ contract TestProtocolVault is Base {
             , // shares
             uint256 unAllocatedAssets,
             , // frozenShares
-            , // pendingShares
-                // enableClaimedAssets
+             // pendingShares
         ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
         assertEq(unAllocatedAssets, amount);
         assertEq(assets, amount);
@@ -132,8 +131,7 @@ contract TestProtocolVault is Base {
             , // shares
             ,
             uint256 frozenShares, // frozenShares
-            , // pendingShares
-                // enableClaimedAssets
+                // pendingShares
         ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
         assertEq(frozenShares, withdrawShares);
     }

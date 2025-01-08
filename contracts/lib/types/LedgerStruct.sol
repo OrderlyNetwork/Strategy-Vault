@@ -15,8 +15,6 @@ struct AccountToken {
     uint256 frozenShares;
     ///@dev pending shares during a period, equal to shares after a period
     uint256 pendingShares;
-    ///@dev assets that waitting to be transferred to PV
-    uint256 enableClaimedAssets;
 }
 
 struct StrategyFundToken {
@@ -144,7 +142,7 @@ struct Strategy {
 struct AssetsDistribution {
     ///@dev chainId
     uint256 chainId;
-    ///@dev assets to be distributed on a chain
+    ///@dev assets amount to be distributed on a chain
     uint256 assets;
 }
 //--------------------------------------User Claim--------------------------------------------

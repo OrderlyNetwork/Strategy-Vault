@@ -28,6 +28,7 @@ interface IProtocolVault {
 
     error NotAllowedToken();
     error InvalidDepositAmount(uint256 amount);
+    error ZeroAmount();
     error InvalidRoleType();
     error NotEnoughUnclaimedAssets(uint256 amount);
     error InvalidCrossChainManager();

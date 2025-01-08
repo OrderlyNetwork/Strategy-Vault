@@ -122,7 +122,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     //--------------------------------------FROM USER-----------------------------------------
     /**
-     * @notice Allows a user to deposit funds into the vault. If a common address (non-SP) executes SP_DEPOSIT, 
+     * @notice Allows a user to deposit funds into the vault. If a common address (non-SP) executes SP_DEPOSIT
      *         the funds will be locked in the vault without being recorded.
      * @dev This function can only be called when the contract is not paused.
      * @param depositParams The parameters required for the deposit, encapsulated in a struct.
@@ -160,7 +160,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         uint256 amount = withdrawParams.amount;
         PayloadType payloadType = withdrawParams.payloadType;
 
-        _validateBasic(token, brokerHash);
+        _validateBasic(token, amount, brokerHash);
 
         //construct OperationData
         OperationData memory data = _getOperationData(payloadType, msg.sender, amount, token, brokerHash);
@@ -340,16 +340,17 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         internal
         view
     {
-        _validateBasic(token, brokerHash);
+        _validateBasic(token, amount, brokerHash);
 
         if (
-            amount == 0 || (payloadType == PayloadType.LP_DEPOSIT && amount < minDepositForLp)
+            (payloadType == PayloadType.LP_DEPOSIT && amount < minDepositForLp)
                 || (payloadType == PayloadType.SP_DEPOSIT && amount < minDepositForSp)
         ) revert InvalidDepositAmount(amount);
     }
 
-    function _validateBasic(address token, bytes32 brokerHash) internal view {
+    function _validateBasic(address token, uint256 amount, bytes32 brokerHash) internal view {
         if (vaultState == VaultState.CLOSED) revert VaultClosed();
+        if (amount == 0) revert ZeroAmount();
         if (!isAllowedToken[token]) revert TokenNotAllowed(token);
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed(brokerHash);
     }
