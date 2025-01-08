@@ -52,7 +52,7 @@ library Signature {
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, strategyProviderIds));
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, strategyProviderIds,"allocatToFunds"));
         verifySignature(signer, messageHash, signature);
     }
 
@@ -63,7 +63,7 @@ library Signature {
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, strategyProviderIds));
+        bytes32 messageHash = keccak256(abi.encode(periodId, vaultId, strategyProviderIds,"settleMainAndStrategyFunds"));
         verifySignature(signer, messageHash, signature);
     }
 

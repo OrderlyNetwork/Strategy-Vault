@@ -438,7 +438,7 @@ contract ProtocolVaultTest is Base {
         view
         returns (bytes memory)
     {
-        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds));
+        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds,"allocatToFunds"));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -450,7 +450,7 @@ contract ProtocolVaultTest is Base {
         view
         returns (bytes memory)
     {
-        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds));
+        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds,"settleMainAndStrategyFunds"));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
