@@ -59,9 +59,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     mapping(bytes32 => uint256) public feeRateOfFund;
     /// @dev allowed strategy provider
     mapping(bytes32 => bool) public isAllowedStrategyProvider;
-    /// @dev strategy fund information by strategy provider id
+    /// @dev strategy fund token information by strategy provider id and token hash
     mapping(bytes32 => mapping(bytes32 => StrategyFundToken)) public strategyFundTokenInfo;
-    /// @dev account information by account id
+    /// @dev account token information by account id and token hash
     mapping(bytes32 => mapping(bytes32 => AccountToken)) public accountTokenInfo;
     /// @dev Determines whether the operation corresponding to the requestId is executed
     mapping(bytes32 => bool) public isOpHandeled;
@@ -703,6 +703,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         //effect
         uint256 withdrawAssets = _convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
 
+        accountToken.unclaimedAssets += withdrawAssets;
         accountToken.pendingShares -= amount;
         accountToken.frozenShares -= amount;
         pendingMainShares -= amount;

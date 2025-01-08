@@ -24,9 +24,9 @@ struct StrategyFundToken {
     uint256 performanceFee;
     ///@dev fund assets after performance fee
     uint256 fundAssetsAfterFee;
-    ///@dev sp deposit assets that waiting for handle
+    ///@dev sp deposit assets that unallocated to shares
     uint256 unAllocatedAssets;
-    ///@dev withdraw shares that unallocated to assets
+    ///@dev withdraw sp shares that unallocated to assets
     uint256 frozenShares;
     ///@dev fund main shares
     uint256 mainShares;
