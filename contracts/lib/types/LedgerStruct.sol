@@ -148,7 +148,10 @@ struct AssetsDistribution {
 //--------------------------------------User Claim--------------------------------------------
 
 struct UpdateUserClaim {
+    ///@dev accountId or strategyProviderId
     bytes32 userId;
+    ///@dev update unclaimed assets amount
     uint256 amount;
+    ///@dev update unclaimed assets requestId
     bytes32 requestId;
 }

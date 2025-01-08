@@ -536,7 +536,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         _check(periodId);
         Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, updateUserClaims, signature, engine);
 
-        //ignore handled claim info
+        //ignore handled 
         UpdateUserClaim[] memory userClaims = new UpdateUserClaim[](updateUserClaims.length);
         for (uint256 i = 0; i < updateUserClaims.length; i++) {
             if (!isClaimedHandled[updateUserClaims[i].requestId]) {
@@ -557,7 +557,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit UnclaimedAssetsUpdated(periodId, vaultId, userClaims);
     }
     //--------------------------------------CONFIG--------------------------------------------
-
     function setFeeRate(bytes32[] calldata strategyProviderIds, uint256[] calldata feeRates) external onlyOwner {
         if (strategyProviderIds.length != feeRates.length) {
             revert InvalidInput();
@@ -703,7 +702,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         //effect
         uint256 withdrawAssets = _convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
 
-        accountToken.unclaimedAssets += withdrawAssets;
         accountToken.pendingShares -= amount;
         accountToken.frozenShares -= amount;
         pendingMainShares -= amount;
@@ -727,6 +725,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         pendingState.pendingStrategyProviderShares += depositShares;
         pendingState.pendingTotalAssets += amount;
         strategyFundToken.unAllocatedAssets -= amount;
+
         return depositShares;
     }
 
@@ -738,16 +737,17 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         if (amount > strategyFundToken.frozenShares) {
             revert NotEnoughFrozenShare(amount);
         }
-        uint256 spWithdrawAmount = _convertToAssets(
+        uint256 spWithdrawAssets = _convertToAssets(
             amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
         );
 
         //effect
         pendingState.pendingTotalShares -= amount;
         pendingState.pendingStrategyProviderShares -= amount;
-        pendingState.pendingTotalAssets -= spWithdrawAmount;
+        pendingState.pendingTotalAssets -= spWithdrawAssets;
         strategyFundToken.frozenShares -= amount;
-        return spWithdrawAmount;
+
+        return spWithdrawAssets;
     }
 
     function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
