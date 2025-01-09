@@ -551,7 +551,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         //length that unhandled requestId
         uint256 len;
         for (uint256 i = 0; i < requestIds.length; i++) {
-            if (!isUserClaimHandled[requestIds[i]] && userClaimInfo[requestIds[i]].assets > 0) {
+            if (_isValidRequestId(requestIds[i])) {
                 len++;
             }
         }
@@ -564,7 +564,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             //handle requestid claim
             for (uint256 i = 0; i < requestIds.length; i++) {
                 //ignore if handled
-                if (!isUserClaimHandled[requestIds[i]] && userClaimInfo[requestIds[i]].assets > 0) {
+                if (_isValidRequestId(requestIds[i])) {
                     userClaimInfos[index] = userClaimInfo[requestIds[i]];
 
                     isUserClaimHandled[requestIds[i]] = true;
@@ -814,6 +814,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             }
         }
         return hwm;
+    }
+
+    function _isValidRequestId(bytes32 requestId) internal view returns (bool) {
+        return !isUserClaimHandled[requestId] && userClaimInfo[requestId].assets > 0;
     }
 
     /**
