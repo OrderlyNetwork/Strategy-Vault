@@ -15,7 +15,7 @@ import {
     UpdateLedgerParams,
     AssetsDistribution,
     AccountState,
-    UpdateUserClaim,
+    ClaimInfo,
     AllocateFundRes,
     StrategyFundState
 } from "../contracts/ProtocolVaultLedger.sol";
@@ -60,30 +60,31 @@ contract ProtocolVaultTest is Base {
     }
 
     function testUpdateUnclaimed() public {
-        UpdateUserClaim[] memory updateUserClaims = new UpdateUserClaim[](2);
-        updateUserClaims[0] =
-            UpdateUserClaim({userId: userA_id, amount: 1000 * assetDecimal, requestId: keccak256(abi.encode(1))});
-        updateUserClaims[1] =
-            UpdateUserClaim({userId: userB_id, amount: 1000 * assetDecimal, requestId: keccak256(abi.encode(2))});
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, updateUserClaims);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
 
         //deal eth to cc contract on ledger
+        uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(requestIds[0],userA_id,asset);
+        svLedger.setLpClaimInfo(requestIds[1],userB_id,asset);
 
         vm.startPrank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, updateUserClaims, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         //check
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
-        assertEq(userClaimedInfo_A.unClaimedAssets, 1000 * assetDecimal);
-        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
+        assertEq(userClaimedInfo_A.unClaimedAssets, asset);
+        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(0)));
 
         UserClaimedInfo memory userClaimedInfo_B = protocolVault.getUserClaimedInfo(userB_id);
-        assertEq(userClaimedInfo_B.unClaimedAssets, 1000 * assetDecimal);
-        assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(2)));
+        assertEq(userClaimedInfo_B.unClaimedAssets, asset);
+        assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
     }
 
     function testUpgradeFundAssetsSignature() public {

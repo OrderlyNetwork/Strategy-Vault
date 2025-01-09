@@ -16,9 +16,9 @@ import {
     UpdateLedgerParams,
     AssetsDistribution,
     AccountState,
-    UpdateUserClaim,
     AllocateFundRes,
-    StrategyFundState
+    StrategyFundState,
+    ClaimInfo
 } from "./lib/types/LedgerStruct.sol";
 import {Signature} from "./lib/utils/Signature.sol";
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
@@ -65,8 +65,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     mapping(bytes32 => mapping(bytes32 => AccountToken)) public accountTokenInfo;
     /// @dev Determines whether the operation corresponding to the requestId is executed
     mapping(bytes32 => bool) public isOpHandeled;
-    /// @dev Determines whether the claim corresponding to the requestId is executed
-    mapping(bytes32 => bool) public isClaimedHandled;
+    /// @dev Determines whether the assets has been distributed in a period. Only can be called once in a period.
+    mapping(uint256 => bool) public isAssetDistributed;
+    /// @dev requestId to User Claim information
+    mapping(bytes32 => ClaimInfo) public userClaimInfo;
+    /// @dev Determines whether the user claim is handled
+    mapping(bytes32 => bool) public isUserClaimHandled;
 
     /// @notice Require only operator can call
     modifier onlyOperator() {
@@ -254,13 +258,13 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     amount = _handleLpDeposit(id, operationAmount);
                 } else if (operationType == OperationType.LP_WITHDRAW) {
                     //handle LP withdraw
-                    amount = _handleLpWithdraw(id, operationAmount);
+                    amount = _handleLpWithdraw(requestId, id, operationAmount);
                 } else if (operationType == OperationType.SP_DEPOSIT) {
                     //handle SP deposit
                     amount = _handleSPDeposit(id, operationAmount);
                 } else if (operationType == OperationType.SP_WITHDRAW) {
                     //handle SP withdraw
-                    amount = _handleSpWithdraw(id, operationAmount);
+                    amount = _handleSpWithdraw(requestId, id, operationAmount);
                 } else {
                     revert InvalidOpType(operationType);
                 }
@@ -499,7 +503,14 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         bytes calldata signature
     ) external onlyOperator {
         _check(periodId);
+        //only can be called once in a period
+        if (isAssetDistributed[periodId]) {
+            revert AssetDistributed(periodId);
+        }
         Signature.verifyAssetsDistribution(periodId, vaultId, assetsDistributions, signature, engine);
+
+        //change state
+        isAssetDistributed[periodId] = true;
 
         for (uint256 i = 0; i < assetsDistributions.length; i++) {
             //contruct StrategyExecution
@@ -524,24 +535,24 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @param chainId chain id that unclaimed assets will be updated
     /// @param periodId period id
     /// @param vaultId  vault id
-    /// @param updateUserClaims update uers claim infos
+    /// @param requestIds request Id array
     /// @param signature signature signature of BE
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
         bytes32 vaultId,
-        UpdateUserClaim[] memory updateUserClaims,
+        bytes32[] memory requestIds,
         bytes calldata signature
     ) external onlyOperator {
         _check(periodId);
-        Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, updateUserClaims, signature, engine);
+        Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, requestIds, signature, engine);
+        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](requestIds.length);
 
-        //ignore handled 
-        UpdateUserClaim[] memory userClaims = new UpdateUserClaim[](updateUserClaims.length);
-        for (uint256 i = 0; i < updateUserClaims.length; i++) {
-            if (!isClaimedHandled[updateUserClaims[i].requestId]) {
-                userClaims[i] = updateUserClaims[i];
-                isClaimedHandled[updateUserClaims[i].requestId] = true;
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            //ignore if handled
+            if (!isUserClaimHandled[requestIds[i]]) {
+                userClaimInfos[i] = userClaimInfo[requestIds[i]];
+                isUserClaimHandled[requestIds[i]] = true;
             }
         }
         //cross chain message
@@ -549,13 +560,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             payloadType: PayloadType.UPDATE_USER_CLAIM,
             srcChainId: block.chainid,
             dstChainId: chainId,
-            payload: abi.encode(periodId, userClaims)
+            payload: abi.encode(periodId, userClaimInfos)
         });
+
         //cross-chain
         IVaultCrossChainManager(crossChainManager).sendMessage(message);
 
-        emit UnclaimedAssetsUpdated(periodId, vaultId, userClaims);
+        emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }
+
     //--------------------------------------CONFIG--------------------------------------------
     function setFeeRate(bytes32[] calldata strategyProviderIds, uint256[] calldata feeRates) external onlyOwner {
         if (strategyProviderIds.length != feeRates.length) {
@@ -692,7 +705,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         return depositShares;
     }
 
-    function _handleLpWithdraw(bytes32 accountId, uint256 amount) internal returns (uint256) {
+    function _handleLpWithdraw(bytes32 requestId, bytes32 accountId, uint256 amount) internal returns (uint256) {
         AccountToken storage accountToken = accountTokenInfo[accountId][USDC_HASH];
 
         if (amount > accountToken.frozenShares) {
@@ -706,6 +719,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         accountToken.frozenShares -= amount;
         pendingMainShares -= amount;
         pendingLpWithdrawShares += amount;
+
+        userClaimInfo[requestId].requestId = requestId;
+        userClaimInfo[requestId].accountId = accountId;
+        userClaimInfo[requestId].assets = withdrawAssets;
 
         return withdrawAssets;
     }
@@ -729,7 +746,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         return depositShares;
     }
 
-    function _handleSpWithdraw(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
+    function _handleSpWithdraw(bytes32 requestId, bytes32 strategyProviderId, uint256 amount)
+        internal
+        returns (uint256)
+    {
         //gas optimization
         StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[strategyProviderId][USDC_HASH];
         PendingState storage pendingState = strategyFundToken.pendingState;
@@ -746,6 +766,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         pendingState.pendingStrategyProviderShares -= amount;
         pendingState.pendingTotalAssets -= spWithdrawAssets;
         strategyFundToken.frozenShares -= amount;
+
+        userClaimInfo[requestId].requestId = requestId;
+        userClaimInfo[requestId].strategyProviderId = strategyProviderId;
+        userClaimInfo[requestId].assets = spWithdrawAssets;
 
         return spWithdrawAssets;
     }

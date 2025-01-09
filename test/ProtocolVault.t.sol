@@ -15,7 +15,7 @@ import {
     OperationData,
     UserClaimedInfo
 } from "../contracts/lib/types/VaultStruct.sol";
-import {UpdateUserClaim} from "../contracts/ProtocolVaultLedger.sol";
+import {ClaimInfo} from "../contracts/ProtocolVaultLedger.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 import {AccountToken, StrategyFundToken} from "../contracts/lib/types/LedgerStruct.sol";
 
@@ -68,7 +68,7 @@ contract TestProtocolVault is Base {
             , // shares
             uint256 unAllocatedAssets,
             , // frozenShares
-             // pendingShares
+                // pendingShares
         ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
         assertEq(unAllocatedAssets, amount);
         assertEq(assets, amount);
@@ -171,22 +171,27 @@ contract TestProtocolVault is Base {
         bytes32 vaultId;
         uint256 amount = 100e6;
 
-        UpdateUserClaim[] memory updateUserClaims = new UpdateUserClaim[](2);
-        updateUserClaims[0] = UpdateUserClaim({userId: userA_id, amount: amount, requestId: keccak256(abi.encode(1))});
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, updateUserClaims);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
 
+        //add claim info
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, amount);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, amount);
+
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, updateUserClaims, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         //check
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(userClaimedInfo_A.unClaimedAssets, amount);
-        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(1)));
+        assertEq(userClaimedInfo_A.requestIds[0], requestIds[0]);
 
         uint256 userBalanceBefore = IERC20(mockToken).balanceOf(userA);
         //LP claim

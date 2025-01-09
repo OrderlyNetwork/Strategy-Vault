@@ -13,7 +13,7 @@ import {
     UpdateLedgerParams,
     AssetsDistribution,
     AccountState,
-    UpdateUserClaim,
+    ClaimInfo,
     AllocateFundRes,
     StrategyFundState
 } from "../lib/types/LedgerStruct.sol";
@@ -33,6 +33,7 @@ interface IProtocolVaultLedger {
     error InvalidTotalAssets();
     error NotEnoughFrozenShare(uint256 amount);
     error InvalidInput();
+    error AssetDistributed(uint256 periodId);
 
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
@@ -57,7 +58,7 @@ interface IProtocolVaultLedger {
     );
     event OperatorManagerSet(address operatorAddress);
     event AssetsDistrubuted(uint256 periodId, bytes32 vaultId);
-    event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, UpdateUserClaim[] updateUserClaims);
+    event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
     event NotAllowedStrategyProvider(bytes32 spId);
     event NotEnoughWithdrawShare();
     event InvalidPayloadType();
@@ -105,7 +106,7 @@ interface IProtocolVaultLedger {
         uint256 chainId,
         uint256 periodId,
         bytes32 vaultId,
-        UpdateUserClaim[] memory updateUserClaims,
+        bytes32[] calldata requestIds,
         bytes memory signature
     ) external;
     /*=========================================================================================

@@ -10,7 +10,7 @@ import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
-import {AssetsDistribution, UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
+import {AssetsDistribution, ClaimInfo} from "./lib/types/LedgerStruct.sol";
 import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
 
 
@@ -86,11 +86,11 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            (uint256 periodId, UpdateUserClaim[] memory updateUserClaims) =
-                abi.decode(payload, (uint256, UpdateUserClaim[]));
+            (uint256 periodId, ClaimInfo[] memory userClaims) =
+                abi.decode(payload, (uint256, ClaimInfo[]));
 
             //Call Protocol Vault
-            IProtocolVault(vault).updateUnClaimed(periodId, updateUserClaims);
+            IProtocolVault(vault).updateUnClaimed(periodId, userClaims);
         } else {
             revert InvalidPayloadType();
         }

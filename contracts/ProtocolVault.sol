@@ -22,7 +22,7 @@ import {
     UserClaimedInfo
 } from "./lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
-import {UpdateUserClaim} from "./lib/types/LedgerStruct.sol";
+import {ClaimInfo} from "./lib/types/LedgerStruct.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -239,17 +239,16 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit DepositToStrategy(periodId, vaultId, receiver, amount);
     }
 
-    function updateUnClaimed(uint256 periodId, UpdateUserClaim[] memory updateUserClaims)
-        external
-        onlyVaultCrossChainManager
-    {
-        for (uint256 i = 0; i < updateUserClaims.length; i++) {
-            bytes32 userId = updateUserClaims[i].userId;
-            userClaimedById[userId].unClaimedAssets += updateUserClaims[i].amount;
-            userClaimedById[userId].requestIds.push(updateUserClaims[i].requestId);
+    function updateUnClaimed(uint256 periodId, ClaimInfo[] memory userClaimInfos) external onlyVaultCrossChainManager {
+        for (uint256 i = 0; i < userClaimInfos.length; i++) {
+            bytes32 userId = userClaimInfos[i].accountId == bytes32(0)
+                ? userClaimInfos[i].strategyProviderId
+                : userClaimInfos[i].accountId;
+            userClaimedById[userId].unClaimedAssets += userClaimInfos[i].assets;
+            userClaimedById[userId].requestIds.push(userClaimInfos[i].requestId);
         }
-
-        emit UnClaimedUpdated(periodId, updateUserClaims);
+        
+        emit UnClaimedUpdated(periodId, userClaimInfos);
     }
 
     //--------------------------------------CONFIG--------------------------------------------

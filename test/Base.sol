@@ -11,7 +11,7 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
-import {ProtocolVaultLedger, UpdateUserClaim} from "../contracts/ProtocolVaultLedger.sol";
+import {ProtocolVaultLedger, ClaimInfo} from "../contracts/ProtocolVaultLedger.sol";
 import {MockSVLedger} from "./mock/MockSVLedger.sol";
 import {MockDexVault} from "./mock/MockDexVault.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
@@ -223,9 +223,9 @@ contract Base is TestHelperOz5 {
         uint32 chainId,
         uint256 _periodId,
         bytes32 _vaultId,
-        UpdateUserClaim[] memory updateUserClaims
+        bytes32[] memory requestIds
     ) internal view returns (bytes memory) {
-        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _vaultId, updateUserClaims));
+        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _vaultId, requestIds));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);

@@ -16,7 +16,8 @@ contract MockSVLedger is ProtocolVaultLedger {
             strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingMainShares = mainSharesInFund[i];
             strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingStrategyProviderShares = spSharesInFund[i];
             strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingTotalAssets = fundAssets[i];
-            strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingTotalShares = mainSharesInFund[i] + spSharesInFund[i];
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingTotalShares =
+                mainSharesInFund[i] + spSharesInFund[i];
 
             strategyFundTokenInfo[spIds[i]][USDC_HASH].mainShares = mainSharesInFund[i];
             strategyFundTokenInfo[spIds[i]][USDC_HASH].strategyProviderShares = spSharesInFund[i];
@@ -108,5 +109,17 @@ contract MockSVLedger is ProtocolVaultLedger {
             hwms[i] = hwm;
         }
         return hwms;
+    }
+
+    function setLpClaimInfo(bytes32 requestId, bytes32 accountId, uint256 assets) external {
+        userClaimInfo[requestId].requestId = requestId;
+        userClaimInfo[requestId].accountId = accountId;
+        userClaimInfo[requestId].assets = assets;
+    }
+
+    function setSpClaimInfo(bytes32 requestId, bytes32 spId, uint256 assets) external {
+        userClaimInfo[requestId].requestId = requestId;
+        userClaimInfo[requestId].accountId = spId;
+        userClaimInfo[requestId].assets = assets;
     }
 }
