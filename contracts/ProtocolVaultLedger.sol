@@ -552,21 +552,23 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             //ignore if handled
             if (!isUserClaimHandled[requestIds[i]]) {
                 userClaimInfos[i] = userClaimInfo[requestIds[i]];
-                isUserClaimHandled[requestIds[i]] = true;
-            }
 
-            delete userClaimInfo[requestIds[i]];
+                isUserClaimHandled[requestIds[i]] = true;
+                delete userClaimInfo[requestIds[i]];
+            }
         }
         //cross chain message
-        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: PayloadType.UPDATE_USER_CLAIM,
-            srcChainId: block.chainid,
-            dstChainId: chainId,
-            payload: abi.encode(periodId, userClaimInfos)
-        });
+        if (userClaimInfos.length != 0) {
+            StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+                payloadType: PayloadType.UPDATE_USER_CLAIM,
+                srcChainId: block.chainid,
+                dstChainId: chainId,
+                payload: abi.encode(periodId, userClaimInfos)
+            });
 
-        //cross-chain
-        IVaultCrossChainManager(crossChainManager).sendMessage(message);
+            //cross-chain
+            IVaultCrossChainManager(crossChainManager).sendMessage(message);
+        }
 
         emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }

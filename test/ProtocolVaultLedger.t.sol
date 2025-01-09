@@ -69,8 +69,8 @@ contract ProtocolVaultTest is Base {
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        svLedger.setLpClaimInfo(requestIds[0],userA_id,asset);
-        svLedger.setLpClaimInfo(requestIds[1],userB_id,asset);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
 
         vm.startPrank(operator);
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
@@ -85,6 +85,23 @@ contract ProtocolVaultTest is Base {
         UserClaimedInfo memory userClaimedInfo_B = protocolVault.getUserClaimedInfo(userB_id);
         assertEq(userClaimedInfo_B.unClaimedAssets, asset);
         assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
+    }
+
+    function testRepeatClaim() public {
+        bytes32[] memory requestIds = new bytes32[](1);
+        requestIds[0] = keccak256(abi.encode(0));
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        //deal eth to cc contract on ledger
+        uint256 asset = 1000 * assetDecimal;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+
+        vm.startPrank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //would not happen cc again
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
     }
 
     function testUpgradeFundAssetsSignature() public {
@@ -439,7 +456,7 @@ contract ProtocolVaultTest is Base {
         view
         returns (bytes memory)
     {
-        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds,"allocatToFunds"));
+        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds, "allocatToFunds"));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -451,7 +468,8 @@ contract ProtocolVaultTest is Base {
         view
         returns (bytes memory)
     {
-        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds,"settleMainAndStrategyFunds"));
+        bytes32 messageHash =
+            keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds, "settleMainAndStrategyFunds"));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
