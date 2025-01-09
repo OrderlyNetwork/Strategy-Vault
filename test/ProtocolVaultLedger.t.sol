@@ -100,14 +100,28 @@ contract ProtocolVaultTest is Base {
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
-        //would not happen cc again
+        //repeat requestId
         bytes32[] memory newRequestIds = new bytes32[](2);
         newRequestIds[0] = keccak256(abi.encode(0));
         newRequestIds[1] = keccak256(abi.encode(1));
         svLedger.setLpClaimInfo(newRequestIds[1], userB_id, asset);
         bytes memory new_signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, newRequestIds);
 
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, new_signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, newRequestIds, new_signature);
+    }
+
+    function testClaimZero() public {
+        bytes32[] memory requestIds = new bytes32[](1);
+        requestIds[0] = keccak256(abi.encode(0));
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, 0);
+
+        vm.startPrank(operator);
+        //will not happen cc
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+
     }
 
     function testRevertNouEnoughClaim() public {}

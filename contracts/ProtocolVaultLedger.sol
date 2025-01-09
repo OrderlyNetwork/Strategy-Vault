@@ -550,7 +550,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         //length that unhandled requestId
         uint256 len;
         for (uint256 i = 0; i < requestIds.length; i++) {
-            if (!isUserClaimHandled[requestIds[i]]) {
+            if (!isUserClaimHandled[requestIds[i]] && userClaimInfo[requestIds[i]].assets > 0) {
                 len++;
             }
         }
@@ -563,7 +563,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             //handle requestid claim
             for (uint256 i = 0; i < requestIds.length; i++) {
                 //ignore if handled
-                if (!isUserClaimHandled[requestIds[i]]) {
+                if (!isUserClaimHandled[requestIds[i]] && userClaimInfo[requestIds[i]].assets > 0) {
                     userClaimInfos[index] = userClaimInfo[requestIds[i]];
 
                     isUserClaimHandled[requestIds[i]] = true;
@@ -582,7 +582,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             //cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
         }
-        
+
         emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }
 
