@@ -208,17 +208,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit UserClaimed(amount, userClaimedById[id].requestIds);
     }
 
-    //--------------------------------------FROM DEX-----------------------------------------
-    function depositFromStrategy(uint256 periodId, address token, address sender, uint256 amount)
-        external
-        allowedStrategy
-    {
+    //--------------------------------------FROM Strategy-----------------------------------------
+    function depositFromStrategy(uint256 periodId, address token, uint256 amount) external allowedStrategy {
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
 
         //transfer token to this contract
         SafeTransferLib.safeTransferFrom(ERC20(token), msg.sender, address(this), amount);
 
-        emit DepositFromStrategy(periodId, vaultId, sender, amount);
+        emit DepositFromStrategy(periodId, vaultId, msg.sender, amount);
     }
 
     //--------------------------------------FROM LEDGER-----------------------------------------
