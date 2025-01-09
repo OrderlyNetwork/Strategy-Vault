@@ -18,7 +18,7 @@ interface IProtocolVault {
     event OperationExecuted(PayloadType payloadType, OperationData operationData);
     event UserClaimed(uint256 amount, bytes32[] requests);
     event DepositFromStrategy(uint256 periodId, bytes32 vaultId, address sender, uint256 amount);
-    event UnClaimedUpdated(uint256 periodId, ClaimInfo[] claimInfos);
+    event UnClaimedUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
     event DepositToStrategy(uint256 periodId, bytes32 vaultId, address receiver, uint256 amount);
     event VaultStateChanged(VaultState state);
     event AllowedBrokerSet(bytes32 brokerHash, bool isAllowed);

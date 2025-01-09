@@ -248,7 +248,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             userClaimedById[userId].requestIds.push(userClaimInfos[i].requestId);
         }
 
-        emit UnClaimedUpdated(periodId, userClaimInfos);
+        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
+        emit UnClaimedUpdated(periodId, vaultId, userClaimInfos);
     }
 
     //--------------------------------------CONFIG--------------------------------------------

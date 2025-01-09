@@ -101,12 +101,17 @@ contract ProtocolVaultTest is Base {
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         //would not happen cc again
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        bytes32[] memory newRequestIds = new bytes32[](2);
+        newRequestIds[0] = keccak256(abi.encode(0));
+        newRequestIds[1] = keccak256(abi.encode(1));
+        svLedger.setLpClaimInfo(newRequestIds[1], userB_id, asset);
+        bytes memory new_signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, newRequestIds);
+
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, new_signature);
     }
 
-    function testRevertNouEnoughClaim() public {
-        
-    }
+    function testRevertNouEnoughClaim() public {}
+
     function testUpgradeFundAssetsSignature() public {
         initialize();
         UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](2);
