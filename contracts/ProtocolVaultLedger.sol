@@ -546,8 +546,17 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     ) external onlyOperator {
         _check(periodId);
         Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, requestIds, signature, engine);
-        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](requestIds.length);
 
+        //length that unhandled requestId
+        uint256 len;
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            if (!isUserClaimHandled[requestIds[i]]) {
+                len++;
+            }
+        }     
+        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](len);
+
+        //handle requestid claim
         for (uint256 i = 0; i < requestIds.length; i++) {
             //ignore if handled
             if (!isUserClaimHandled[requestIds[i]]) {
@@ -568,9 +577,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
             //cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
+            emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
         }
-
-        emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }
 
     //--------------------------------------CONFIG--------------------------------------------
