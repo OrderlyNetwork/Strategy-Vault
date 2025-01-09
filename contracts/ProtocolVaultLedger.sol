@@ -553,21 +553,25 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             if (!isUserClaimHandled[requestIds[i]]) {
                 len++;
             }
-        }     
-        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](len);
-
-        //handle requestid claim
-        for (uint256 i = 0; i < requestIds.length; i++) {
-            //ignore if handled
-            if (!isUserClaimHandled[requestIds[i]]) {
-                userClaimInfos[i] = userClaimInfo[requestIds[i]];
-
-                isUserClaimHandled[requestIds[i]] = true;
-                delete userClaimInfo[requestIds[i]];
-            }
         }
+
+        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](len);
         //cross chain message
-        if (userClaimInfos.length != 0) {
+        if (len != 0) {
+            //new index to avoid out of range
+            uint256 index;
+            //handle requestid claim
+            for (uint256 i = 0; i < requestIds.length; i++) {
+                //ignore if handled
+                if (!isUserClaimHandled[requestIds[i]]) {
+                    userClaimInfos[index] = userClaimInfo[requestIds[i]];
+
+                    isUserClaimHandled[requestIds[i]] = true;
+                    index++;
+                    delete userClaimInfo[requestIds[i]];
+                }
+            }
+
             StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
                 payloadType: PayloadType.UPDATE_USER_CLAIM,
                 srcChainId: block.chainid,
@@ -577,8 +581,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
             //cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
-            emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
         }
+        
+        emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }
 
     //--------------------------------------CONFIG--------------------------------------------
