@@ -119,7 +119,7 @@ contract MockSVLedger is ProtocolVaultLedger {
 
     function setSpClaimInfo(bytes32 requestId, bytes32 spId, uint256 assets) external {
         userClaimInfo[requestId].requestId = requestId;
-        userClaimInfo[requestId].accountId = spId;
+        userClaimInfo[requestId].strategyProviderId = spId;
         userClaimInfo[requestId].assets = assets;
     }
 }

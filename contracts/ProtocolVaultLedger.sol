@@ -554,6 +554,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 userClaimInfos[i] = userClaimInfo[requestIds[i]];
                 isUserClaimHandled[requestIds[i]] = true;
             }
+
+            delete userClaimInfo[requestIds[i]];
         }
         //cross chain message
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({

@@ -144,7 +144,6 @@ contract TestProtocolVault is Base {
         //Initialize
         svLedger.setFundSshares(spId, shares);
         //Withdraw
-
         vm.prank(sp);
         uint256 withdrawShares = 10e6;
         WithdrawParams memory withdrawParams = WithdrawParams({
@@ -208,6 +207,58 @@ contract TestProtocolVault is Base {
         assertEq(IERC20(mockToken).balanceOf(userA), amount + userBalanceBefore);
         assertEq(userClaimedInfo_A.unClaimedAssets, 0);
         assertEq(userClaimedInfo_A.requestIds.length, 0);
+    }
+
+    function testSPAndLPClaim() public {
+        //update user claim info
+        uint256 periodId;
+        bytes32 vaultId;
+        uint256 amount = 100e6;
+
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+
+        //add claim info
+        bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, amount);
+        svLedger.setSpClaimInfo(requestIds[1], spId, amount);
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        UserClaimedInfo memory spClaimedInfo = protocolVault.getUserClaimedInfo(spId);
+
+        assertEq(userClaimedInfo_A.unClaimedAssets, amount);
+        assertEq(userClaimedInfo_A.requestIds[0], requestIds[0]);
+        assertEq(spClaimedInfo.unClaimedAssets, amount);
+        assertEq(spClaimedInfo.requestIds[0], requestIds[1]);
+
+        uint256 userBalanceBefore = IERC20(mockToken).balanceOf(sp);
+
+        //SP claim
+        mockToken.mint(address(protocolVault), amount);
+
+        ClaimParams memory claimParams =
+            ClaimParams({roleType: RoleType.SP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
+        vm.prank(sp);
+        console.logBytes32(spId);
+
+        protocolVault.claim(claimParams);
+
+        //check
+        spClaimedInfo = protocolVault.getUserClaimedInfo(spId);
+        assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
+        assertEq(IERC20(mockToken).balanceOf(sp), amount + userBalanceBefore);
+        assertEq(spClaimedInfo.unClaimedAssets, 0);
+        assertEq(spClaimedInfo.requestIds.length, 0);
     }
 
     function testUnpause() public {
