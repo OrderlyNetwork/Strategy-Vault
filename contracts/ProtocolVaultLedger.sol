@@ -486,6 +486,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
         pendingLpDepositAssets = 0;
         pendingLpWithdrawShares = 0;
+        delete isAssetDistributed[latestPeriodId];
         latestPeriodId++;
 
         emit PeriodIdUpdated(periodId, vaultId);
