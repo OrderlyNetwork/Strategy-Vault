@@ -23,6 +23,8 @@ import {UserClaimedInfo} from "../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract ProtocolVaultTest is Base {
+    error AlreadyCalled();
+
     uint256 shareDecimal = 1e6;
     uint256 assetDecimal = 1e6;
     uint256 priceDecimal = 1e6;
@@ -42,10 +44,66 @@ contract ProtocolVaultTest is Base {
         svLedger.setOperatorManager(operator);
     }
 
+    function testWithdrawETHFromCCManager() public {
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        vm.prank(owner);
+        bVaultCrossChainManager.withdrawNativeToken(payable(owner), 10 ether);
+        assertEq(address(bVaultCrossChainManager).balance, 0);
+        assertEq(owner.balance, 10 ether);
+    }
+
     function testDistributeAssetsToOneChain() public {
         uint256 amount = 1000 * assetDecimal;
         AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
         assetsDistributions[0] = AssetsDistribution({chainId: evmChainId, assets: amount});
+
+        bytes memory signature = _getDistributeAssetsSignature(periodId, vaultId, assetsDistributions);
+
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        vm.startPrank(operator);
+        uint256 gasBefore = gasleft();
+        svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
+        uint256 gasAfter = gasleft();
+        uint256 gasUsed = gasBefore - gasAfter;
+        console.log("Gas used:", gasUsed);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        assertEq(mockDexVault.amount(), amount);
+        uint256 balance = address(bVaultCrossChainManager).balance;
+        console.log("cc fee:", 10 * 10 ** 18 - balance);
+    }
+
+    function testRevertWithTwiceCallDistributeAssets() public {
+        uint256 amount = 1000 * assetDecimal;
+        AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
+        assetsDistributions[0] = AssetsDistribution({chainId: evmChainId, assets: amount});
+
+        bytes memory signature = _getDistributeAssetsSignature(periodId, vaultId, assetsDistributions);
+
+        //deal eth to cc contract on ledger
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        vm.startPrank(operator);
+
+        svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
+
+        //revert
+        vm.expectRevert(AlreadyCalled.selector);
+        svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
+        vm.stopPrank();
+    }
+
+    function testSpecialDecimalDistributeAssetsToOneChain() public {
+        //set special decimal
+        vm.prank(owner);
+        aVaultCrossChainManager.setSpecialTokenDecimal(USDC_HASH, evmChainId, 18);
+
+        uint256 amount = 1000 * assetDecimal;
+        AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
+        assetsDistributions[0] = AssetsDistribution({chainId: evmChainId, assets: amount});
+
         bytes memory signature = _getDistributeAssetsSignature(periodId, vaultId, assetsDistributions);
 
         //deal eth to cc contract on ledger
@@ -56,7 +114,8 @@ contract ProtocolVaultTest is Base {
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         //check
-        assertEq(mockDexVault.amount(), amount);
+        uint256 convertedAmount = 1000e18;
+        assertEq(mockDexVault.amount(), convertedAmount);
     }
 
     function testUpdateUnclaimed() public {
@@ -87,9 +146,71 @@ contract ProtocolVaultTest is Base {
         assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
     }
 
+    function testEstimateUpdateUnclaimed() public {
+        bytes32[] memory requestIds = new bytes32[](1);
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            requestIds[i] = keccak256(abi.encode(i));
+        }
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+
+        //deal eth to cc contract on ledger
+        uint256 asset = 1000 * assetDecimal;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            svLedger.setLpClaimInfo(requestIds[i], userA_id, asset);
+        }
+
+        vm.startPrank(operator);
+        uint256 gasBefore = gasleft();
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        uint256 gasAfter = gasleft();
+        uint256 gasUsed = gasBefore - gasAfter;
+        console.log("Gas used:", gasUsed);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        uint256 balance = address(bVaultCrossChainManager).balance;
+        console.log("cc fee:", 10 * 10 ** 18 - balance);
+    }
+
+    function testSpecialDecimalUpdateUnclaimed() public {
+        //set special decimal
+        vm.prank(owner);
+        aVaultCrossChainManager.setSpecialTokenDecimal(USDC_HASH, evmChainId, 18);
+
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+
+        //deal eth to cc contract on ledger
+        uint256 asset = 1000 * assetDecimal;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+
+        vm.startPrank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        uint256 convertedAmount = 1000e18;
+
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        assertEq(userClaimedInfo_A.unClaimedAssets, convertedAmount);
+        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(0)));
+
+        UserClaimedInfo memory userClaimedInfo_B = protocolVault.getUserClaimedInfo(userB_id);
+        assertEq(userClaimedInfo_B.unClaimedAssets, convertedAmount);
+        assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
+    }
+
     function testRepeatClaim() public {
         bytes32[] memory requestIds = new bytes32[](1);
         requestIds[0] = keccak256(abi.encode(0));
+
         bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
@@ -105,6 +226,7 @@ contract ProtocolVaultTest is Base {
         newRequestIds[0] = keccak256(abi.encode(0));
         newRequestIds[1] = keccak256(abi.encode(1));
         svLedger.setLpClaimInfo(newRequestIds[1], userB_id, asset);
+
         bytes memory new_signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, newRequestIds);
 
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, newRequestIds, new_signature);
@@ -113,6 +235,7 @@ contract ProtocolVaultTest is Base {
     function testClaimZero() public {
         bytes32[] memory requestIds = new bytes32[](1);
         requestIds[0] = keccak256(abi.encode(0));
+
         bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
@@ -121,10 +244,29 @@ contract ProtocolVaultTest is Base {
         vm.startPrank(operator);
         //will not happen cc
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
-
     }
 
     function testRevertNouEnoughClaim() public {}
+
+    // function testUpdateLPWithBE() public {
+    //     Operation memory newOperation_1 = Operation({id: 0x7511aa47fe8ed6efaa2b36dde242b11bc62d0688201230f95054cbd39a93aa7e, requestId: 0xf7b40edb5b14a27a8f5701f948354976e137c50ac4687833693958cca24b9cff, amount: 200000});
+    //     Operation memory newOperation_2 =
+    //         Operation({id: 0xf9fdd8648d22ef32e665f03249fe52804bc181cca3a98e3a16d18b41e34bc8d1, requestId: 0x55dc31b591c376fc5d12b100b2bc1c96a69c9376f8f3a1f757c52e1639a4f0b9, amount: 100000});
+    //     Operation memory newOperation_3 =
+    //         Operation({id: 0xf9fdd8648d22ef32e665f03249fe52804bc181cca3a98e3a16d18b41e34bc8d1, requestId: 0x7e6835135f3ae462bf312fa8e495f4ebac5f81e1c29aca273864fc3d16dadf56, amount: 200000});
+
+    //     //initialize UpdateLedgerParams dymnamic arrary
+    //     UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
+
+    //     updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+    //     updateLedgerParams[1] =
+    //         UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_2});
+    //     updateLedgerParams[2] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_3});
+
+    //     bytes memory signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
+    //     vm.prank(operator);
+    //     svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
+    // }
 
     function testUpgradeFundAssetsSignature() public {
         initialize();
@@ -137,6 +279,78 @@ contract ProtocolVaultTest is Base {
 
         vm.startPrank(operator);
         svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
+    }
+
+    function testRevertWithTwiceCallPpdateStrategyFundAssets() public {
+        initialize();
+        UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](2);
+
+        strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 1000 * assetDecimal);
+        strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
+        bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
+
+        vm.startPrank(operator);
+        svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
+
+        //revert
+        vm.expectRevert(AlreadyCalled.selector);
+        svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
+    }
+
+    function testRevertWithTwiceCallAllocateFunds() public {
+        bytes memory signature = _getALlocateFundsSig(periodId, vaultId, spIds);
+        vm.prank(operator);
+        svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
+
+        //revert
+        vm.expectRevert(AlreadyCalled.selector);
+        vm.prank(operator);
+        svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
+    }
+
+    function testEstimateUpdateLpGas() public {
+        //mock
+        uint256 lpDeposit = 1000 * assetDecimal;
+        bytes32[] memory accountIds = new bytes32[](1);
+        accountIds[0] = userA_id;
+        svLedger.setAccountUnAllocatedAssets(accountIds, lpDeposit);
+
+        UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1000);
+        uint256 depositAmount = 1 * assetDecimal;
+        uint256 requestId;
+        for (uint256 i = 0; i < updateLedgerParams.length; i++) {
+            Operation memory newOperation =
+                Operation({id: userA_id, requestId: keccak256(abi.encode(requestId)), amount: depositAmount});
+            updateLedgerParams[i] =
+                UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation});
+            requestId++;
+        }
+        bytes memory signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
+
+        uint256 gasBefore = gasleft();
+        vm.prank(operator);
+        svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
+        uint256 gasAfter = gasleft();
+        uint256 gasUsed = gasBefore - gasAfter;
+        console.log("Gas used:", gasUsed);
+    }
+
+    function testEstimateSettleAccounts() public {
+        bytes32[] memory accountIds = new bytes32[](600);
+        for (uint256 i = 0; i < accountIds.length; i++) {
+            accountIds[i] = userA_id;
+        }
+
+        svLedger.setAccountPendingShares(accountIds, 10 * shareDecimal);
+
+        bytes memory signature = _getSettleAccountSig(periodId, vaultId, accountIds);
+        uint256 gasBefore = gasleft();
+        vm.prank(operator);
+        svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
+        uint256 gasAfter = gasleft();
+        uint256 gasUsed = gasBefore - gasAfter;
+        console.log("Gas used:", gasUsed);
     }
 
     function testUpdateLedger() public {
@@ -155,7 +369,6 @@ contract ProtocolVaultTest is Base {
         consolePendingState();
 
         //Period 1
-
         console.log("=============Start Period 1=====================");
         vm.startPrank(operator);
 
@@ -169,28 +382,29 @@ contract ProtocolVaultTest is Base {
             uint256 depositAmount = 500 * assetDecimal;
             uint256 withdrawShare = 6 * shareDecimal / 10; //0.6 shares
             uint256 spDepositAmount = 800 * assetDecimal;
+            {
+                Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: depositAmount});
+                Operation memory newOperation_2 =
+                    Operation({id: userA_id, requestId: keccak256(abi.encode(1)), amount: withdrawShare});
+                Operation memory newOperation_3 =
+                    Operation({id: spB_id, requestId: keccak256(abi.encode(2)), amount: spDepositAmount});
 
-            Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: depositAmount});
-            Operation memory newOperation_2 =
-                Operation({id: userA_id, requestId: keccak256(abi.encode(1)), amount: withdrawShare});
-            Operation memory newOperation_3 =
-                Operation({id: spB_id, requestId: keccak256(abi.encode(2)), amount: spDepositAmount});
+                //initialize UpdateLedgerParams dymnamic arrary
+                UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
 
-            //initialize UpdateLedgerParams dymnamic arrary
-            UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
+                updateLedgerParams[0] =
+                    UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+                updateLedgerParams[1] =
+                    UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: newOperation_2});
+                updateLedgerParams[2] =
+                    UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_3});
 
-            updateLedgerParams[0] =
-                UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
-            updateLedgerParams[1] =
-                UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: newOperation_2});
-            updateLedgerParams[2] =
-                UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_3});
-
-            signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
-            svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
+                signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
+                svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
+            }
 
             signature = _getALlocateFundsSig(periodId, vaultId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
+            svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
             svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
@@ -200,8 +414,12 @@ contract ProtocolVaultTest is Base {
             console.log("=============After Period 1=====================");
             consoleState();
 
-            signature = _getUpdatePeriodIdSig(periodId + 1, vaultId);
-            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId, vaultId);
+            uint256 gasBefore = gasleft();
+            svLedger.updatePeriodId(periodId, vaultId, signature);
+            uint256 gasAfter = gasleft();
+            uint256 gasUsed = gasBefore - gasAfter;
+            console.log("Gas used:", gasUsed);
         }
         //Period 2
         console.log("=============Start Period 2=====================");
@@ -222,8 +440,9 @@ contract ProtocolVaultTest is Base {
 
             console.log("=============After Period 2=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId + 1, vaultId);
-            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
+
+            signature = _getUpdatePeriodIdSig(periodId, vaultId);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         //Period 3
         console.log("=============Start Period 3=====================");
@@ -233,6 +452,7 @@ contract ProtocolVaultTest is Base {
 
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 750 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
             bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
             svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
@@ -248,12 +468,13 @@ contract ProtocolVaultTest is Base {
                 UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
             updateLedgerParams[1] =
                 UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: newOperation_2});
+
             signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
 
             svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, vaultId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
+            svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
             svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
@@ -263,8 +484,9 @@ contract ProtocolVaultTest is Base {
 
             console.log("=============After Period 3=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId + 1, vaultId);
-            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
+
+            signature = _getUpdatePeriodIdSig(periodId, vaultId);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 4
@@ -272,6 +494,7 @@ contract ProtocolVaultTest is Base {
             console.log("=============Start Period 4=====================");
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 5000 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
             bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
 
             svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
@@ -282,12 +505,13 @@ contract ProtocolVaultTest is Base {
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
             updateLedgerParams[0] =
                 UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: newOperation_1});
+
             signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
 
             svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, vaultId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
+            svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
             svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
@@ -297,8 +521,8 @@ contract ProtocolVaultTest is Base {
 
             console.log("=============After Period 4=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId + 1, vaultId);
-            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
+            signature = _getUpdatePeriodIdSig(periodId, vaultId);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 5
@@ -306,24 +530,27 @@ contract ProtocolVaultTest is Base {
             console.log("=============Start Period 5=====================");
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 10750 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
             bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
             svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
             signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
             svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
+
             signature = _getSettleAccountSig(periodId, vaultId, accountIds);
             svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 5=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId + 1, vaultId);
-            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
+
+            signature = _getUpdatePeriodIdSig(periodId, vaultId);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 6
             periodId++;
             console.log("=============Start Period 6=====================");
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 6000 * assetDecimal);
-            strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
             bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
             svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
@@ -333,21 +560,24 @@ contract ProtocolVaultTest is Base {
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
             updateLedgerParams[0] =
                 UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_1});
+
             signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
 
             svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, vaultId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
+            svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
             svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
+
             signature = _getSettleAccountSig(periodId, vaultId, accountIds);
             svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 6=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId + 1, vaultId);
-            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
+
+            signature = _getUpdatePeriodIdSig(periodId, vaultId);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
         {
             //Period 7
@@ -355,6 +585,7 @@ contract ProtocolVaultTest is Base {
             console.log("=============Start Period 7=====================");
             strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 4000 * assetDecimal);
             strategyFundAssets[1] = UpdateStrategyFundAssetsParams(spB_id, 1000 * assetDecimal);
+
             bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
             svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
@@ -364,12 +595,13 @@ contract ProtocolVaultTest is Base {
             UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1);
             updateLedgerParams[0] =
                 UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: newOperation_1});
+
             signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
 
             svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
             signature = _getALlocateFundsSig(periodId, vaultId, strategyProviderIds);
-            svLedger.allocatToFunds(periodId, vaultId, spIds, signature);
+            svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
 
             signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
             svLedger.settleMainAndStrategyFunds(periodId, vaultId, spIds, signature);
@@ -378,9 +610,71 @@ contract ProtocolVaultTest is Base {
             svLedger.settleAccounts(periodId, vaultId, accountIds, signature);
             console.log("=============After Period 7=====================");
             consoleState();
-            signature = _getUpdatePeriodIdSig(periodId + 1, vaultId);
-            svLedger.updatePeriodId(periodId + 1, vaultId, signature);
+
+            signature = _getUpdatePeriodIdSig(periodId, vaultId);
+            svLedger.updatePeriodId(periodId, vaultId, signature);
         }
+    }
+
+    function testInitializeVault() public {
+        //mock deposit
+        uint256 lpDeposit = 100 * assetDecimal;
+        uint256 spDeposit = 1000 * assetDecimal;
+        bytes32[] memory accountIds = new bytes32[](1);
+        accountIds[0] = userA_id;
+        svLedger.setAccountUnAllocatedAssets(accountIds, lpDeposit);
+
+        bytes32[] memory strategyProviderIds = new bytes32[](1);
+        strategyProviderIds[0] = spA_id;
+        svLedger.setSPUnallocatedAssets(strategyProviderIds, spDeposit);
+
+        //update fund assets
+        UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](1);
+
+        strategyFundAssets[0] = UpdateStrategyFundAssetsParams(spA_id, 0);
+
+        bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
+        vm.startPrank(operator);
+        svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
+
+        assertEq(svLedger.mainAssetsAfterFee(), 0);
+
+        //update
+        UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](2);
+
+        Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: lpDeposit});
+        Operation memory newOperation_2 =
+            Operation({id: spA_id, requestId: keccak256(abi.encode(1)), amount: spDeposit});
+
+        updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+        updateLedgerParams[1] = UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_2});
+
+        signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
+        svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
+
+        assertEq(svLedger.pendingMainShares(), lpDeposit);
+
+        //allocate funds
+
+        signature = _getALlocateFundsSig(periodId, vaultId, strategyProviderIds);
+        svLedger.allocateToFunds(periodId, vaultId, strategyProviderIds, signature);
+
+        StrategyFundToken memory strategyFund = svLedger.getStrategyFund(spA_id);
+        assertEq(strategyFund.pendingState.pendingTotalAssets, spDeposit + lpDeposit);
+        assertEq(strategyFund.pendingState.pendingMainShares, lpDeposit);
+
+        //settle
+
+        signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
+        svLedger.settleMainAndStrategyFunds(periodId, vaultId, strategyProviderIds, signature);
+
+        strategyFund = svLedger.getStrategyFund(spA_id);
+        assertEq(svLedger.mainShares(), lpDeposit);
+        assertEq(strategyFund.totalAssets, spDeposit + lpDeposit);
+        assertEq(strategyFund.mainShares, lpDeposit);
+        assertEq(strategyFund.strategyProviderShares, spDeposit);
+        assertEq(strategyFund.totalShares, spDeposit + lpDeposit);
+        assertEq(strategyFund.hwm, 1 * assetDecimal);
     }
 
     function initialize() public {
@@ -478,7 +772,7 @@ contract ProtocolVaultTest is Base {
         view
         returns (bytes memory)
     {
-        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds, "allocatToFunds"));
+        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, strategyProviderIds, "allocateToFunds"));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -528,5 +822,21 @@ contract ProtocolVaultTest is Base {
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
         bytes memory signature = abi.encodePacked(r, s, v);
         return signature;
+    }
+
+    function testDistributeSig() public pure {
+        AssetsDistribution[] memory assetsDistributions = new AssetsDistribution[](1);
+        assetsDistributions[0] = AssetsDistribution({chainId: 11155111, assets: 20000});
+
+        bytes32 _vaultId = 0x0557859bbf4cd066a1afddf7899147516ea4e73f48928b58551caf5db46a5c9e;
+        uint256 _periodId = 2;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(_periodId, _vaultId, assetsDistributions)
+        );
+        console.logBytes(
+            abi.encode(_periodId, _vaultId, assetsDistributions)
+        );
+        console.logBytes32(messageHash);
     }
 }

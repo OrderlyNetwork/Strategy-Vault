@@ -48,7 +48,7 @@ contract Create3FactoryTest is Test {
         //owner deploy
         vm.startPrank(owner);
         address deployedAddress = factory.deploy(salt, bytecode);
-        protocolVault = ProtocolVault(deployedAddress);
+        protocolVault = ProtocolVault(payable(deployedAddress));
         protocolVault.setCrossChainManager(vaultCrossChainManager);
 
         assertEq(factory.getDeployed(salt), deployedAddress);
@@ -65,7 +65,7 @@ contract Create3FactoryTest is Test {
         salt = keccak256(abi.encodePacked("test_salt_manager"));
         vm.prank(manager);
         deployedAddress = factory.deploy(salt, bytecode);
-        protocolVault = ProtocolVault(deployedAddress);
+        protocolVault = ProtocolVault(payable(deployedAddress));
         vm.prank(owner);
 
         protocolVault.setCrossChainManager(vaultCrossChainManager);

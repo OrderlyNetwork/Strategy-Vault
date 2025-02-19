@@ -4,7 +4,7 @@ const config = require('../../../config.json');
 
 async function main() {
     //!need to change with your env
-    const env = "dev";
+    const env = "qa";
 
     const VaultCrossChainManager = await ethers.getContractAt(
         "VaultCrossChainManager",
@@ -12,10 +12,10 @@ async function main() {
     )
 
     //set options
-    tx = await VaultCrossChainManager.setOptions(0, 120000, 0);
-    await tx.wait()
-    console.log("Option set LP deposit successfully")
-
+    // tx = await VaultCrossChainManager.setOptions(0, 120000, 0);
+    // await tx.wait()
+    // console.log("Option set LP deposit successfully")
+    console.log(await VaultCrossChainManager.peers(40200));
 }
 
 main()

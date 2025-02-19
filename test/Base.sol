@@ -33,6 +33,7 @@ contract Base is TestHelperOz5 {
 
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     uint32 constant LEDGER_CHAIN_ID = 291;
+    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
 
     address public owner = address(0x123);
     address public sp = address(0x2);
@@ -63,10 +64,31 @@ contract Base is TestHelperOz5 {
     VaultCrossChainManager bVaultCrossChainManager;
     MockDexVault mockDexVault;
 
-    function testGetComputation() public view {
-        bytes32 spAid = _getStrategyProviderId(0x4A5c7C5633bAF55dDD46B6B9cAF084E839BDa895, ORDERLY_BROKER);
+    function testGetComputation() public pure {
+        bytes32 spAid = keccak256(
+            abi.encode(
+                0x15a6aeFb614C6FF43fFeFCC5560ff3F239A77bA3, 0xbddfd22eF902A4898147A1ca5B985D03C62a8C41, ORDERLY_BROKER
+            )
+        );
         console.logBytes32(spAid);
+
+        bytes32 vaultId = keccak256(abi.encode(0x15a6aeFb614C6FF43fFeFCC5560ff3F239A77bA3, ORDERLY_BROKER));
+        console.logBytes32(vaultId);
     }
+
+    // function testQuote() public view {
+    //     uint256 nativeFee = protocolVault.quoteOperation(PayloadType.LP_DEPOSIT);
+    //     console.log("nativeFee", nativeFee);
+
+    //     nativeFee = protocolVault.quoteOperation(PayloadType.LP_WITHDRAW);
+    //     console.log("nativeFee", nativeFee);
+
+    //     nativeFee = protocolVault.quoteOperation(PayloadType.SP_DEPOSIT);
+    //     console.log("nativeFee", nativeFee);
+
+    //     nativeFee = protocolVault.quoteOperation(PayloadType.SP_WITHDRAW);
+    //     console.log("nativeFee", nativeFee);
+    // }
 
     function setUp() public virtual override {
         // Call the base setup function from the TestHelperOz5 contract
@@ -124,7 +146,7 @@ contract Base is TestHelperOz5 {
         //set options
         aVaultCrossChainManager.setOptions(PayloadType.LP_DEPOSIT, 120000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.LP_WITHDRAW, 150000, 0);
-        aVaultCrossChainManager.setOptions(PayloadType.SP_DEPOSIT, 150000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.SP_DEPOSIT, 140000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.SP_WITHDRAW, 150000, 0);
 
         bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 120000, 0);
@@ -149,7 +171,7 @@ contract Base is TestHelperOz5 {
                 )
             )
         );
-        protocolVault = ProtocolVault(proxy);
+        protocolVault = ProtocolVault(payable(proxy));
         vm.startPrank(owner);
         protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
         protocolVault.setLedgerEid(ledgerEid);
@@ -162,8 +184,8 @@ contract Base is TestHelperOz5 {
         bVaultCrossChainManager.setLedger(svLedgerProxy);
         vm.stopPrank();
         //mint token
-        mockToken.mint(user, 100000e6);
-        mockToken.mint(sp, 100000e6);
+        mockToken.mint(user, 100000e18);
+        mockToken.mint(sp, 100000e18);
         //approve
         vm.prank(user);
         mockToken.approve(address(protocolVault), 100e6);

@@ -22,19 +22,17 @@ import {VaultType, OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
 interface IProtocolVaultLedger {
-    error InvalidPeriodId();
+    error InvalidPeriodId(); //0x13ac34b9
     error InvalidOperator();
     error InvalidVaultCrossChainManager();
-    error InsufficientBalance();
-    error AlreadyAllocatedShare();
     error NotEnoughLPDeposit(uint256 amount);
     error NotEnoughSPDeposit();
     error InvalidOpType(OperationType opType);
-    error InvalidTotalAssets();
     error NotEnoughFrozenShare(uint256 amount);
     error InvalidInput();
-    error AssetDistributed(uint256 periodId);
-
+    error AlreadyCalled();
+    error NotAllowedTime();
+    
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
         uint256 periodId,
@@ -47,11 +45,10 @@ interface IProtocolVaultLedger {
         uint256 periodId, bytes32 vaultId, bytes32[] strategyProviderIds, AllocateFundRes[] allocateFundRes
     );
     event MainAndStrategyFundsSettled(
-        uint256 mainAssets, bytes32 vaultId, uint256 mainShares, StrategyFundState[] strategyFundStates
+        uint256 periodId, bytes32 vaultId, uint256 mainShares, StrategyFundState[] strategyFundStates
     );
     event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
     event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
-    event StrategyExecuted(uint256 periodId, bytes32 vaultId, uint256 totalTransferredAssets);
     event CrossChainManagerAddressSet(address crossChainManagerAddress);
     event AllowedStrategyProviderSet(
         bytes32 vaultId, address vault, address sp, bytes32 brokerHash, bytes32 spId, bool knob
@@ -59,7 +56,6 @@ interface IProtocolVaultLedger {
     event OperatorManagerSet(address operatorAddress);
     event AssetsDistrubuted(uint256 periodId, bytes32 vaultId);
     event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
-    event NotAllowedStrategyProvider(bytes32 spId);
     event NotEnoughWithdrawShare();
     event InvalidPayloadType();
 
@@ -80,7 +76,7 @@ interface IProtocolVaultLedger {
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes calldata signature
     ) external;
-    function allocatToFunds(
+    function allocateToFunds(
         uint256 periodId,
         bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
@@ -118,5 +114,8 @@ interface IProtocolVaultLedger {
         view
         returns (uint256, StrategyFundState[] memory);
 
-    function checkLP(uint256 periodId, bytes32[] calldata accountIds) external view returns (AccountState[] memory);
+    function checkLP(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds)
+        external
+        view
+        returns (AccountState[] memory);
 }

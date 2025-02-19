@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 // lz imports
+
 import {OptionsBuilder} from "./lib/layerzero-v2/oapp/libs/OptionsBuilder.sol";
 import {OAppUpgradeable, MessagingFee, Origin} from "./lib/layerzero-v2/oapp/OAppUpgradeable.sol";
 
@@ -12,21 +13,29 @@ import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
 import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
 import {AssetsDistribution, ClaimInfo} from "./lib/types/LedgerStruct.sol";
 import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
-
+import {DecimalConverter} from "./lib/utils/DecimalConverter.sol";
 
 contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
+    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
+
+    error InvalidCaller(address caller);
     error InvalidPayloadType();
 
     using OptionsBuilder for bytes;
+    using DecimalConverter for uint256;
 
     uint256 constant LEDGER_CHAIN_ID = 291;
     uint32 constant LEDGER_EID = 30213;
-    
+    uint256 public ledgerDecimal;
+
     address public ledger;
     address public vault;
 
     mapping(uint256 => uint32) public chainIdToEid;
     mapping(PayloadType => LzOptions) public msgOptions;
+    /// @dev tokenhash to chainId to decimal
+    mapping(bytes32 => mapping(uint256 => uint256)) public tokenDecimals;
+    mapping(bytes32 => mapping(uint256 => bool)) public isSpecialDecimal;
 
     receive() external payable {}
 
@@ -37,14 +46,44 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         _disableInitializers();
     }
 
+    /// @notice Require only protocol vault can call
+    modifier onlyVault() {
+        if (msg.sender != vault) {
+            revert InvalidCaller(msg.sender);
+        }
+        _;
+    }
+
+    /// @notice Require only ledger can call
+    modifier onlyLedger() {
+        if (msg.sender != ledger) {
+            revert InvalidCaller(msg.sender);
+        }
+        _;
+    }
+
     function initialize(address endpoint, address delegate) external virtual initializer {
         __initializeOApp(endpoint, delegate);
 
+        ledgerDecimal = 6;
         // Set default orderly chainId to eid mapping
         chainIdToEid[LEDGER_CHAIN_ID] = LEDGER_EID;
     }
 
-    function sendMessage(StrategyVaultCCMessage memory message) external payable {
+    function sendMessageWithValueAndRefund(StrategyVaultCCMessage memory message, address refundAddress)
+        external
+        payable
+        onlyVault
+    {
+        bytes memory lzMessage = abi.encode(message);
+        bytes memory options = _getOptions(message.payloadType);
+        uint32 dstEid = chainIdToEid[message.dstChainId];
+
+        MessagingFee memory messageFee = MessagingFee({nativeFee: msg.value, lzTokenFee: 0});
+        _lzSend(dstEid, lzMessage, options, messageFee, payable(refundAddress));
+    }
+
+    function sendMessage(StrategyVaultCCMessage memory message) external onlyLedger {
         bytes memory lzMessage = abi.encode(message);
         bytes memory options = _getOptions(message.payloadType);
 
@@ -52,6 +91,13 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         MessagingFee memory messageFee = _quote(dstEid, lzMessage, options, false);
 
         _lzSend(dstEid, lzMessage, options, messageFee, payable(address(this)));
+    }
+
+    /// @notice withdraw native token
+    /// @param to the receiver address
+    /// @param amount the amount to withdraw
+    function withdrawNativeToken(address payable to, uint256 amount) external onlyOwner {
+        to.transfer(amount);
     }
 
     function _lzReceive(
@@ -73,22 +119,40 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             //Decode the payload
             OperationData memory operationData = abi.decode(payload, (OperationData));
 
+            //Convert the amount
+            uint256 srcChainId = strategyVaultCCmessage.srcChainId;
+            if (isSpecialDecimal[operationData.tokenHash][srcChainId]) {
+                operationData.amount = _convertAmount(
+                    operationData.amount, tokenDecimals[operationData.tokenHash][srcChainId], ledgerDecimal
+                );
+            }
             //Call strategyVaultLedger
-            IProtocolVaultLedger(ledger).handleOpFromVault(
-                payloadType, strategyVaultCCmessage.srcChainId, operationData
-            );
+            IProtocolVaultLedger(ledger).handleOpFromVault(payloadType, srcChainId, operationData);
         } else if (payloadType == PayloadType.ASSETS_DISTRIBUTION) {
             //Decode the payload
             (uint256 periodId, AssetsDistribution memory assetsDistribution) =
                 abi.decode(payload, (uint256, AssetsDistribution));
 
+            //Convert the amount
+            uint256 dstChainId = strategyVaultCCmessage.dstChainId;
+            if (isSpecialDecimal[USDC_HASH][dstChainId]) {
+                assetsDistribution.assets =
+                    _convertAmount(assetsDistribution.assets, ledgerDecimal, tokenDecimals[USDC_HASH][dstChainId]);
+            }
             //Call Protocol Vault
             IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            (uint256 periodId, ClaimInfo[] memory userClaims) =
-                abi.decode(payload, (uint256, ClaimInfo[]));
+            (uint256 periodId, ClaimInfo[] memory userClaims) = abi.decode(payload, (uint256, ClaimInfo[]));
 
+            //Convert the amount
+            uint256 dstChainId = strategyVaultCCmessage.dstChainId;
+            if (isSpecialDecimal[USDC_HASH][dstChainId]) {
+                for (uint256 i = 0; i < userClaims.length; i++) {
+                    userClaims[i].assets =
+                        _convertAmount(userClaims[i].assets, ledgerDecimal, tokenDecimals[USDC_HASH][dstChainId]);
+                }
+            }
             //Call Protocol Vault
             IProtocolVault(vault).updateUnClaimed(periodId, userClaims);
         } else {
@@ -113,6 +177,15 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         msgOptions[payloadType] = LzOptions(_gas, _value);
     }
 
+    function setSpecialTokenDecimal(bytes32 tokenHash, uint256 chainId, uint256 decimal) external onlyOwner {
+        tokenDecimals[tokenHash][chainId] = decimal;
+
+        isSpecialDecimal[tokenHash][chainId] = true;
+    }
+
+    function setLedgerDecimal(uint256 decimal) external onlyOwner {
+        ledgerDecimal = decimal;
+    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
@@ -128,12 +201,16 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         return (fee.nativeFee, fee.lzTokenFee);
     }
     /*=========================================================================================
-    *                                       VIEW
+    *                                       INTERNAL
     *=========================================================================================*/
 
     function _getOptions(PayloadType payloadType) internal view returns (bytes memory) {
         return OptionsBuilder.newOptions().addExecutorLzReceiveOption(
             msgOptions[payloadType].gas, msgOptions[payloadType].value
         );
+    }
+
+    function _convertAmount(uint256 amount, uint256 srcDecimal, uint256 dstDecimal) internal pure returns (uint256) {
+        return amount.convertDecimal(srcDecimal, dstDecimal);
     }
 }
