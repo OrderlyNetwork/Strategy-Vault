@@ -16,19 +16,17 @@ import {ClaimInfo} from "../lib/types/LedgerStruct.sol";
 
 interface IProtocolVault {
     event OperationExecuted(PayloadType payloadType, OperationData operationData);
-    event UserClaimed(uint256 amount, bytes32[] requests);
+    event UserClaimed(RoleType, bytes32 id, uint256 amount, bytes32[] requests);
     event DepositFromStrategy(uint256 periodId, bytes32 vaultId, address sender, uint256 amount);
     event UnClaimedUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
-    event DepositToStrategy(uint256 periodId, bytes32 vaultId, address receiver, uint256 amount);
+    event DepositToStrategy(uint256 periodId, bytes32 vaultId, address receiver, uint256 amount, uint64 dexNonce);
     event VaultStateChanged(VaultState state);
     event AllowedBrokerSet(bytes32 brokerHash, bool isAllowed);
     event AllowedTokenSet(address token, bool isAllowed);
     event AdminSet(address admin);
     event AllowedStrategySet(address strategy, bool isAllowed);
 
-    error NotAllowedToken();
     error InvalidDepositAmount(uint256 amount);
-    error ZeroAmount();
     error InvalidRoleType();
     error NotEnoughUnclaimedAssets(uint256 amount);
     error InvalidCrossChainManager();
@@ -36,10 +34,14 @@ interface IProtocolVault {
     error InvalidPayloadType(PayloadType payloadType);
     error TokenNotAllowed(address token);
     error BrokerNotAllowed(bytes32 brokerHash);
-    error NotEnoughFee();
     error InvalidOwnerOrAdmin();
     error VaultClosed();
-
+    error InvalidDepositType(PayloadType payloadType);
+    error InvalidWithdrawType(PayloadType payloadType);
+    error NotAllowedStrategyProvider(bytes32 strategyProviderId);
+    error InvalidClaimToken(address token);
+    error ZeroAmount();
+    
     function deposit(DepositParams memory depositParams) external payable;
     function withdraw(WithdrawParams memory withdrawParams) external payable;
     function claim(ClaimParams memory claimParams) external;

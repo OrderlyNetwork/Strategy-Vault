@@ -25,8 +25,6 @@ contract TestProtocolVault is Base {
     error NotEnoughUnclaimedAssets(uint256 amount);
     error VaultClosed();
 
-    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
-
     function setUp() public override {
         super.setUp();
     }
@@ -44,8 +42,8 @@ contract TestProtocolVault is Base {
     }
 
     function testProtocolVaultLPDeposit() public {
-        uint256 nativeFee = protocolVault.quoteOperation();
         uint256 amount = 100e6;
+        uint256 nativeFee = protocolVault.quoteOperation(PayloadType.LP_DEPOSIT, user, amount);
         DepositParams memory depositParams = DepositParams({
             payloadType: PayloadType.LP_DEPOSIT,
             receiver: user,
@@ -64,14 +62,12 @@ contract TestProtocolVault is Base {
         //Check
         bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
         (
-            uint256 assets, // assets
             , // shares
             uint256 unAllocatedAssets,
             , // frozenShares
                 // pendingShares
         ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
         assertEq(unAllocatedAssets, amount);
-        assertEq(assets, amount);
 
         assertEq(protocolVault.chainNonce(), 1);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), amount);
@@ -87,16 +83,15 @@ contract TestProtocolVault is Base {
             amount: amount,
             brokerHash: ORDERLY_BROKER
         });
-
+        vm.prank(owner);
+        bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+        protocolVault.setAllowedStrategyProvider(spId, true);
         // Call deposit function
         vm.prank(sp);
         protocolVault.deposit{value: nativeFee}(depositParams);
 
         //LZ
         verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
-
-        //Check
-        bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
 
         StrategyFundToken memory sf = svLedger.getStrategyFund(spId);
         assertEq(sf.unAllocatedAssets, amount);
@@ -109,7 +104,10 @@ contract TestProtocolVault is Base {
         uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
         uint256 shares = 100e6;
         //Initialize
-        svLedger.setAccountShares(_getAccountId(user, ORDERLY_BROKER), shares);
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+        bytes32[] memory accountIds = new bytes32[](1);
+        accountIds[0] = accountId;
+        svLedger.setAccountPendingShares(accountIds, shares);
         //Withdraw
         uint256 withdrawShares = 10e6;
         WithdrawParams memory withdrawParams = WithdrawParams({
@@ -125,9 +123,7 @@ contract TestProtocolVault is Base {
         verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
 
         //Check
-        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
         (
-            , // assets
             , // shares
             ,
             uint256 frozenShares, // frozenShares
@@ -136,13 +132,43 @@ contract TestProtocolVault is Base {
         assertEq(frozenShares, withdrawShares);
     }
 
+    function testNotEnoughProtocolVaultLPWithdraw() public {
+        uint256 nativeFee = getEstimateFee(PayloadType.LP_WITHDRAW);
+
+        //Withdraw
+        uint256 withdrawShares = 10e6;
+        WithdrawParams memory withdrawParams = WithdrawParams({
+            payloadType: PayloadType.LP_WITHDRAW,
+            token: address(mockToken),
+            amount: withdrawShares,
+            brokerHash: ORDERLY_BROKER
+        });
+        vm.prank(user);
+        protocolVault.withdraw{value: nativeFee}(withdrawParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+        //Check
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+        (
+            , // shares
+            ,
+            uint256 frozenShares, // frozenShares
+                // pendingShares
+        ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
+        assertEq(frozenShares, 0);
+    }
+
     function testProtocolVaultSPWithdraw() public {
         uint256 nativeFee = getEstimateFee(PayloadType.SP_WITHDRAW);
         uint256 shares = 100e6;
         bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
-
+        vm.prank(owner);
+        protocolVault.setAllowedStrategyProvider(spId, true);
         //Initialize
-        svLedger.setFundSshares(spId, shares);
+        bytes32[] memory spIds = new bytes32[](1);
+        spIds[0] = spId;
+        svLedger.setSpPendingShares(spIds, shares);
         //Withdraw
         vm.prank(sp);
         uint256 withdrawShares = 10e6;
@@ -161,6 +187,33 @@ contract TestProtocolVault is Base {
         StrategyFundToken memory sf = svLedger.getStrategyFund(spId);
 
         assertEq(sf.frozenShares, withdrawShares);
+        assertEq(protocolVault.chainNonce(), 1);
+    }
+
+    function testNotEnoughProtocolVaultSPWithdraw() public {
+        uint256 nativeFee = getEstimateFee(PayloadType.SP_WITHDRAW);
+        bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+        vm.prank(owner);
+        protocolVault.setAllowedStrategyProvider(spId, true);
+
+        //Withdraw
+        vm.prank(sp);
+        uint256 withdrawShares = 10e6;
+        WithdrawParams memory withdrawParams = WithdrawParams({
+            payloadType: PayloadType.SP_WITHDRAW,
+            token: address(mockToken),
+            amount: withdrawShares,
+            brokerHash: ORDERLY_BROKER
+        });
+        protocolVault.withdraw{value: nativeFee}(withdrawParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        StrategyFundToken memory sf = svLedger.getStrategyFund(spId);
+
+        assertEq(sf.frozenShares, 0);
         assertEq(protocolVault.chainNonce(), 1);
     }
 
@@ -300,6 +353,43 @@ contract TestProtocolVault is Base {
         verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
     }
 
+    function testSpecialDecimalLPDeposit() public {
+        //set special token
+        vm.prank(owner);
+        bVaultCrossChainManager.setSpecialTokenDecimal(USDC_HASH, 31337, 18);
+
+        uint256 nativeFee = getEstimateFee(PayloadType.LP_DEPOSIT);
+        uint256 amount = 100e18;
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: user,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        // Call deposit function
+        vm.prank(user);
+        mockToken.approve(address(protocolVault), 100e18);
+        vm.prank(user);
+        protocolVault.deposit{value: nativeFee}(depositParams);
+
+        //LZ
+        verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+
+        //Check
+        uint256 convertedAmount = 100e6;
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
+        (
+            , // shares
+            uint256 unAllocatedAssets,
+            , // frozenShares
+                // pendingShares
+        ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
+        assertEq(unAllocatedAssets, convertedAmount);
+
+        assertEq(protocolVault.chainNonce(), 1);
+        assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), amount);
+    }
     // function testRevertProtocolVaultLPDepositWithoutVaule() public {
     //     //deal eth to cc contract on ledger
     //     vm.deal(address(aVaultCrossChainManager), 10 ether);

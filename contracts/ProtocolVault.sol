@@ -50,16 +50,21 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     /// @dev Admin address => isAllowed
     mapping(address => bool) public isAllowedAdmin;
-    /// @dev User Id => UserClaimedInfo
-    mapping(bytes32 => UserClaimedInfo) public userClaimedById;
+    /// @dev allowed strategy provider
+    mapping(bytes32 => bool) public isAllowedStrategyProvider;
+    /// @dev User Id => TokenHas => UserClaimedInfo
+    mapping(bytes32 => mapping(bytes32 => UserClaimedInfo)) public userClaimedById;
     /// @dev Token => isAllowed
     mapping(address => bool) public isAllowedToken;
     /// @dev Broker Id => isAllowed
     mapping(bytes32 => bool) public isAllowedBroker;
     /// @dev allowed strategy
     mapping(address => bool) public isAllowedStrategy;
-    /// @dev Token => Token hash by keccak256(abi.encodePacked(token_string))
-    mapping(address => bytes32) public tokenToHash;
+    /// @dev Token hash  => Token address
+    mapping(bytes32 => address) public tokenHashToAddress;
+
+    //receive native token
+    receive() external payable {}
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -111,6 +116,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
         isAllowedStrategy[_dexVault] = true;
+        tokenHashToAddress[USDC_HASH] = token;
         ledgerEid = 30213;
 
         minDepositForLp = _minDepositForLp;
@@ -122,8 +128,9 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     //--------------------------------------FROM USER-----------------------------------------
     /**
-     * @notice Allows a user to deposit funds into the vault. If a common address (non-SP) executes SP_DEPOSIT
-     *         the funds will be locked in the vault without being recorded.
+     * @notice Allows a user to deposit funds into the vault. This contract now refunds surplus native
+     *         tokens directly to msg.sender. Contracts unable to receive native tokens may encounter
+     *         issues during deposit.
      * @dev This function can only be called when the contract is not paused.
      * @param depositParams The parameters required for the deposit, encapsulated in a struct.
      */
@@ -133,7 +140,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         uint256 amount = depositParams.amount;
         PayloadType payloadType = depositParams.payloadType;
 
-        _validateDeposit(payloadType, token, amount, brokerHash);
+        _validateDeposit(payloadType, token, depositParams.receiver, amount, brokerHash);
         //construct cross chain message
         OperationData memory data = _getOperationData(payloadType, depositParams.receiver, amount, token, brokerHash);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
@@ -149,18 +156,25 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         SafeTransferLib.safeTransferFrom(ERC20(token), msg.sender, address(this), amount);
 
         //cross-chain
-        IVaultCrossChainManager(crossChainManager).sendMessage{value: msg.value}(message);
+        IVaultCrossChainManager(crossChainManager).sendMessageWithValueAndRefund{value: msg.value}(message, msg.sender);
 
         emit OperationExecuted(payloadType, data);
     }
 
+    /**
+     * @notice Allows a user to request withdraw funds from the vault. This contract now refunds surplus
+     *         native tokens directly to msg.sender. Contracts unable to receive native tokens may encounter 
+     *         issues during withdraw.
+     * @dev This function can only be called when the contract is not paused.
+     * @param withdrawParams The parameters required for the withdraw, encapsulated in a struct.
+     */
     function withdraw(WithdrawParams memory withdrawParams) external payable whenNotPaused {
         bytes32 brokerHash = withdrawParams.brokerHash;
         address token = withdrawParams.token;
         uint256 amount = withdrawParams.amount;
         PayloadType payloadType = withdrawParams.payloadType;
 
-        _validateBasic(token, amount, brokerHash);
+        _validateWithdraw(payloadType, token, msg.sender, amount, brokerHash);
 
         //construct OperationData
         OperationData memory data = _getOperationData(payloadType, msg.sender, amount, token, brokerHash);
@@ -175,7 +189,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         chainNonce++;
 
         //cross-chain message
-        IVaultCrossChainManager(crossChainManager).sendMessage{value: msg.value}(message);
+        IVaultCrossChainManager(crossChainManager).sendMessageWithValueAndRefund{value: msg.value}(message, msg.sender);
 
         emit OperationExecuted(payloadType, data);
     }
@@ -193,19 +207,23 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         }
 
         //check
-        uint256 amount = userClaimedById[id].unClaimedAssets;
+        if (claimParams.token != tokenHashToAddress[USDC_HASH]) {
+            revert InvalidClaimToken(claimParams.token);
+        }
+        uint256 amount = userClaimedById[id][USDC_HASH].unClaimedAssets;
         if (amount == 0) {
             revert NotEnoughUnclaimedAssets(amount);
         }
 
         //effect
-        userClaimedById[id].unClaimedAssets = 0;
-        delete userClaimedById[id].requestIds;
+        userClaimedById[id][USDC_HASH].unClaimedAssets = 0;
+        bytes32[] memory requestIds = userClaimedById[id][USDC_HASH].requestIds;
+        delete userClaimedById[id][USDC_HASH].requestIds;
 
         //transfer to user
         SafeTransferLib.safeTransfer(ERC20(claimParams.token), msg.sender, amount);
 
-        emit UserClaimed(amount, userClaimedById[id].requestIds);
+        emit UserClaimed(claimParams.roleType, id, amount, requestIds);
     }
 
     //--------------------------------------FROM Strategy-----------------------------------------
@@ -224,19 +242,23 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         onlyVaultCrossChainManager
     {
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
-
-        VaultDepositFE memory depositDataFe = VaultDepositFE({
+        VaultDepositFE memory depositData = VaultDepositFE({
             accountId: vaultId,
             brokerHash: ORDERLY_BROKER,
             tokenHash: USDC_HASH,
             tokenAmount: uint128(amount)
         });
 
-        //cal dex
-        uint256 fee = IDexVault(dexVault).getDepositFee(address(this), depositDataFe);
-        IDexVault(dexVault).depositTo{value: fee}(address(this), depositDataFe);
+        //call dex
+        address token = tokenHashToAddress[USDC_HASH];
+        SafeTransferLib.safeApprove(ERC20(token), dexVault, amount);
 
-        emit DepositToStrategy(periodId, vaultId, receiver, amount);
+        uint256 fee =
+            IDexVault(dexVault).depositFeeEnabled() ? IDexVault(dexVault).getDepositFee(address(this), depositData) : 0;
+        IDexVault(dexVault).depositTo{value: fee}(address(this), depositData);
+
+        uint64 dexNonce = IDexVault(dexVault).depositId();
+        emit DepositToStrategy(periodId, vaultId, receiver, amount, dexNonce);
     }
 
     function updateUnClaimed(uint256 periodId, ClaimInfo[] memory userClaimInfos) external onlyVaultCrossChainManager {
@@ -244,12 +266,19 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             bytes32 userId = userClaimInfos[i].accountId == bytes32(0)
                 ? userClaimInfos[i].strategyProviderId
                 : userClaimInfos[i].accountId;
-            userClaimedById[userId].unClaimedAssets += userClaimInfos[i].assets;
-            userClaimedById[userId].requestIds.push(userClaimInfos[i].requestId);
+            userClaimedById[userId][USDC_HASH].unClaimedAssets += userClaimInfos[i].assets;
+            userClaimedById[userId][USDC_HASH].requestIds.push(userClaimInfos[i].requestId);
         }
 
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
         emit UnClaimedUpdated(periodId, vaultId, userClaimInfos);
+    }
+
+    /// @notice withdraw native token
+    /// @param to the receiver address
+    /// @param amount the amount to withdraw
+    function withdrawNativeToken(address payable to, uint256 amount) external onlyOwner {
+        to.transfer(amount);
     }
 
     //--------------------------------------CONFIG--------------------------------------------
@@ -297,8 +326,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit AllowedStrategySet(strategy, isAllowed);
     }
 
-    function setTokenHash(address token, bytes32 hash) external onlyOwner {
-        tokenToHash[token] = hash;
+    function setTokenHashToAddress(address token, bytes32 hash) external onlyOwner {
+        tokenHashToAddress[hash] = token;
     }
 
     function emergencyPause() public whenNotPaused onlyOwnerOrAdmin {
@@ -314,18 +343,22 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
         emit VaultStateChanged(_vaultState);
     }
+
+    function setAllowedStrategyProvider(bytes32 spId, bool knob) external onlyOwner {
+        isAllowedStrategyProvider[spId] = knob;
+    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
 
     function getUserClaimedInfo(bytes32 userId) public view returns (UserClaimedInfo memory) {
-        return userClaimedById[userId];
+        return userClaimedById[userId][USDC_HASH];
     }
 
-    function quoteOperation() public view returns (uint256) {
-        OperationData memory data = _getOperationData(PayloadType.LP_DEPOSIT, address(0), 0, address(0), ORDERLY_BROKER);
+    function quoteOperation(PayloadType payloadType, address receiver, uint256 amount) public view returns (uint256) {
+        OperationData memory data = _getOperationData(payloadType, receiver, amount, address(0), ORDERLY_BROKER);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: PayloadType.LP_DEPOSIT,
+            payloadType: payloadType,
             srcChainId: block.chainid,
             dstChainId: LEDGER_CHAIN_ID,
             payload: abi.encode(data)
@@ -333,18 +366,25 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         bytes memory lzMessage = abi.encode(message);
 
         (uint256 nativeFee,) =
-            IVaultCrossChainManager(crossChainManager).quote(ledgerEid, lzMessage, PayloadType.LP_DEPOSIT, false);
+            IVaultCrossChainManager(crossChainManager).quote(ledgerEid, lzMessage, payloadType, false);
         return nativeFee;
     }
     /*========================================================`=================================
     *                                       INTERNAL
     *=========================================================================================*/
 
-    function _validateDeposit(PayloadType payloadType, address token, uint256 amount, bytes32 brokerHash)
-        internal
-        view
-    {
-        _validateBasic(token, amount, brokerHash);
+    function _validateDeposit(
+        PayloadType payloadType,
+        address token,
+        address receiver,
+        uint256 amount,
+        bytes32 brokerHash
+    ) internal view {
+        _validateBasic(payloadType, token, brokerHash, receiver, amount);
+
+        if (payloadType != PayloadType.LP_DEPOSIT && payloadType != PayloadType.SP_DEPOSIT) {
+            revert InvalidDepositType(payloadType);
+        }
 
         if (
             (payloadType == PayloadType.LP_DEPOSIT && amount < minDepositForLp)
@@ -352,9 +392,36 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         ) revert InvalidDepositAmount(amount);
     }
 
-    function _validateBasic(address token, uint256 amount, bytes32 brokerHash) internal view {
-        if (vaultState == VaultState.CLOSED) revert VaultClosed();
+    function _validateWithdraw(
+        PayloadType payloadType,
+        address token,
+        address receiver,
+        uint256 amount,
+        bytes32 brokerHash
+    ) internal view {
+        _validateBasic(payloadType, token, brokerHash, receiver, amount);
+
+        if (payloadType != PayloadType.LP_WITHDRAW && payloadType != PayloadType.SP_WITHDRAW) {
+            revert InvalidWithdrawType(payloadType);
+        }
+    }
+
+    function _validateBasic(
+        PayloadType payloadType,
+        address token,
+        bytes32 brokerHash,
+        address receiver,
+        uint256 amount
+    ) internal view {
+        bytes32 strategyProviderId = _getStrategyProviderId(receiver, brokerHash);
+        if (
+            (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW)
+                && !isAllowedStrategyProvider[strategyProviderId]
+        ) {
+            revert NotAllowedStrategyProvider(strategyProviderId);
+        }
         if (amount == 0) revert ZeroAmount();
+        if (vaultState == VaultState.CLOSED) revert VaultClosed();
         if (!isAllowedToken[token]) revert TokenNotAllowed(token);
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed(brokerHash);
     }

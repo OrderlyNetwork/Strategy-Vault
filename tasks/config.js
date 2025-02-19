@@ -3,6 +3,8 @@ const path = require('path');
 const deployment = require('../deployment.json');
 const config = require('../config.json');
 const { keccak256, AbiCoder } = require("ethers");
+const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/utils/getId');
+const broker = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
 
 task("config-evm", "Config strategy vault contracts on EVM")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -27,12 +29,12 @@ task("config-orderly", "Deploy strategy vault contracts on Orderly")
         }
         await configProtocolVaultLedger(taskArgs.env);
         console.log("✅ ----------------------Protocol Vault Ledger Config Done----------------------")
-       
+
         await configOrderlyCrossChainManager(taskArgs.env);
         console.log("✅ ----------------------Orderly CrossChainManager Config Done----------------------")
 
     });
-task("config-evm-cc", "Config EVM CrossChainManager") 
+task("config-evm-cc", "Config EVM CrossChainManager")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
         const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
@@ -42,7 +44,7 @@ task("config-evm-cc", "Config EVM CrossChainManager")
         await configEVMCrossChainManager(taskArgs.env);
     });
 
-task("config-protocol-vault", "Config ProtocolVault") 
+task("config-protocol-vault", "Config ProtocolVault")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
         const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
@@ -50,6 +52,25 @@ task("config-protocol-vault", "Config ProtocolVault")
             throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
         }
         await configProtocolVault(taskArgs.env);
+    });
+
+task("config-protocol-vault-ledger", "Config ProtocolVaultLedger")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await configProtocolVaultLedger(taskArgs.env);
+    });
+task ("config-orderly-cc", "Config Orderly CrossChainManager")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await configOrderlyCrossChainManager(taskArgs.env);
     });
 
 async function configProtocolVaultLedger(env) {
@@ -70,21 +91,24 @@ async function configProtocolVaultLedger(env) {
     console.log("Engine set successfully")
 
     //set crossChainManager
-    tx = await pvLedgerContract.setCrossChainManagerAddress(deployment[env].crossChainManager);
+    tx = await pvLedgerContract.setCrossChainManager(deployment[env].crossChainManager);
     await tx.wait()
     console.log("CrossChainManager set successfully")
 
     //set allowed sp 
-    spId = getSpId(env);
+    const vaultId = getVaultId(deployment[env].protocolVault, broker);
+    const sp = deployment[env].allowedSP;
+    const spId = getStrategyProviderId(deployment[env].protocolVault, sp, broker);
+
     tx = await pvLedgerContract.setAllowedStrategyProvider(
-        ethers.ZeroHash,
+        vaultId,
         deployment[env].protocolVault,
-        deployment[env].allowedSP,
-        ethers.ZeroHash,
+        sp,
+        broker,
         spId,
         true
-    );
-    await tx.wait()
+    )
+    await tx.wait();
     console.log("Allowed SP set successfully")
 }
 async function configOrderlyCrossChainManager(env) {
@@ -108,7 +132,7 @@ async function configOrderlyCrossChainManager(env) {
     console.log("Peer set successfully")
 
     //set option
-    tx = await ccManagerContract.setOptions(4, 120000, 0);
+    tx = await ccManagerContract.setOptions(4, 460000, 0);
     await tx.wait()
     console.log("Option set ASSETS_DISTRIBUTION successfully")
 
@@ -134,7 +158,16 @@ async function configProtocolVault(env) {
     await tx.wait()
     console.log("CrossChainManager set successfully")
 
-
+    //set sp 
+    const spId = getStrategyProviderId(deployment[env].protocolVault, deployment[env].allowedSP, broker);
+    tx = await pvContract.setAllowedStrategyProvider(spId, true);
+    await tx.wait()
+    console.log("Allowed SP set successfully")
+    
+    //todo doesn't need to set on mainnet
+    tx = await pvContract.setLedgerEid(40200);
+    await tx.wait()
+    console.log("LedgerEid set successfully")
 
 }
 async function configEVMCrossChainManager(env) {

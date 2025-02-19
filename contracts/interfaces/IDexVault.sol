@@ -11,4 +11,6 @@ struct VaultDepositFE {
 interface IDexVault {
     function depositTo(address receiver, VaultDepositFE calldata data) external payable;
     function getDepositFee(address receiver, VaultDepositFE calldata data) external view returns (uint256);
+    function depositId() external view returns (uint64);
+    function depositFeeEnabled() external view returns (bool);
 }

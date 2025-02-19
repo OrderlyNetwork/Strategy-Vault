@@ -5,8 +5,6 @@ import {VaultType} from "./VaultStruct.sol";
 //--------------------------------------Ledger Storage--------------------------------------------
 
 struct AccountToken {
-    ///@dev account assets amount
-    uint256 assets;
     ///@dev account shares amount
     uint256 shares;
     ///@dev deposit assets that unallocated to shares
@@ -150,7 +148,6 @@ struct AssetsDistribution {
 struct UpdateUserClaim {
     ///@dev accountId or strategyProviderId
     bytes32 userId;
-
     ///@dev update unclaimed assets requestId
     bytes32 requestId;
 }

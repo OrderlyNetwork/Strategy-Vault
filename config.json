@@ -30,7 +30,8 @@
     },
     "orderly_sepolia": {
         "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
-        "eid": 40200
+        "eid": 40200,
+        "chainId": 4460
     },
     "orderly": {
         "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",

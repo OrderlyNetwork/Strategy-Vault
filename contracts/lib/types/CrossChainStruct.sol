@@ -3,8 +3,8 @@ pragma solidity ^0.8.26;
 
 enum PayloadType {
     LP_DEPOSIT,
-    SP_DEPOSIT,
     LP_WITHDRAW,
+    SP_DEPOSIT,
     SP_WITHDRAW,
     ASSETS_DISTRIBUTION,
     UPDATE_USER_CLAIM  

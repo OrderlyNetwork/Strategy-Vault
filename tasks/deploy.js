@@ -77,7 +77,7 @@ async function deployCrossChainManager(env) {
     //deploy impl
     const VaultCrossChainManager = await ethers.getContractFactory("VaultCrossChainManager");
     const implAddr = await deployCrossChainManagerImpl(VaultCrossChainManager);
-    //const implAddr = "0x661c6Ed18B4B6c55b41b86D8ab4ad7f12C7Ef396";
+    //const implAddr = "0xF6094Fa8192e9B7D899B391F90Ab0Ae8bA479aC2";
 
     const [owner] = await ethers.getSigners();
 
@@ -102,12 +102,13 @@ async function deployProtocolVault(env) {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
-    //const implAddr = "0x1C35A1f43Dd5f52500f9e2158179A0C31c417ffE";
+    //const implAddr = "0x83F367998EC5C78C107F32666B053D6A8991D773";
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
-    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address);
+    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address,env);
     const salt = deployment[env].pv_salt;
+    console.log("Deploying ProtocolVault with salt:", salt);
 
     const VaultFactory = await ethers.getContractAt(
         "VaultFactory",
@@ -140,7 +141,7 @@ async function deployCrossChainManagerImpl(VaultCrossChainManager) {
 
     return implAddr;
 }
-function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr) {
+function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr,env) {
     //get usdc address 
     const currentNetwork = hre.network.name;
     const tokenAddress = config[currentNetwork].USDC
@@ -154,7 +155,7 @@ function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr) {
     const initializeData = ProtocolVault.interface.encodeFunctionData(
         "initialize",
         [
-            deployment.dev.dex,
+            deployment[env].dex,
             ownerAddr,
             tokenAddress,
             minDepositForLp,

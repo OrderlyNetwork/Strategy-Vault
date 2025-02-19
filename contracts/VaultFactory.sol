@@ -26,7 +26,7 @@ contract VaultFactory is Ownable2Step {
     }
 
     function deploy(bytes32 salt, bytes memory creationCode) external onlyManagerOrOwner returns (address) {
-        // hash salt with the deployer address to give each deployer its own namespace
+        // hash salt
         salt = keccak256(abi.encodePacked(salt));
         address contractAddress = CREATE3.deployDeterministic(creationCode, salt);
 
@@ -35,7 +35,7 @@ contract VaultFactory is Ownable2Step {
     }
 
     function getDeployed(bytes32 salt) external view returns (address) {
-        // hash salt with keythe deployer address to give each deployer its own namespace
+        // hash salt with the deployer address to give each deployer its own namespace
         salt = keccak256(abi.encodePacked(salt));
         return CREATE3.predictDeterministicAddress(salt);
     }

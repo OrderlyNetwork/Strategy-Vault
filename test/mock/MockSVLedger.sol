@@ -39,14 +39,6 @@ contract MockSVLedger is ProtocolVaultLedger {
         return hwms;
     }
 
-    function setAccountShares(bytes32 accountId, uint256 amount) external {
-        accountTokenInfo[accountId][USDC_HASH].shares = amount;
-    }
-
-    function setFundSshares(bytes32 strategyProviderIds, uint256 amount) external {
-        strategyFundTokenInfo[strategyProviderIds][USDC_HASH].totalShares = amount;
-    }
-
     function setAccountState(bytes32 accountId, uint256 unAllocatedAssets, uint256 frozenShares, uint256 pendingShares)
         external
     {
@@ -61,15 +53,15 @@ contract MockSVLedger is ProtocolVaultLedger {
         }
     }
 
-    function setAccountFrozenShares(bytes32[] memory accountIds, uint256 shares) external {
-        for (uint256 i = 0; i < accountIds.length; i++) {
-            accountTokenInfo[accountIds[i]][USDC_HASH].frozenShares = shares;
-        }
-    }
-
     function setSPUnallocatedShares(bytes32[] memory spIds, uint256 shares) external {
         for (uint256 i = 0; i < spIds.length; i++) {
             strategyFundTokenInfo[spIds[i]][USDC_HASH].frozenShares = shares;
+        }
+    }
+
+    function setAccountUnAllocatedAssets(bytes32[] memory accountIds, uint256 assets) external {
+        for (uint256 i = 0; i < accountIds.length; i++) {
+            accountTokenInfo[accountIds[i]][USDC_HASH].unAllocatedAssets = assets;
         }
     }
 
@@ -79,38 +71,11 @@ contract MockSVLedger is ProtocolVaultLedger {
         }
     }
 
-    function _calculateHWM(bytes32[] calldata strategyProviderIds) internal view returns (uint256[] memory) {
-        StrategyFundToken memory strategyFundToken;
-        uint256[] memory hwms = new uint256[](strategyProviderIds.length);
-
-        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            strategyFundToken = strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH];
-            uint256 hwm = strategyFundToken.hwm;
-            uint256 totalShares = strategyFundToken.totalShares;
-
-            if (strategyFundToken.performanceFee > 0) {
-                hwm = strategyFundToken.fundAssetsAfterFee * 10 ** priceDecimal / totalShares;
-            } else {
-                uint256 pendingTotalShares = strategyFundToken.pendingState.pendingTotalShares;
-                //New issued shares greater than 0
-                if (pendingTotalShares > totalShares) {
-                    //uint256 newSharePriceAfterFee = strategyFundsAssetsAfterFee[i] / strategyFundsTemTotalShares[i];
-                    //console.log("newSharePriceAfterFee",newSharePriceAfterFee);
-                    uint256 newTotalIssuedShares = pendingTotalShares - totalShares;
-                    //calculate new hwm
-                    hwm = (
-                        (
-                            strategyFundToken.hwm * totalShares / 10 ** priceDecimal
-                                + newTotalIssuedShares * strategyFundToken.fundAssetsAfterFee / totalShares
-                        )
-                    ) * 10 ** priceDecimal / pendingTotalShares;
-                }
-            }
-            hwms[i] = hwm;
+    function setSpPendingShares(bytes32[] memory spIds, uint256 shares) external {
+        for (uint256 i = 0; i < spIds.length; i++) {
+            strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingStrategyProviderShares = shares;
         }
-        return hwms;
     }
-
     function setLpClaimInfo(bytes32 requestId, bytes32 accountId, uint256 assets) external {
         userClaimInfo[requestId].requestId = requestId;
         userClaimInfo[requestId].accountId = accountId;

@@ -10,6 +10,7 @@ const config: HardhatUserConfig = {
 
 
 const PRIVATE_KEY = vars.get("PRIVATE_KEY");
+const SP_KEY = vars.get("SP_KEY");
 
 module.exports = {
   solidity: {
@@ -77,8 +78,19 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
-      sepolia: 'UFDT2P2RSDHXGX1TUG1RJXAHPQS26GZ6I6'
-    }
+      orderly_sepolia: '123',//not needed
+      sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ'
+    },
+    customChains: [
+      {
+        network: "orderly_sepolia",
+        chainId: 4460,
+        urls: {
+          apiURL: "https://testnet-explorer.orderly.org/api",
+          browserURL: "https://testnet-explorer.orderly.org/",
+        }
+      }
+    ]
   }
 };
 
