@@ -108,6 +108,8 @@ async function deployProtocolVault(env) {
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
     //const implAddr = "0x83F367998EC5C78C107F32666B053D6A8991D773";
+    console.log("ProtocolVault Impl deployed to:", implAddr);
+    
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory

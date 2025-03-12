@@ -15,7 +15,27 @@
     "pvLedger": "0x2a5909498d85650744dD5CF964F2136962e5AE6E",
     "deployedNetwork": [
       "sepolia"
-    ]
+    ],
+    "ownership": {
+      "crossChainManager": {
+        "pendingOwner": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",
+        "status": "pending",
+        "txHash": "0xaab72b15fa496093718dafa6badf0ae9363553c6209b0d4adaca6adbbe49d2cb",
+        "updatedAt": "2025-03-12T10:19:18.849Z"
+      },
+      "protocolVault": {
+        "pendingOwner": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",
+        "status": "pending",
+        "txHash": "0x6d8b3544d8b1a087af802d303f1e3f060208b69de9b260919de67410af1f4359",
+        "updatedAt": "2025-03-12T10:17:51.168Z"
+      },
+      "pvLedger": {
+        "pendingOwner": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",
+        "status": "pending",
+        "txHash": "0x26617b9fdf93f951d0b7ed9aaea1484898fe482308253c945b73a0a122fcc1dc",
+        "updatedAt": "2025-03-12T10:19:16.243Z"
+      }
+    }
   },
   "qa": {
     "pv_salt": "0x0000000000000000000000000000000000000000000000000000000000000007",

@@ -4,7 +4,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "./tasks/deploy.js";
 import "./tasks/config.js";
 import "./tasks/check.js";
-
+import "./tasks/transferOwnerShip.js";
 const config: HardhatUserConfig = {
   solidity: "0.8.26",
 };
@@ -19,7 +19,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 10000000,
+        runs: 200,
       },
     },
   },
