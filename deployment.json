@@ -55,9 +55,14 @@
     "admin": "0x7D1e7BeAd9fBb72e35Dc8E6d1966c2e57DbDA3F0",
     "engine": "0x567e913462333628A7600EBe73e2e70Ccc4488e6",
     "allowedSP": "0xbBecf5bE52fCa9144395cE1f05993B52eAaFa53b",
-    "protocolVault": "",
-    "crossChainManager": "",
-    "pvLedger": ""
+    "protocolVault": "0x6B6059259B4096ea6420Eb5e08a22214d2303aE9",
+    "crossChainManager": "0x510dD61a988797114A9a51b0d228E894037BD9cb",
+    "pvLedger": "0x94127527554AE522eF2De9418BF159DA822592B7",
+    "deployedNetwork": [
+      "arb_sepolia",
+      "base_sepolia",
+      "op_sepolia"
+    ]
   },
   "mainnet": {
     "pv_salt": "0x0000000000000000000000000000000000000000000000000000000000000007",

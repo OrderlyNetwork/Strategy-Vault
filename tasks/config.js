@@ -7,9 +7,6 @@ const { checkNetworkEnvRestrictions, getEndpointV2 } = require('./utils');
 const { task } = require('hardhat/config');
 const broker = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
 
-const mainnets = ['mainnet', 'op', 'base', 'arb']
-const tests = ['sepolia', 'op_sepolia', 'arb_sepolia', 'base_sepolia']
-
 task("config-evm", "Config strategy vault contracts on EVM")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
@@ -153,20 +150,20 @@ async function configProtocolVaultLedger(env) {
     console.log("CrossChainManager set successfully")
 
     //set allowed sp 
-    const vaultId = getVaultId(deployment[env].protocolVault, broker);
-    const sp = deployment[env].allowedSP;
-    const spId = getStrategyProviderId(deployment[env].protocolVault, sp, broker);
+    // const vaultId = getVaultId(deployment[env].protocolVault, broker);
+    // const sp = deployment[env].allowedSP;
+    // const spId = getStrategyProviderId(deployment[env].protocolVault, sp, broker);
 
-    tx = await pvLedgerContract.setAllowedStrategyProvider(
-        vaultId,
-        deployment[env].protocolVault,
-        sp,
-        broker,
-        spId,
-        true
-    )
-    await tx.wait();
-    console.log("Allowed SP set to:", spId)
+    // tx = await pvLedgerContract.setAllowedStrategyProvider(
+    //     vaultId,
+    //     deployment[env].protocolVault,
+    //     sp,
+    //     broker,
+    //     spId,
+    //     true
+    // )
+    // await tx.wait();
+    // console.log("Allowed SP set to:", spId)
 }
 async function configOrderlyCrossChainManager(env, network) {
     //get the contract instance
@@ -180,19 +177,19 @@ async function configOrderlyCrossChainManager(env, network) {
     const evmEid = config[network].eid;
     tx = await ccManagerContract.setEid(evmChainId, evmEid);
     await tx.wait()
-    console.log(`set evmChainId ${config[network].evmChainId} to evmEid ${config[network].evmEid} successfully for ${network}`)
+    console.log(`set evmChainId ${evmChainId} to evmEid ${evmEid} successfully for ${network}`)
 
     //set peer 
-    tx = await ccManagerContract.setPeer(config[network].evmEid, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
+    tx = await ccManagerContract.setPeer(evmEid, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
     await tx.wait()
-    console.log(`Peer set evmEid ${config[network].evmEid} successfully for ${network}`)
+    console.log(`Peer set evmEid ${evmEid} successfully for ${network}`)
 
     //set option
     tx = await ccManagerContract.setOptions(4, 500000, 0);
     await tx.wait()
     console.log("Option set ASSETS_DISTRIBUTION successfully")
 
-    tx = await ccManagerContract.setOptions(5, 300000, 0);
+    tx = await ccManagerContract.setOptions(5, 500000, 0);
     await tx.wait()
     console.log("Option set UPDATE_USER_CLAIM successfully")
 
@@ -245,11 +242,15 @@ async function configProtocolVault(env) {
     await tx.wait()
     console.log("Allowed SP set successfully")
 
-    const currentNetwork = hre.network.name;
-    const chainId = config[currentNetwork].chainId;
-    const ledgerEid = mainnets.includes(chainId) ? 30213 : 40200
-
     //set ledger eid
+    let ledgerEid;
+    const currentNetwork = hre.network.name;
+
+    if (env == 'dev' || env == 'qa' || env == 'staging') {
+        ledgerEid = config['orderly_sepolia'].eid;
+    } else if (env == 'mainnet') {
+        ledgerEid = config['orderly'].eid;
+    }
     tx = await pvContract.setLedgerEid(ledgerEid);
     await tx.wait()
     console.log(`set ledger eid ${ledgerEid} successfully for ${currentNetwork}`)
@@ -258,7 +259,7 @@ async function configProtocolVault(env) {
     const [sender] = await ethers.getSigners();
     tx = await sender.sendTransaction({
         to: deployment[env].protocolVault,
-        value: ethers.parseEther('0.2'),
+        value: ethers.parseEther('0.15'),
     });
     await tx.wait()
     console.log("transfer native to protocol vaultsuccessfully");
@@ -288,7 +289,12 @@ async function configEVMCrossChainManager(env) {
     }
 
     //set peer 
-    const ledgerEid = mainnets.includes(currentNetwork) ? config['orderly'].eid : config['orderly_sepolia'].eid
+    let ledgerEid;
+    if (env == 'dev' || env == 'qa' || env == 'staging') {
+        ledgerEid = config['orderly_sepolia'].eid;
+    } else if (env == 'mainnet') {
+        ledgerEid = config['orderly'].eid;
+    }
     tx = await ccManagerContract.setPeer(ledgerEid, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
     await tx.wait()
     console.log(`set peer eid:${ledgerEid}`)

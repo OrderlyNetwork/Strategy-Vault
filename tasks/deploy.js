@@ -3,6 +3,7 @@ const path = require('path');
 const deployment = require('../deployment.json');
 const config = require('../config.json');
 const { task } = require('hardhat/config');
+const { checkNetworkEnvRestrictions } = require('./utils');
 
 const ERC1967ProxyPath = path.join(__dirname, '../scripts/utils/ERC1967Proxy.json');
 const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
@@ -25,6 +26,10 @@ task("deploy-orderly", "Deploy orderly contract on Orderly")
         if (!validEnvs.includes(taskArgs.env)) {
             throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
         }
+
+        const currentNetwork = hre.network.name;
+        checkNetworkEnvRestrictions(currentNetwork, taskArgs.env);
+
         await deployProtocolLedger(taskArgs.env);
         await deployCrossChainManager(taskArgs.env);
 
@@ -106,7 +111,7 @@ async function deployProtocolVault(env) {
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
-    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address,env);
+    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address, env);
     const salt = deployment[env].pv_salt;
     console.log("Deploying ProtocolVault with salt:", salt);
 
@@ -141,7 +146,7 @@ async function deployCrossChainManagerImpl(VaultCrossChainManager) {
 
     return implAddr;
 }
-function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr,env) {
+function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env) {
     //get usdc address 
     const currentNetwork = hre.network.name;
     const tokenAddress = config[currentNetwork].USDC
