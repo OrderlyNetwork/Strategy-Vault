@@ -36,7 +36,7 @@ async function main() {
   }
 
   //get lz fee
-  const nativeFee = await protocolVault.quoteOperation(type);
+  const nativeFee = await protocolVault.quoteOperation(type,depositParams.receiver,depositParams.amount);
   console.log("Native Fee: ", nativeFee.toString())
   //deposit
   //const nativeFee = 1190048;

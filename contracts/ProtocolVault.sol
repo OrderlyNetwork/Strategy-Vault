@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
@@ -29,6 +30,8 @@ import {ClaimInfo} from "./lib/types/LedgerStruct.sol";
 
 /// @title ProtocolVault for user to deposit and withdraw assets
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
+    using Address for address payable;
+
     /// @dev keccak256(abi.encodePacked(broker string))
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
     /// @dev keccak256(abi.encodePacked("USDC"))
@@ -52,7 +55,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     mapping(address => bool) public isAllowedAdmin;
     /// @dev allowed strategy provider
     mapping(bytes32 => bool) public isAllowedStrategyProvider;
-    /// @dev User Id => TokenHas => UserClaimedInfo
+    /// @dev User Id => TokenHash => UserClaimedInfo
     mapping(bytes32 => mapping(bytes32 => UserClaimedInfo)) public userClaimedById;
     /// @dev Token => isAllowed
     mapping(address => bool) public isAllowedToken;
@@ -163,7 +166,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
     /**
      * @notice Allows a user to request withdraw funds from the vault. This contract now refunds surplus
-     *         native tokens directly to msg.sender. Contracts unable to receive native tokens may encounter 
+     *         native tokens directly to msg.sender. Contracts unable to receive native tokens may encounter
      *         issues during withdraw.
      * @dev This function can only be called when the contract is not paused.
      * @param withdrawParams The parameters required for the withdraw, encapsulated in a struct.
@@ -278,7 +281,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     /// @param to the receiver address
     /// @param amount the amount to withdraw
     function withdrawNativeToken(address payable to, uint256 amount) external onlyOwner {
-        to.transfer(amount);
+        to.sendValue(amount);
     }
 
     //--------------------------------------CONFIG--------------------------------------------

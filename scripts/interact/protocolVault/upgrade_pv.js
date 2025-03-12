@@ -1,27 +1,34 @@
 const { ethers } = require("hardhat")
 const deployment = require('../../../deployment.json');
-const config = require('../../../config.json');
 
 async function main() {
+    const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
+    const ProtocolVaultContract = await ProtocolVault.deploy();
+    await ProtocolVaultContract.waitForDeployment();
+
+    const implAddr = ProtocolVaultContract.target;
+    console.log("ProtocolVaultContract Impl deployed to:", implAddr);
+
+    //upgrade
     //!need to change with your env
-    const env = "dev";
+    const env = "qa";
 
     const protocolVault = await ethers.getContractAt(
         "ProtocolVault",
         deployment[env].protocolVault
     )
-    // const impl = await upgrades.forceImport(proxy, ProtocolVault);
-    // console.log("Proxy imported from:", impl.target);
 
-    // const instance = await upgrades.upgradeProxy(proxy, ProtocolVault, { kind: "uups" });
-    // await instance.waitForDeployment();
-    const impl = "0x0718fea4B2779c978805a138f9162c1dAe5dDB73";
+    const impl = implAddr;
     tx = await protocolVault.upgradeToAndCall(impl, "0x")
     await tx.wait();
-    console.log("upgrade successfully");
+    console.log("upgrade protocol vault contract successfully");
+
 }
 
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+
+
+main().catch(error => {
+    console.error(error)
+    process.exitCode = 1
+})
+

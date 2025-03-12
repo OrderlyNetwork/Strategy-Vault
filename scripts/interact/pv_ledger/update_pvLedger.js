@@ -1,5 +1,5 @@
 const { ethers } = require("hardhat")
-const deployment = require('../../deployment.json');
+const deployment = require('../../../deployment.json');
 
 async function main() {
     const ProtocolVaultLedger = await ethers.getContractFactory("ProtocolVaultLedger");
@@ -11,7 +11,7 @@ async function main() {
 
     //updage
     //!need to change with your env
-    const env = "dev";
+    const env = "qa";
     const protocolVaultLedger = await ethers.getContractAt(
         "ProtocolVaultLedger",
         deployment[env].pvLedger
@@ -19,7 +19,7 @@ async function main() {
     const impl = implAddr;
     tx = await protocolVaultLedger.upgradeToAndCall(impl, "0x")
     await tx.wait();
-    console.log("upgrade pv ledger successfully");
+    console.log(` ${env} ledger upgraded successfully`);
 }
 
 

@@ -155,7 +155,7 @@ function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr,env) {
     const initializeData = ProtocolVault.interface.encodeFunctionData(
         "initialize",
         [
-            deployment[env].dex,
+            deployment[env].dex[currentNetwork],
             ownerAddr,
             tokenAddress,
             minDepositForLp,

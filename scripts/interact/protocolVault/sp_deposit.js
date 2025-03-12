@@ -5,7 +5,7 @@ const config = require('../../../config.json');
 
 async function main() {
   //!need to change with your env
-  const env = "qa";
+  const env = "dev";
   const currentNetwork = hre.network.name;
   const [sender] = await ethers.getSigners();
 
@@ -38,7 +38,7 @@ async function main() {
   }
 
   //get lz fee
-  const nativeFee = await protocolVault.quoteOperation(type);
+  const nativeFee = await protocolVault.quoteOperation(type,depositParams.receiver,depositParams.amount);
   console.log("Native Fee: ", nativeFee.toString())
   //deposit
   //const nativeFee = 1190048;

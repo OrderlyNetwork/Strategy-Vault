@@ -27,25 +27,26 @@ async function main() {
 
     // console.log(await pvLedger.operator());
     // console.log(await pvLedger.engine());
+
     //set AllowedStrategyProvider
-    // const vaultId = getVaultId(deployment[env].protocolVault, broker);
-    // const sp = deployment[env].allowedSP;
-    // const spId = getStrategyProviderId(deployment[env].protocolVault, sp, broker);
-    // tx = await pvLedger.setAllowedStrategyProvider(
-    //     vaultId,
-    //     deployment[env].protocolVault,
-    //     sp,
-    //     broker,
-    //     spId,
-    //     true
-    // )
-    // await tx.wait();
-    // console.log("setAllowedStrategyProvider to: ", spId)
+    const vaultId = getVaultId(deployment[env].protocolVault, broker);
+    const sp = deployment[env].allowedSP;
+    const spId = getStrategyProviderId(deployment[env].protocolVault, sp, broker);
+    tx = await pvLedger.setAllowedStrategyProvider(
+        vaultId,
+        deployment[env].protocolVault,
+        sp,
+        broker,
+        spId,
+        true
+    )
+    await tx.wait();
+    console.log("setAllowedStrategyProvider to: ", spId)
 
     //set crossChainManager
-    tx = await pvLedger.setCrossChainManager(deployment[env].crossChainManager);
-    await tx.wait()
-    console.log("CrossChainManager set successfully")
+    // tx = await pvLedger.setCrossChainManager(deployment[env].crossChainManager);
+    // await tx.wait()
+    // console.log("CrossChainManager set successfully")
 
 }
 
