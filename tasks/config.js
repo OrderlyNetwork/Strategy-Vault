@@ -359,7 +359,7 @@ async function setLzConfig(env, oappAddress, remoteEid, networkConfig) {
 
     tx = await endpointv2.setReceiveLibrary(
         oappAddress,
-        networkConfig.eid,
+        remoteEid,
         networkConfig.receiveLibConfig.receiveLibAddress,
         0
     );
