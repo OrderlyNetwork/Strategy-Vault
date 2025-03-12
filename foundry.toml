@@ -12,4 +12,9 @@ remappings = [
     "solady/=lib/solady/",
     "solmate/=lib/solmate/",
 ]
+[invariant] #invariant section
+fail_on_revert = false
+runs = 256
+depth = 15
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

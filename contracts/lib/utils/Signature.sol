@@ -45,7 +45,7 @@ library Signature {
         verifySignature(signer, messageHash, signature);
     }
 
-    function verifyAllocatToFunds(
+    function verifyAllocateToFunds(
         uint256 periodId,
         bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,

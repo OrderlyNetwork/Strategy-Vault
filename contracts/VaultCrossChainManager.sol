@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 // lz imports
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import {OptionsBuilder} from "./lib/layerzero-v2/oapp/libs/OptionsBuilder.sol";
 import {OAppUpgradeable, MessagingFee, Origin} from "./lib/layerzero-v2/oapp/OAppUpgradeable.sol";
 
@@ -16,6 +17,8 @@ import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossC
 import {DecimalConverter} from "./lib/utils/DecimalConverter.sol";
 
 contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
+    using Address for address payable;
+
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
 
     error InvalidCaller(address caller);
@@ -24,8 +27,6 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     using OptionsBuilder for bytes;
     using DecimalConverter for uint256;
 
-    uint256 constant LEDGER_CHAIN_ID = 291;
-    uint32 constant LEDGER_EID = 30213;
     uint256 public ledgerDecimal;
 
     address public ledger;
@@ -66,8 +67,6 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         __initializeOApp(endpoint, delegate);
 
         ledgerDecimal = 6;
-        // Set default orderly chainId to eid mapping
-        chainIdToEid[LEDGER_CHAIN_ID] = LEDGER_EID;
     }
 
     function sendMessageWithValueAndRefund(StrategyVaultCCMessage memory message, address refundAddress)
@@ -97,7 +96,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     /// @param to the receiver address
     /// @param amount the amount to withdraw
     function withdrawNativeToken(address payable to, uint256 amount) external onlyOwner {
-        to.transfer(amount);
+        to.sendValue(amount);
     }
 
     function _lzReceive(

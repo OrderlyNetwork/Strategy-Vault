@@ -2,9 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const deployment = require('../deployment.json');
 const config = require('../config.json');
-const { keccak256, AbiCoder } = require("ethers");
 const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/utils/getId');
+const { checkNetworkEnvRestrictions, getEndpointV2 } = require('./utils');
+const { task } = require('hardhat/config');
 const broker = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
+
+const mainnets = ['mainnet', 'op', 'base', 'arb']
+const tests = ['sepolia', 'op_sepolia', 'arb_sepolia', 'base_sepolia']
 
 task("config-evm", "Config strategy vault contracts on EVM")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -18,21 +22,30 @@ task("config-evm", "Config strategy vault contracts on EVM")
 
         await configEVMCrossChainManager(taskArgs.env);
         console.log("✅ ----------------------EVM CrossChainManager Config Done----------------------")
+
+        await lz_evm_config(taskArgs.env);
+        console.log("✅ ----------------------Lz EVM Config Done----------------------")
     });
 
 task("config-orderly", "Deploy strategy vault contracts on Orderly")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .addParam("chain", "Dst evm chain")
     .setAction(async (taskArgs, hre) => {
         const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
         if (!validEnvs.includes(taskArgs.env)) {
             throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
         }
+        const currentNetwork = hre.network.name;
+        checkNetworkEnvRestrictions(currentNetwork, taskArgs.env);
+
         await configProtocolVaultLedger(taskArgs.env);
         console.log("✅ ----------------------Protocol Vault Ledger Config Done----------------------")
 
-        await configOrderlyCrossChainManager(taskArgs.env);
+        await configOrderlyCrossChainManager(taskArgs.env, taskArgs.chain);
         console.log("✅ ----------------------Orderly CrossChainManager Config Done----------------------")
 
+        await lz_orderly_config(taskArgs.env, taskArgs.chain);
+        console.log("✅ ----------------------Lz Orderly Config Done----------------------")
     });
 task("config-evm-cc", "Config EVM CrossChainManager")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -61,16 +74,60 @@ task("config-protocol-vault-ledger", "Config ProtocolVaultLedger")
         if (!validEnvs.includes(taskArgs.env)) {
             throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
         }
+        const currentNetwork = hre.network.name;
+        checkNetworkEnvRestrictions(currentNetwork, taskArgs.env);
+
         await configProtocolVaultLedger(taskArgs.env);
     });
-task ("config-orderly-cc", "Config Orderly CrossChainManager")
+task("config-orderly-cc", "Config Orderly CrossChainManager")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .addParam("chain", "Dst evm chain")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        const currentNetwork = hre.network.name;
+        checkNetworkEnvRestrictions(currentNetwork, taskArgs.env);
+
+        await configOrderlyCrossChainManager(taskArgs.env, taskArgs.chain);
+        console.log("✅ ----------------------Orderly CrossChainManager Config Done----------------------")
+    });
+task("config-new-evm", "Config new chain for Orderly CrossChainManager")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .addParam("chain", "Dst evm chain")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        const currentNetwork = hre.network.name;
+        checkNetworkEnvRestrictions(currentNetwork, taskArgs.env);
+
+        await configNewChainForOrderly(taskArgs.env, taskArgs.chain);
+        console.log("✅ ----------------------Config New Chain CC Manager Done----------------------")
+
+        await lz_orderly_config(taskArgs.env, taskArgs.chain);
+        console.log("✅ ----------------------Lz Orderly Config Done----------------------")
+    });
+task("lz-evm-config", "Config Lz on evm")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
         const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
         if (!validEnvs.includes(taskArgs.env)) {
             throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
         }
-        await configOrderlyCrossChainManager(taskArgs.env);
+        await lz_evm_config(taskArgs.env);
+    });
+task("lz-orderly-config", "Config Lz on orderly")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .addParam("chain", "Dst evm chain")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await lz_orderly_config(taskArgs.env, taskArgs.chain);
     });
 
 async function configProtocolVaultLedger(env) {
@@ -109,9 +166,9 @@ async function configProtocolVaultLedger(env) {
         true
     )
     await tx.wait();
-    console.log("Allowed SP set successfully")
+    console.log("Allowed SP set to:", spId)
 }
-async function configOrderlyCrossChainManager(env) {
+async function configOrderlyCrossChainManager(env, network) {
     //get the contract instance
     const ccManagerContract = await ethers.getContractAt(
         "VaultCrossChainManager",
@@ -119,24 +176,23 @@ async function configOrderlyCrossChainManager(env) {
     )
 
     //set eid
-    //sepolia
-    //todo need to modify on mainnet
-    tx = await ccManagerContract.setEid(11155111, 40161);
+    const evmChainId = config[network].chainId;
+    const evmEid = config[network].eid;
+    tx = await ccManagerContract.setEid(evmChainId, evmEid);
     await tx.wait()
-    console.log("EID set successfully")
+    console.log(`set evmChainId ${config[network].evmChainId} to evmEid ${config[network].evmEid} successfully for ${network}`)
 
     //set peer 
-    //todo need to modify on mainnet
-    tx = await ccManagerContract.setPeer(40161, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
+    tx = await ccManagerContract.setPeer(config[network].evmEid, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
     await tx.wait()
-    console.log("Peer set successfully")
+    console.log(`Peer set evmEid ${config[network].evmEid} successfully for ${network}`)
 
     //set option
-    tx = await ccManagerContract.setOptions(4, 460000, 0);
+    tx = await ccManagerContract.setOptions(4, 500000, 0);
     await tx.wait()
     console.log("Option set ASSETS_DISTRIBUTION successfully")
 
-    tx = await ccManagerContract.setOptions(5, 200000, 0);
+    tx = await ccManagerContract.setOptions(5, 300000, 0);
     await tx.wait()
     console.log("Option set UPDATE_USER_CLAIM successfully")
 
@@ -145,6 +201,31 @@ async function configOrderlyCrossChainManager(env) {
     await tx.wait()
     console.log("Ledger set successfully")
 
+    //transfer native for cc fee 
+    const [sender] = await ethers.getSigners();
+    tx = await sender.sendTransaction({
+        to: deployment[env].crossChainManager,
+        value: ethers.parseEther('0.1'),
+    });
+    await tx.wait()
+    console.log("transfer native to cross chain manager fee successfully");
+
+}
+
+async function configNewChainForOrderly(env, network) {
+    const ccManagerContract = await ethers.getContractAt(
+        "VaultCrossChainManager",
+        deployment[env].crossChainManager
+    )
+    //set eid
+    tx = await ccManagerContract.setEid(config[network].chainId, config[network].eid);
+    await tx.wait()
+    console.log(`set chainId ${config[network].chainId} to eid ${config[network].eid} successfully for ${network}`)
+
+    //set peer 
+    tx = await ccManagerContract.setPeer(config[network].eid, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
+    await tx.wait()
+    console.log(`Peer set eid ${config[network].eid} successfully for ${network}`)
 }
 async function configProtocolVault(env) {
     //get the contract instance
@@ -163,11 +244,24 @@ async function configProtocolVault(env) {
     tx = await pvContract.setAllowedStrategyProvider(spId, true);
     await tx.wait()
     console.log("Allowed SP set successfully")
-    
-    //todo doesn't need to set on mainnet
-    tx = await pvContract.setLedgerEid(40200);
+
+    const currentNetwork = hre.network.name;
+    const chainId = config[currentNetwork].chainId;
+    const ledgerEid = mainnets.includes(chainId) ? 30213 : 40200
+
+    //set ledger eid
+    tx = await pvContract.setLedgerEid(ledgerEid);
     await tx.wait()
-    console.log("LedgerEid set successfully")
+    console.log(`set ledger eid ${ledgerEid} successfully for ${currentNetwork}`)
+
+    //transfer native for cc fee 
+    const [sender] = await ethers.getSigners();
+    tx = await sender.sendTransaction({
+        to: deployment[env].protocolVault,
+        value: ethers.parseEther('0.2'),
+    });
+    await tx.wait()
+    console.log("transfer native to protocol vaultsuccessfully");
 
 }
 async function configEVMCrossChainManager(env) {
@@ -177,20 +271,27 @@ async function configEVMCrossChainManager(env) {
         deployment[env].crossChainManager
     )
 
-    //set eid
-    const chainId = hre.ethers.provider.getNetwork();
     const currentNetwork = hre.network.name;
 
-    //todo doesn't need to set on mainnet
-    tx = await ccManagerContract.setEid(291, 40200);
-    await tx.wait()
-    console.log("EID set successfully")
+    //set eid
+    if (env == 'mainnet') {
+        tx = await ccManagerContract.setEid(config['orderly'].chainId, config['orderly'].eid);
+        await tx.wait()
+        console.log(`set chainId ${config['orderly'].chainId} to eid ${config['orderly'].eid} successfully for ${currentNetwork}`)
+    } else if (env == 'dev' || env == 'qa' || env == 'staging') {
+        //chainId is hardcode in contract, so here is 'orderly'.chainId instead of 'orderly_sepolia'.chainId
+        tx = await ccManagerContract.setEid(config['orderly'].chainId, config['orderly_sepolia'].eid);
+        await tx.wait()
+        console.log(`set chainId ${config['orderly'].chainId} to eid ${config['orderly_sepolia'].eid} successfully for ${currentNetwork}`)
+    } else {
+        throw new Error(`Invalid chain`);
+    }
 
     //set peer 
-    //todo need to modify on mainnet  30213
-    tx = await ccManagerContract.setPeer(40200, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
+    const ledgerEid = mainnets.includes(currentNetwork) ? config['orderly'].eid : config['orderly_sepolia'].eid
+    tx = await ccManagerContract.setPeer(ledgerEid, ethers.zeroPadValue(deployment[env].crossChainManager, 32));
     await tx.wait()
-    console.log("Peer set successfully")
+    console.log(`set peer eid:${ledgerEid}`)
 
     //set option
     tx = await ccManagerContract.setOptions(0, 120000, 0);
@@ -215,12 +316,102 @@ async function configEVMCrossChainManager(env) {
     console.log("Vault set successfully")
 
 }
-function getSpId(env) {
-    const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
-    return keccak256(
-        new AbiCoder().encode(
-            ["address", "address", "bytes32"],
-            [deployment[env].protocolVault, deployment[env].allowedSP, orderlyHash]
-        )
+
+async function lz_evm_config(env) {
+    const networkConfig = config[hre.network.name];
+    const oappAddress = deployment[env].crossChainManager;
+    let remoteEid;
+
+    if (env == 'dev' || env == 'qa' || env == 'staging') {
+        remoteEid = config['orderly_sepolia'].eid;
+    } else if (env == 'mainnet') {
+        remoteEid = config['orderly'].eid;
+    }
+    await setLzConfig(env, oappAddress, remoteEid, networkConfig);
+}
+
+async function lz_orderly_config(env, dstChain) {
+    const remoteEid = config[dstChain].eid;
+    const networkConfig = config[hre.network.name];
+    const oappAddress = deployment[env].crossChainManager;
+
+    await setLzConfig(env, oappAddress, remoteEid, networkConfig);
+}
+
+async function setLzConfig(env, oappAddress, remoteEid, networkConfig) {
+    const endpointv2 = await getEndpointV2(hre.network.name);
+    const network = hre.network.name;
+    //Setting Send and Receive Libraries  
+    tx = await endpointv2.setSendLibrary(
+        oappAddress,
+        remoteEid,
+        networkConfig.sendLibConfig.sendLibAddress
     );
+    await tx.wait();
+    console.log(`setSendLibrary on ${network} ${env} sucessfully`);
+
+
+    tx = await endpointv2.setReceiveLibrary(
+        oappAddress,
+        networkConfig.eid,
+        networkConfig.receiveLibConfig.receiveLibAddress,
+        0
+    );
+    await tx.wait();
+    console.log(`setReceiveLibrary on ${network} ${env} sucessfully`);
+
+    // Setting Send Config  
+    const sendUlnConfig = networkConfig.sendLibConfig.ulnConfig;
+    const encodedUlnConfig = ethers.AbiCoder.defaultAbiCoder().encode(
+        ['tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)'],
+        [sendUlnConfig]
+    );
+
+    const sendExecutorConfig = {
+        maxMessageSize: networkConfig.sendLibConfig.executorConfig.maxMessageSize,
+        executorAddress: networkConfig.sendLibConfig.executorConfig.executorAddress
+    };
+    const encodedExecutorConfig = ethers.AbiCoder.defaultAbiCoder().encode(
+        ['tuple(uint32 maxMessageSize, address executorAddress)'],
+        [sendExecutorConfig]
+    );
+
+    const sendConfigTx = await endpointv2.setConfig(
+        oappAddress,
+        networkConfig.sendLibConfig.sendLibAddress,
+        [
+            {
+                eid: remoteEid,
+                configType: 2, // ULN Config  
+                config: encodedUlnConfig
+            },
+            {
+                eid: remoteEid,
+                configType: 1, // Executor Config  
+                config: encodedExecutorConfig
+            }
+        ]
+    );
+    await sendConfigTx.wait();
+    console.log(`setSendConfig on ${network} ${env} sucessfully`);
+
+    // Setting Receive Config  
+    const receiveUlnConfig = networkConfig.receiveLibConfig.ulnConfig;
+    const encodedReceiveUlnConfig = ethers.AbiCoder.defaultAbiCoder().encode(
+        ['tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)'],
+        [receiveUlnConfig]
+    );
+    const receiveConfigTx = await endpointv2.setConfig(
+        oappAddress,
+        networkConfig.receiveLibConfig.receiveLibAddress,
+        [
+            {
+                eid: remoteEid,
+                configType: 2, // ULN Config  
+                config: encodedReceiveUlnConfig
+            }
+        ]
+    );
+    await receiveConfigTx.wait();
+    console.log(`setReceiveConfig on ${network} ${env} sucessfully`);
 }

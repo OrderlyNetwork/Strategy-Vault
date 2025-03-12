@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "./tasks/deploy.js";
 import "./tasks/config.js";
+import "./tasks/check.js";
 
 const config: HardhatUserConfig = {
   solidity: "0.8.26",
@@ -47,12 +48,24 @@ module.exports = {
       url: "https://optimism.llamarpc.com",
       accounts: [PRIVATE_KEY],
     },
+    op_sepolia: {
+      url: "https://sepolia.optimism.io",
+      accounts: [PRIVATE_KEY],
+    },
     base: {
       url: "https://mainnet.base.org",
       accounts: [PRIVATE_KEY],
     },
+    base_sepolia: {
+      url: "https://base-sepolia.gateway.tenderly.co",
+      accounts: [PRIVATE_KEY],
+    },
     sepolia: {
       url: "https://gateway.tenderly.co/public/sepolia",
+      accounts: [PRIVATE_KEY],
+    },
+    orderly: {
+      url: "https://rpc.orderly.network",
       accounts: [PRIVATE_KEY],
     },
     orderly_sepolia: {
@@ -72,14 +85,17 @@ module.exports = {
       accounts: [PRIVATE_KEY],
     },
     arb_sepolia: {
-      url: "https://gateway.tenderly.co/public/sepolia",
+      url: "https://sepolia-rollup.arbitrum.io/rpc",
       accounts: [PRIVATE_KEY],
     }
   },
   etherscan: {
     apiKey: {
       orderly_sepolia: '123',//not needed
-      sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ'
+      sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
+      arbitrumSepolia: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
+      op_sepolia: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
+      baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C'
     },
     customChains: [
       {
@@ -88,6 +104,14 @@ module.exports = {
         urls: {
           apiURL: "https://testnet-explorer.orderly.org/api",
           browserURL: "https://testnet-explorer.orderly.org/",
+        }
+      },
+      {
+        network: "op_sepolia",
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          browserURL: "https://sepolia-optimism.etherscan.io/",
         }
       }
     ]

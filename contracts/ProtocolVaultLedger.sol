@@ -64,7 +64,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @dev requestId to User Claim information
     mapping(bytes32 => ClaimInfo) public userClaimInfo;
     /// @dev Determines whether the operation corresponding to the requestId is executed
-    mapping(bytes32 => bool) public isOpHandeled;
+    mapping(bytes32 => bool) public isOpHandled;
     /// @dev Determines whether the user claim is handled
     mapping(bytes32 => bool) public isUserClaimHandled;
     /// @dev Determines whether the assets has been uploaded in a period. Only can be called once in a period.
@@ -256,7 +256,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             bytes32 requestId = updateUserLedgerParams[i].operation.requestId;
             uint256 amount;
 
-            if (!isOpHandeled[requestId]) {
+            if (!isOpHandled[requestId]) {
                 Operation memory operation = updateUserLedgerParams[i].operation;
                 bytes32 id = operation.id;
                 uint256 operationAmount = operation.amount;
@@ -284,7 +284,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     amount: amount,
                     operationType: operationType
                 });
-                isOpHandeled[requestId] = true;
+                isOpHandled[requestId] = true;
             }
         }
 
@@ -308,7 +308,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         if (isAllocatedToFunds[periodId]) {
             revert AlreadyCalled();
         }
-        Signature.verifyAllocatToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
+        Signature.verifyAllocateToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
 
         StrategyFundToken storage strategyFundToken;
         uint256 totalMainAssetsInFund;
@@ -541,7 +541,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
         }
 
-        emit AssetsDistrubuted(periodId, vaultId);
+        emit AssetsDistributed(periodId, vaultId);
     }
 
     /// @notice Operator update unclaimed assets after funds transfer to protocol vault
@@ -841,7 +841,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /**
      * @dev Internal conversion function (from assets amount to shares) with support for rounding direction.
      */
-    function _convertToShares(uint256 amount, uint256 _totalAssets, uint256 _toatlShares, Math.Rounding rounding)
+    function _convertToShares(uint256 amount, uint256 _totalAssets, uint256 _totalShares, Math.Rounding rounding)
         internal
         view
         virtual
@@ -850,21 +850,21 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         uint256 decimal = tokenDecimal[USDC_HASH];
         return (_totalAssets == 0)
             ? amount.mulDiv(10 ** decimal, 10 ** decimal, rounding)
-            : amount.mulDiv(_toatlShares, _totalAssets, rounding);
+            : amount.mulDiv(_totalShares, _totalAssets, rounding);
     }
 
     /**
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
-    function _convertToAssets(uint256 shares, uint256 _totalAssets, uint256 _toatlShares, Math.Rounding rounding)
+    function _convertToAssets(uint256 shares, uint256 _totalAssets, uint256 _totalShares, Math.Rounding rounding)
         internal
         view
         virtual
         returns (uint256 assets)
     {
         uint256 decimal = tokenDecimal[USDC_HASH];
-        return (_toatlShares == 0)
+        return (_totalShares == 0)
             ? shares.mulDiv(10 ** decimal, 10 ** decimal, rounding)
-            : shares.mulDiv(_totalAssets, _toatlShares, rounding);
+            : shares.mulDiv(_totalAssets, _totalShares, rounding);
     }
 }
