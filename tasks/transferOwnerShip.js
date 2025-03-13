@@ -107,10 +107,10 @@ async function transferContractOwnership(contractName, contractAddress, newOwner
         console.log(`Current owner: ${currentOwner}`);
 
         // Check if current owner is already the new owner
-        // if (currentOwner.toLowerCase() === newOwnerAddress.toLowerCase()) {
-        //     console.log(`Contract ${contractName} is already owned by ${newOwnerAddress}. No action needed.`);
-        //     return;
-        // }
+        if (currentOwner.toLowerCase() === newOwnerAddress.toLowerCase()) {
+            console.log(`Contract ${contractName} is already owned by ${newOwnerAddress}. No action needed.`);
+            return;
+        }
 
         // Check if we have permission to transfer
         const [signer] = await ethers.getSigners();
@@ -123,14 +123,7 @@ async function transferContractOwnership(contractName, contractAddress, newOwner
         const tx1 = await contract.transferOwnership(newOwnerAddress);
         await tx1.wait();
         console.log(`Ownership transfer initiated. Transaction hash: ${tx1.hash}`);
-        
-        // Update the ownership status in deployment file
-        updateOwnershipStatus(env, contractName, {
-            pendingOwner: newOwnerAddress,
-            status: "pending",
-            txHash: tx1.hash
-        });
-        
+                
         console.log(`✅ Ownership of ${contractName} transfer initiated. New owner ${newOwnerAddress} needs to accept the transfer.`);
     } catch (error) {
         console.error(`Error transferring ownership of ${contractName}: ${error.message}`);
