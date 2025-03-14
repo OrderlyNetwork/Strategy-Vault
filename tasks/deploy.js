@@ -155,8 +155,8 @@ function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env) {
         throw new Error(`No USDC address found for network: ${currentNetwork}`);
     }
     console.log(`USDC Address for ${currentNetwork}: ${tokenAddress}`);
-    const minDepositForLp = 0;
-    const minDepositForSp = 0;
+    const minDepositForLp = deployment[env].minDepositForLp;
+    const minDepositForSp = deployment[env].minDepositForSp;
 
     const initializeData = ProtocolVault.interface.encodeFunctionData(
         "initialize",

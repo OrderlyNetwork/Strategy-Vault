@@ -78,6 +78,8 @@
     "protocolVault": "0x6B6059259B4096ea6420Eb5e08a22214d2303aE9",
     "crossChainManager": "0x510dD61a988797114A9a51b0d228E894037BD9cb",
     "pvLedger": "0x94127527554AE522eF2De9418BF159DA822592B7",
+    "minLpDeposit": 10000000,
+    "minSpDeposit": 10000000,
     "deployedNetwork": [
       "arb_sepolia",
       "base_sepolia",
