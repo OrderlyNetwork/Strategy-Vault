@@ -503,4 +503,127 @@ contract TestProtocolVault is Base {
             })
         );
     }
+
+    function testLPWhitelist() public {
+        // 设置白名单开启和结束时间（一周后）
+        uint256 endTime = block.timestamp + 7 days;
+        vm.prank(owner);
+        protocolVault.setLpWhitelistConfig(true, endTime);
+
+        // 添加用户A到白名单
+        address[] memory whitelistUsers = new address[](1);
+        whitelistUsers[0] = userA;
+        vm.prank(owner);
+        protocolVault.updateLpWhitelist(whitelistUsers, true);
+
+        uint256 amount = 100e6;
+        uint256 nativeFee = protocolVault.quoteOperation(PayloadType.LP_DEPOSIT, userA, amount);
+
+        // 白名单用户可以存款
+        vm.startPrank(userA);
+        mockToken.approve(address(protocolVault), amount);
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: userA,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        protocolVault.deposit{value: nativeFee}(depositParams);
+        vm.stopPrank();
+
+        // 非白名单用户不能存款
+        vm.startPrank(userB);
+        mockToken.approve(address(protocolVault), amount);
+        depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: userB,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        vm.expectRevert("Not in whitelist");
+        protocolVault.deposit{value: nativeFee}(depositParams);
+        vm.stopPrank();
+    }
+
+    function testLPWhitelistExpired() public {
+        // set whitelist config
+        uint256 endTime = block.timestamp - 1;
+        vm.prank(owner);
+        vm.expectRevert("Invalid end time");
+        protocolVault.setLpWhitelistConfig(true, endTime);
+    }
+
+    function testLPWhitelistDisabled() public {
+        //cloase whitelist
+        vm.prank(owner);
+        protocolVault.setLpWhitelistConfig(false, 0);
+
+        uint256 amount = 100e6;
+        uint256 nativeFee = protocolVault.quoteOperation(PayloadType.LP_DEPOSIT, userA, amount);
+
+        //whitelist disable
+        vm.startPrank(userB);
+        mockToken.approve(address(protocolVault), amount);
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: userB,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        protocolVault.deposit{value: nativeFee}(depositParams);
+        vm.stopPrank();
+    }
+
+    function testLPWhitelistBatchUpdate() public {
+        // batch update whitelist
+        address[] memory whitelistUsers = new address[](2);
+        whitelistUsers[0] = userA;
+        whitelistUsers[1] = userB;
+
+        vm.startPrank(owner);
+        protocolVault.updateLpWhitelist(whitelistUsers, true);
+
+        uint256 endTime = block.timestamp + 7 days;
+        protocolVault.setLpWhitelistConfig(true, endTime);
+        vm.stopPrank();
+
+        uint256 amount = 100e6;
+        uint256 nativeFee = protocolVault.quoteOperation(PayloadType.LP_DEPOSIT, userA, amount);
+
+        //whitelist user can deposit
+        for (uint256 i = 0; i < whitelistUsers.length; i++) {
+            vm.startPrank(whitelistUsers[i]);
+            mockToken.approve(address(protocolVault), amount);
+            DepositParams memory depositParams = DepositParams({
+                payloadType: PayloadType.LP_DEPOSIT,
+                receiver: whitelistUsers[i],
+                token: address(mockToken),
+                amount: amount,
+                brokerHash: ORDERLY_BROKER
+            });
+            protocolVault.deposit{value: nativeFee}(depositParams);
+            vm.stopPrank();
+        }
+
+        //remove whitelist user
+        vm.prank(owner);
+        protocolVault.updateLpWhitelist(whitelistUsers, false);
+
+        //can not deposit
+        vm.startPrank(userA);
+        mockToken.approve(address(protocolVault), amount);
+        DepositParams memory depositParams = DepositParams({
+            payloadType: PayloadType.LP_DEPOSIT,
+            receiver: userA,
+            token: address(mockToken),
+            amount: amount,
+            brokerHash: ORDERLY_BROKER
+        });
+        vm.expectRevert("Not in whitelist");
+        protocolVault.deposit{value: nativeFee}(depositParams);
+        vm.stopPrank();
+    }
 }
