@@ -65,6 +65,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     mapping(address => bool) public isAllowedStrategy;
     /// @dev Token hash  => Token address
     mapping(bytes32 => address) public tokenHashToAddress;
+    /// @dev whitelist for LP Deposit
+    bool public lpWhitelistEnabled;
+    uint256 public lpWhitelistEndTime;
+    mapping(address => bool) public lpWhitelist;
 
     //receive native token
     receive() external payable {}
@@ -350,6 +354,18 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     function setAllowedStrategyProvider(bytes32 spId, bool knob) external onlyOwner {
         isAllowedStrategyProvider[spId] = knob;
     }
+
+    function setLpWhitelistConfig(bool _enabled, uint256 _endTime) external onlyOwner {
+        require(_endTime > block.timestamp || !_enabled, "Invalid end time");
+        lpWhitelistEnabled = _enabled;
+        lpWhitelistEndTime = _endTime;
+    }
+
+    function updateLpWhitelist(address[] calldata _users, bool _isWhitelisted) external onlyOwner {
+        for (uint256 i = 0; i < _users.length; i++) {
+            lpWhitelist[_users[i]] = _isWhitelisted;
+        }
+    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
@@ -389,10 +405,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             revert InvalidDepositType(payloadType);
         }
 
-        if (
-            (payloadType == PayloadType.LP_DEPOSIT && amount < minDepositForLp)
-                || (payloadType == PayloadType.SP_DEPOSIT && amount < minDepositForSp)
-        ) revert InvalidDepositAmount(amount);
+        if (payloadType == PayloadType.LP_DEPOSIT) {
+            if (lpWhitelistEnabled && block.timestamp <= lpWhitelistEndTime) {
+                require(lpWhitelist[receiver], "Not in whitelist");
+            }
+            require(amount >= minDepositForLp, "Invalid deposit amount");
+        } else if (payloadType == PayloadType.SP_DEPOSIT) {
+            require(amount >= minDepositForSp, "Invalid deposit amount");
+        }
     }
 
     function _validateWithdraw(
