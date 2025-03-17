@@ -47,9 +47,9 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     /// @dev Incremental nonce for user deposit and withdraw operation,used for requestId on ledger
     uint256 public chainNonce;
     /// @dev Minimum deposit amount for LP
-    uint256 minDepositForLp;
+    uint256 public minDepositForLp;
     /// @dev Minimum deposit amount for SP
-    uint256 minDepositForSp;
+    uint256 public minDepositForSp;
 
     /// @dev Admin address => isAllowed
     mapping(address => bool) public isAllowedAdmin;
