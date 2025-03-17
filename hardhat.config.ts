@@ -12,6 +12,7 @@ const config: HardhatUserConfig = {
 
 const PRIVATE_KEY = vars.get("PRIVATE_KEY");
 const SP_KEY = vars.get("SP_KEY");
+const DEPLOY_KEY = vars.get("DEPLOY_KEY");
 
 module.exports = {
   solidity: {
@@ -42,11 +43,11 @@ module.exports = {
     },
     arb: {
       url: "https://arb1.arbitrum.io/rpc",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     op: {
       url: "https://optimism.llamarpc.com",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     op_sepolia: {
       url: "https://sepolia.optimism.io",
@@ -54,7 +55,7 @@ module.exports = {
     },
     base: {
       url: "https://mainnet.base.org",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     base_sepolia: {
       url: "https://base-sepolia.gateway.tenderly.co",
@@ -66,7 +67,7 @@ module.exports = {
     },
     orderly: {
       url: "https://rpc.orderly.network",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     orderly_sepolia: {
       url: "https://testnet-rpc.orderly.org",
