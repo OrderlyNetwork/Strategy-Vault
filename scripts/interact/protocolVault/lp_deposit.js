@@ -5,7 +5,7 @@ const config = require('../../../config.json');
 
 async function main() {
   //!need to change with your env
-  const env = "staging";
+  const env = "qa";
   const currentNetwork = hre.network.name;
   const [sender] = await ethers.getSigners();
   const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
