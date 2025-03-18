@@ -23,6 +23,15 @@ async function main() {
     tx = await protocolVault.setLpWhitelistConfig(true, entTime);
     await tx.wait()
     console.log("setLpWhitelistConfig done with tx:", tx.hash)
+
+    //add whitelist 
+    const whitelists = [
+        "0x58AC0B98C9eC516DC4E75b09aDbF43e1B292E791"
+    ]
+
+    tx = await protocolVault.updateLpWhitelist(whitelists, true);
+    await tx.wait()
+    console.log("updateWhitelist done with tx:", tx.hash)
 }
 
 main()
