@@ -50,7 +50,7 @@
       "base_sepolia": "0xdc7348975aE9334DbdcB944DDa9163Ba8406a0ec",
       "op_sepolia": "0xEfF2896077B6ff95379EfA89Ff903598190805EC"
     },
-    "operator": "0x567e913462333628A7600EBe73e2e70Ccc4488e6",
+    "operator": "0xDeDCe9F202AF4Fa5902b8163C5019cbB051d9653",
     "owner": "0x7D1e7BeAd9fBb72e35Dc8E6d1966c2e57DbDA3F0",
     "admin": "0x7D1e7BeAd9fBb72e35Dc8E6d1966c2e57DbDA3F0",
     "engine": "0x567e913462333628A7600EBe73e2e70Ccc4488e6",
@@ -79,8 +79,13 @@
     "minDepositForSp": 10000000,
     "protocolVault": "",
     "crossChainManager": "",
-    "pvLedger": ""
+    "pvLedger": "",
+    "deployedNetwork": [
+      "arb_sepolia",
+      "base_sepolia",
+      "op_sepolia"
+    ]
   },
-  "factory": "0x2b1e9a839a873e05eee8d90c6aff7aa3e724e6cf",
+  "factory": "0xfe43629954f2211c24c1b645937a2f749141da96",
   "deployedNetwork": {}
 }
