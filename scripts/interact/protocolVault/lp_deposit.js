@@ -41,9 +41,9 @@ async function main() {
   //deposit
   //const nativeFee = 1190048;
   
-  tx = await protocolVault.deposit(depositParams, { value: nativeFee.toString() }); // Replace with actual value if needed
-  await tx.wait()
-  console.log("Deposit done with tx:", tx.hash)
+  // tx = await protocolVault.deposit(depositParams, { value: nativeFee.toString() }); // Replace with actual value if needed
+  // await tx.wait()
+  // console.log("Deposit done with tx:", tx.hash)
 }
 
 main()

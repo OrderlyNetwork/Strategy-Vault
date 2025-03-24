@@ -93,10 +93,14 @@ module.exports = {
   etherscan: {
     apiKey: {
       orderly_sepolia: '123',//not needed
+      orderly: '123',//not needed
       sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
       arbitrumSepolia: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
+      arbitrumOne:'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
       op_sepolia: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
-      baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C'
+      baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
+      base:'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
+      optimisticEthereum: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN'
     },
     customChains: [
       {
@@ -105,6 +109,14 @@ module.exports = {
         urls: {
           apiURL: "https://testnet-explorer.orderly.org/api",
           browserURL: "https://testnet-explorer.orderly.org/",
+        }
+      },
+      {
+        network: "orderly",
+        chainId: 291,
+        urls: {
+          apiURL: "https://explorer.orderly.network/api",
+          browserURL: "https://explorer.orderly.network/",
         }
       },
       {

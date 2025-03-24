@@ -132,6 +132,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
             if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
                 accountToken.frozenShares += amount;
+            } else {
+                emit NotEnoughWithdrawShare(operationData.chainNonce);
+                return;
             }
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             if (payloadType == PayloadType.SP_DEPOSIT) {
@@ -145,6 +148,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     )
                 ) {
                     strategyFundToken.frozenShares += amount;
+                } else {
+                    emit NotEnoughWithdrawShare(operationData.chainNonce);
+                    return;
                 }
             }
         } else {
@@ -718,10 +724,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function _checkWithdraw(uint256 withdrawAmount, uint256 frozenAmount, uint256 totalAmount)
         internal
+        pure
         returns (bool)
     {
         if (withdrawAmount + frozenAmount > totalAmount) {
-            emit NotEnoughWithdrawShare();
             return false;
         }
         return true;

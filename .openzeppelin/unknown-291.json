@@ -1,0 +1,923 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0x1230dE29A820f43883fb736f3b2722457B97c396",
+      "txHash": "0x83501a785648341dd39b529e0cc36d3131e030bedb0db8dcabafbf47d413d78e",
+      "kind": "uups"
+    },
+    {
+      "address": "0xB7E792f0da9104A27288421583748215AefFFd78",
+      "txHash": "0x610aa646049d94cc6fbc6a422bc21abfd4845c42c36d8f3718fc94080b349e31",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "007a46a12d078e25f173e38034fb46de3efe4879dcb2ff7cecbf0562a512c2fb": {
+      "address": "0x7695429F2Db3DA809F1B4C1d62D9154858ba75B5",
+      "txHash": "0xcd74a8614a747471e9b71da999daaa9d909710dc6310c830dc6903dc8500d5f1",
+      "layout": {
+        "solcVersion": "0.8.27",
+        "storage": [
+          {
+            "label": "pendingMainShares",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:40"
+          },
+          {
+            "label": "pendingLpDepositAssets",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:41"
+          },
+          {
+            "label": "pendingLpWithdrawAssets",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:42"
+          },
+          {
+            "label": "mainShares",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:44"
+          },
+          {
+            "label": "mainAssetsAfterFee",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:45"
+          },
+          {
+            "label": "latestPeriodId",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:47"
+          },
+          {
+            "label": "crossChainManager",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_address",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:50"
+          },
+          {
+            "label": "operator",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_address",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:52"
+          },
+          {
+            "label": "engine",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_address",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:54"
+          },
+          {
+            "label": "tokenDecimal",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_bytes32,t_uint256)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:57"
+          },
+          {
+            "label": "feeRateOfFund",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_bytes32,t_uint256)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:59"
+          },
+          {
+            "label": "strategyFundTokenInfo",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(StrategyFundToken)15007_storage))",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:61"
+          },
+          {
+            "label": "accountTokenInfo",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(AccountToken)14975_storage))",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:63"
+          },
+          {
+            "label": "userClaimInfo",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_mapping(t_bytes32,t_struct(ClaimInfo)15142_storage)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:65"
+          },
+          {
+            "label": "isOpHandled",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_mapping(t_bytes32,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:67"
+          },
+          {
+            "label": "isUserClaimHandled",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_mapping(t_bytes32,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:69"
+          },
+          {
+            "label": "isUpdateStrategyFundAssets",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:71"
+          },
+          {
+            "label": "isAllocatedToFunds",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:73"
+          },
+          {
+            "label": "isAssetDistributed",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:75"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)1006_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Ownable2StepStorage)891_storage": {
+            "label": "struct Ownable2StepUpgradeable.Ownable2StepStorage",
+            "members": [
+              {
+                "label": "_pendingOwner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)946_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_bool)": {
+            "label": "mapping(bytes32 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(AccountToken)14975_storage))": {
+            "label": "mapping(bytes32 => mapping(bytes32 => struct AccountToken))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(StrategyFundToken)15007_storage))": {
+            "label": "mapping(bytes32 => mapping(bytes32 => struct StrategyFundToken))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(AccountToken)14975_storage)": {
+            "label": "mapping(bytes32 => struct AccountToken)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(ClaimInfo)15142_storage)": {
+            "label": "mapping(bytes32 => struct ClaimInfo)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(StrategyFundToken)15007_storage)": {
+            "label": "mapping(bytes32 => struct StrategyFundToken)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_uint256)": {
+            "label": "mapping(bytes32 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AccountToken)14975_storage": {
+            "label": "struct AccountToken",
+            "members": [
+              {
+                "label": "shares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "unAllocatedAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "frozenShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "pendingShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(ClaimInfo)15142_storage": {
+            "label": "struct ClaimInfo",
+            "members": [
+              {
+                "label": "requestId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "accountId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "strategyProviderId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "assets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(PendingState)15020_storage": {
+            "label": "struct PendingState",
+            "members": [
+              {
+                "label": "pendingTotalAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "pendingTotalShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "pendingMainShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "pendingStrategyProviderShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(StrategyFundToken)15007_storage": {
+            "label": "struct StrategyFundToken",
+            "members": [
+              {
+                "label": "pendingState",
+                "type": "t_struct(PendingState)15020_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "performanceFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "fundAssetsAfterFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "unAllocatedAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "6"
+              },
+              {
+                "label": "frozenShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "7"
+              },
+              {
+                "label": "mainShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "8"
+              },
+              {
+                "label": "strategyProviderShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "9"
+              },
+              {
+                "label": "totalAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "10"
+              },
+              {
+                "label": "totalShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "11"
+              },
+              {
+                "label": "hwm",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "12"
+              }
+            ],
+            "numberOfBytes": "416"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable2Step": [
+            {
+              "contract": "Ownable2StepUpgradeable",
+              "label": "_pendingOwner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol:23",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "f31b140b2f1f0b63ff2496c4b72746317fae5a679e51f7d0288a124a7898cb3d": {
+      "address": "0x822B4a69cF7E0189967BE112Ba36C2ccD097d85B",
+      "txHash": "0x9c9f458d7df15928252a36b08fcf31b17eb721609f96881a01add108a1125013",
+      "layout": {
+        "solcVersion": "0.8.27",
+        "storage": [
+          {
+            "label": "pendingMainShares",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:40"
+          },
+          {
+            "label": "pendingLpDepositAssets",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:41"
+          },
+          {
+            "label": "pendingLpWithdrawAssets",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:42"
+          },
+          {
+            "label": "mainShares",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:44"
+          },
+          {
+            "label": "mainAssetsAfterFee",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:45"
+          },
+          {
+            "label": "latestPeriodId",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_uint256",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:47"
+          },
+          {
+            "label": "crossChainManager",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_address",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:50"
+          },
+          {
+            "label": "operator",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_address",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:52"
+          },
+          {
+            "label": "engine",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_address",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:54"
+          },
+          {
+            "label": "tokenDecimal",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_bytes32,t_uint256)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:57"
+          },
+          {
+            "label": "feeRateOfFund",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_bytes32,t_uint256)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:59"
+          },
+          {
+            "label": "strategyFundTokenInfo",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(StrategyFundToken)15020_storage))",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:61"
+          },
+          {
+            "label": "accountTokenInfo",
+            "offset": 0,
+            "slot": "12",
+            "type": "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(AccountToken)14988_storage))",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:63"
+          },
+          {
+            "label": "userClaimInfo",
+            "offset": 0,
+            "slot": "13",
+            "type": "t_mapping(t_bytes32,t_struct(ClaimInfo)15155_storage)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:65"
+          },
+          {
+            "label": "isOpHandled",
+            "offset": 0,
+            "slot": "14",
+            "type": "t_mapping(t_bytes32,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:67"
+          },
+          {
+            "label": "isUserClaimHandled",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_mapping(t_bytes32,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:69"
+          },
+          {
+            "label": "isUpdateStrategyFundAssets",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:71"
+          },
+          {
+            "label": "isAllocatedToFunds",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:73"
+          },
+          {
+            "label": "isAssetDistributed",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "ProtocolVaultLedger",
+            "src": "contracts/ProtocolVaultLedger.sol:75"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)1006_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(Ownable2StepStorage)891_storage": {
+            "label": "struct Ownable2StepUpgradeable.Ownable2StepStorage",
+            "members": [
+              {
+                "label": "_pendingOwner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)946_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_bool)": {
+            "label": "mapping(bytes32 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(AccountToken)14988_storage))": {
+            "label": "mapping(bytes32 => mapping(bytes32 => struct AccountToken))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_mapping(t_bytes32,t_struct(StrategyFundToken)15020_storage))": {
+            "label": "mapping(bytes32 => mapping(bytes32 => struct StrategyFundToken))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(AccountToken)14988_storage)": {
+            "label": "mapping(bytes32 => struct AccountToken)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(ClaimInfo)15155_storage)": {
+            "label": "mapping(bytes32 => struct ClaimInfo)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(StrategyFundToken)15020_storage)": {
+            "label": "mapping(bytes32 => struct StrategyFundToken)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_uint256)": {
+            "label": "mapping(bytes32 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AccountToken)14988_storage": {
+            "label": "struct AccountToken",
+            "members": [
+              {
+                "label": "shares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "unAllocatedAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "frozenShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "pendingShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(ClaimInfo)15155_storage": {
+            "label": "struct ClaimInfo",
+            "members": [
+              {
+                "label": "requestId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "accountId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "strategyProviderId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "assets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(PendingState)15033_storage": {
+            "label": "struct PendingState",
+            "members": [
+              {
+                "label": "pendingTotalAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "pendingTotalShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "pendingMainShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "pendingStrategyProviderShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(StrategyFundToken)15020_storage": {
+            "label": "struct StrategyFundToken",
+            "members": [
+              {
+                "label": "pendingState",
+                "type": "t_struct(PendingState)15033_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "performanceFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "fundAssetsAfterFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "unAllocatedAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "6"
+              },
+              {
+                "label": "frozenShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "7"
+              },
+              {
+                "label": "mainShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "8"
+              },
+              {
+                "label": "strategyProviderShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "9"
+              },
+              {
+                "label": "totalAssets",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "10"
+              },
+              {
+                "label": "totalShares",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "11"
+              },
+              {
+                "label": "hwm",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "12"
+              }
+            ],
+            "numberOfBytes": "416"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable2Step": [
+            {
+              "contract": "Ownable2StepUpgradeable",
+              "label": "_pendingOwner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol:23",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -202,7 +202,7 @@ async function configOrderlyCrossChainManager(env, network) {
     const [sender] = await ethers.getSigners();
     tx = await sender.sendTransaction({
         to: deployment[env].crossChainManager,
-        value: ethers.parseEther('0.1'),
+        value: ethers.parseEther('1.2'),
     });
     await tx.wait()
     console.log("transfer native to cross chain manager fee successfully");
@@ -259,7 +259,7 @@ async function configProtocolVault(env) {
     const [sender] = await ethers.getSigners();
     tx = await sender.sendTransaction({
         to: deployment[env].protocolVault,
-        value: ethers.parseEther('0.15'),
+        value: ethers.parseEther('0.5'),
     });
     await tx.wait()
     console.log("transfer native to protocol vaultsuccessfully");

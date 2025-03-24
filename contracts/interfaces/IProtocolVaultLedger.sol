@@ -56,7 +56,7 @@ interface IProtocolVaultLedger {
     event OperatorManagerSet(address operatorAddress);
     event AssetsDistributed(uint256 periodId, bytes32 vaultId);
     event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
-    event NotEnoughWithdrawShare();
+    event NotEnoughWithdrawShare(uint256 chainNonce);
     event InvalidPayloadType();
 
     //--------------------------------------FROM VAULT-----------------------------------------
