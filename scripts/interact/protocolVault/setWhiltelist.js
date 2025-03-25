@@ -5,7 +5,7 @@ const config = require('../../../config.json');
 
 async function main() {
     //!need to change with your env
-    const env = "qa";
+    const env = "mainnet";
 
     const protocolVault = await ethers.getContractAt(
         "ProtocolVault",
@@ -13,20 +13,23 @@ async function main() {
     )
 
     //get current timestamp 
-    const timestamp = Math.floor(Date.now() / 1000);
-    console.log("current timestamp: ", timestamp)
+    // const timestamp = Math.floor(Date.now() / 1000);
+    // console.log("current timestamp: ", timestamp)
 
     //set time to 5 mintues later
-    const entTime = timestamp + 300;
-    console.log("entTime: ", entTime)
+    // const entTime = timestamp + 300;
+    // console.log("entTime: ", entTime)
 
-    tx = await protocolVault.setLpWhitelistConfig(true, entTime);
+    //2025-04-10 08:00:00 （UTC + 8）
+    let endTime = 1744243200
+    tx = await protocolVault.setLpWhitelistConfig(true, endTime);
     await tx.wait()
     console.log("setLpWhitelistConfig done with tx:", tx.hash)
 
     //add whitelist 
     const whitelists = [
-        "0x58AC0B98C9eC516DC4E75b09aDbF43e1B292E791"
+        "0xEd3251D1e96a570971bfCec49b5eF71AF3152F37", //multi-sig
+        "0x4A5c7C5633bAF55dDD46B6B9cAF084E839BDa895"  //qa
     ]
 
     tx = await protocolVault.updateLpWhitelist(whitelists, true);

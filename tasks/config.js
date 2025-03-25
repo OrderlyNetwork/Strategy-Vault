@@ -189,7 +189,7 @@ async function configOrderlyCrossChainManager(env, network) {
     await tx.wait()
     console.log("Option set ASSETS_DISTRIBUTION successfully")
 
-    tx = await ccManagerContract.setOptions(5, 500000, 0);
+    tx = await ccManagerContract.setOptions(5, 600000, 0);
     await tx.wait()
     console.log("Option set UPDATE_USER_CLAIM successfully")
 
