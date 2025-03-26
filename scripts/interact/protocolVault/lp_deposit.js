@@ -5,7 +5,7 @@ const config = require('../../../config.json');
 
 async function main() {
   //!need to change with your env
-  const env = "qa";
+  const env = "mainnet";
   const currentNetwork = hre.network.name;
   const [sender] = await ethers.getSigners();
   const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
@@ -23,17 +23,18 @@ async function main() {
     amount: value,
     brokerHash: orderlyHash
   };
-  // console.log("Deposit Params: ", depositParams)
+
+  console.log("Deposit Params: ", depositParams)
 
   //approve
-  const token = await ethers.getContractAt("IERC20", config[currentNetwork].USDC);
-  const protocolVaultAddress = deployment[env].protocolVault;
-  const allowance = await token.allowance(sender.address, protocolVaultAddress);
-  if (allowance == 0) {
-    tx = await token.approve(protocolVaultAddress, ethers.MaxUint256);
-    await tx.wait()
-    console.log("Approve done")
-  }
+  // const token = await ethers.getContractAt("IERC20", config[currentNetwork].USDC);
+  // const protocolVaultAddress = deployment[env].protocolVault;
+  // const allowance = await token.allowance(sender.address, protocolVaultAddress);
+  // if (allowance == 0) {
+  //   tx = await token.approve(protocolVaultAddress, ethers.MaxUint256);
+  //   await tx.wait()
+  //   console.log("Approve done")
+  // }
 
   //get lz fee
   const nativeFee = await protocolVault.quoteOperation(type,depositParams.receiver,depositParams.amount);
