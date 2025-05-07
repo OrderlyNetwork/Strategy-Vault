@@ -76,6 +76,7 @@ contract MockSVLedger is ProtocolVaultLedger {
             strategyFundTokenInfo[spIds[i]][USDC_HASH].pendingState.pendingStrategyProviderShares = shares;
         }
     }
+
     function setLpClaimInfo(bytes32 requestId, bytes32 accountId, uint256 assets) external {
         userClaimInfo[requestId].requestId = requestId;
         userClaimInfo[requestId].accountId = accountId;
@@ -86,5 +87,25 @@ contract MockSVLedger is ProtocolVaultLedger {
         userClaimInfo[requestId].requestId = requestId;
         userClaimInfo[requestId].strategyProviderId = spId;
         userClaimInfo[requestId].assets = assets;
+    }
+
+    function setAccountFrozenShares(bytes32[] memory accountIds, uint256 amount) external {
+        for (uint256 i = 0; i < accountIds.length; i++) {
+            accountTokenInfo[accountIds[i]][USDC_HASH].frozenShares = amount;
+        }
+    }
+
+    function getAccountFrozenShares(bytes32 accountId) external view returns (uint256) {
+        return accountTokenInfo[accountId][USDC_HASH].frozenShares;
+    }
+
+    function setSPFrozenShares(bytes32[] memory strategyProviderIds, uint256 amount) external {
+        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
+            strategyFundTokenInfo[strategyProviderIds[i]][USDC_HASH].frozenShares = amount;
+        }
+    }
+
+    function getSPFrozenShares(bytes32 strategyProviderId) external view returns (uint256) {
+        return strategyFundTokenInfo[strategyProviderId][USDC_HASH].frozenShares;
     }
 }
