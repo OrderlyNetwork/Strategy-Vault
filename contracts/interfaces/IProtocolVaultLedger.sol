@@ -32,7 +32,8 @@ interface IProtocolVaultLedger {
     error InvalidInput();
     error AlreadyCalled();
     error NotAllowedTime();
-    
+    error InvalidWithdrawType();
+
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
         uint256 periodId,
@@ -56,8 +57,9 @@ interface IProtocolVaultLedger {
     event OperatorManagerSet(address operatorAddress);
     event AssetsDistributed(uint256 periodId, bytes32 vaultId);
     event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
-    event NotEnoughWithdrawShare();
+    event NotEnoughWithdrawShare(uint256 chainNonce);
     event InvalidPayloadType();
+    event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
 
     //--------------------------------------FROM VAULT-----------------------------------------
 
@@ -105,6 +107,12 @@ interface IProtocolVaultLedger {
         bytes32[] calldata requestIds,
         bytes memory signature
     ) external;
+    function removeInvalidFrozenShares(
+        bytes32 vaultId,
+        UpdateLedgerParams[] calldata params,
+        bytes calldata signature
+    ) external;
+
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/

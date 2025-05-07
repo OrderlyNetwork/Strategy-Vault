@@ -1,4 +1,5 @@
 [profile.default]
+solc_version = "0.8.27"
 src = "contracts"
 out = "out"
 libs = ["node_modules", "lib"]
@@ -6,6 +7,8 @@ ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
+optimizer_runs = 200
+evm_version = "paris"
 
 remappings = [
     "forge-std/=lib/forge-std/src/",

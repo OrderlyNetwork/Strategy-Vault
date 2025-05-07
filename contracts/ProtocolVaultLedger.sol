@@ -132,6 +132,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
             if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
                 accountToken.frozenShares += amount;
+            } else {
+                emit NotEnoughWithdrawShare(operationData.chainNonce);
+                return;
             }
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             if (payloadType == PayloadType.SP_DEPOSIT) {
@@ -145,6 +148,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     )
                 ) {
                     strategyFundToken.frozenShares += amount;
+                } else {
+                    emit NotEnoughWithdrawShare(operationData.chainNonce);
+                    return;
                 }
             }
         } else {
@@ -235,6 +241,61 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         emit StrategyFundAssetsUpdate(periodId, vaultId, mainAssetsAfterFee, updateStrategyFundAssetsRes);
     }
 
+    /// @notice Remove invalid frozen shares for LP or SP that were incorrectly added
+    /// @param vaultId The vault ID
+    /// @param params The parameters containing the invalid frozen shares to remove
+    /// @param signature The signature to verify
+    function removeInvalidFrozenShares(
+        bytes32 vaultId,
+        UpdateLedgerParams[] calldata params,
+        bytes calldata signature
+    ) external onlyOperator {
+        Signature.verifyRemoveInvalidFrozenShares(vaultId, params, signature, engine);
+
+        OperationRes[] memory operationRes = new OperationRes[](params.length);
+
+        for (uint256 i = 0; i < params.length; i++) {
+            bytes32 requestId = params[i].operation.requestId;
+
+            if (!isOpHandled[requestId]) {
+                Operation memory operation = params[i].operation;
+                bytes32 id = operation.id;
+                uint256 operationAmount = operation.amount;
+                OperationType operationType = params[i].operationType;
+
+                if (operationType == OperationType.LP_WITHDRAW) {
+                    // Handle LP frozen shares removal
+                    AccountToken storage accountToken = accountTokenInfo[id][USDC_HASH];
+                    if (operationAmount > accountToken.frozenShares) {
+                        revert NotEnoughFrozenShare(operationAmount);
+                    }
+                    accountToken.frozenShares -= operationAmount;
+                } else if (operationType == OperationType.SP_WITHDRAW) {
+                    // Handle SP frozen shares removal
+                    StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[id][USDC_HASH];
+                    if (operationAmount > strategyFundToken.frozenShares) {
+                        revert NotEnoughFrozenShare(operationAmount);
+                    }
+                    strategyFundToken.frozenShares -= operationAmount;
+                } else {
+                    revert InvalidWithdrawType();
+                }
+
+                //Event
+                operationRes[i] = OperationRes({
+                    id: id,
+                    requestId: requestId,
+                    amount: operationAmount,
+                    operationType: operationType
+                });
+
+                isOpHandled[requestId] = true;
+            }
+        }
+
+        emit InvalidFrozenSharesRemoved(vaultId, operationRes);
+    }
+
     /// @notice Operator update LP and strategy fund info
     /// @param periodId period id
     /// @param vaultId vault id
@@ -280,7 +341,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
                 operationRes[i] = OperationRes({
                     id: operation.id,
-                    requestId: operation.requestId,
+                    requestId: requestId,
                     amount: amount,
                     operationType: operationType
                 });
@@ -718,10 +779,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function _checkWithdraw(uint256 withdrawAmount, uint256 frozenAmount, uint256 totalAmount)
         internal
+        pure
         returns (bool)
     {
         if (withdrawAmount + frozenAmount > totalAmount) {
-            emit NotEnoughWithdrawShare();
             return false;
         }
         return true;
