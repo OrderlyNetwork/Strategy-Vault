@@ -108,6 +108,7 @@ async function deployProtocolVault(env) {
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
     //const implAddr = "0x83F367998EC5C78C107F32666B053D6A8991D773";
+    
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
@@ -154,8 +155,8 @@ function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env) {
         throw new Error(`No USDC address found for network: ${currentNetwork}`);
     }
     console.log(`USDC Address for ${currentNetwork}: ${tokenAddress}`);
-    const minDepositForLp = 0;
-    const minDepositForSp = 0;
+    const minDepositForLp = deployment[env].minDepositForLp;
+    const minDepositForSp = deployment[env].minDepositForSp;
 
     const initializeData = ProtocolVault.interface.encodeFunctionData(
         "initialize",

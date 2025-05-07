@@ -111,6 +111,16 @@ contract Create3FactoryTest is Test {
         vm.expectRevert(NoAccess.selector);
         factory.deploy(salt, bytecode);
     }
+
+    function testGetSalt() public pure {
+        (bytes32 salt1, bytes32 salt2) = _getSalt();
+        console.logBytes32(salt1);
+        console.logBytes32(salt2);
+    }
+
+    function _getSalt() public pure returns (bytes32, bytes32) {
+        return (keccak256(abi.encodePacked("ProtocolVault")),keccak256(abi.encodePacked("CrossChainManager")));
+    }
 }
 
 contract SimpleStorage {

@@ -3,13 +3,16 @@ const fs = require("fs");
 const path = require('path');
 const FactoryPath = path.join(__dirname, './factory.json');
 const FactoryArtifact = JSON.parse(fs.readFileSync(FactoryPath, 'utf8'));
+const deployment = require('../../deployment.json');
 
 async function main() {
-    const [owner] = await ethers.getSigners();
+    //!need to change with your env
+    const env = "mainnet"
 
+    const owner = deployment[env].owner;
     const constructorArgs = ethers.AbiCoder.defaultAbiCoder().encode(
         ["address"],
-        [owner.address]
+        [owner]
     );
 
     //final bytecode

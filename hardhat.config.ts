@@ -4,7 +4,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "./tasks/deploy.js";
 import "./tasks/config.js";
 import "./tasks/check.js";
-
+import "./tasks/transferOwnerShip.js";
 const config: HardhatUserConfig = {
   solidity: "0.8.26",
 };
@@ -12,6 +12,7 @@ const config: HardhatUserConfig = {
 
 const PRIVATE_KEY = vars.get("PRIVATE_KEY");
 const SP_KEY = vars.get("SP_KEY");
+const DEPLOY_KEY = vars.get("DEPLOY_KEY");
 
 module.exports = {
   solidity: {
@@ -19,7 +20,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 10000000,
+        runs: 200,
       },
     },
   },
@@ -42,11 +43,11 @@ module.exports = {
     },
     arb: {
       url: "https://arb1.arbitrum.io/rpc",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     op: {
       url: "https://optimism.llamarpc.com",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     op_sepolia: {
       url: "https://sepolia.optimism.io",
@@ -54,7 +55,7 @@ module.exports = {
     },
     base: {
       url: "https://mainnet.base.org",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     base_sepolia: {
       url: "https://base-sepolia.gateway.tenderly.co",
@@ -66,7 +67,7 @@ module.exports = {
     },
     orderly: {
       url: "https://rpc.orderly.network",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     },
     orderly_sepolia: {
       url: "https://testnet-rpc.orderly.org",
@@ -92,10 +93,14 @@ module.exports = {
   etherscan: {
     apiKey: {
       orderly_sepolia: '123',//not needed
+      orderly: '123',//not needed
       sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
       arbitrumSepolia: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
+      arbitrumOne:'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
       op_sepolia: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
-      baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C'
+      baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
+      base:'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
+      optimisticEthereum: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN'
     },
     customChains: [
       {
@@ -104,6 +109,14 @@ module.exports = {
         urls: {
           apiURL: "https://testnet-explorer.orderly.org/api",
           browserURL: "https://testnet-explorer.orderly.org/",
+        }
+      },
+      {
+        network: "orderly",
+        chainId: 291,
+        urls: {
+          apiURL: "https://explorer.orderly.network/api",
+          browserURL: "https://explorer.orderly.network/",
         }
       },
       {

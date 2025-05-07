@@ -24,6 +24,8 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract ProtocolVaultTest is Base {
     error AlreadyCalled();
+    error InvalidWithdrawType();
+    error NotEnoughFrozenShare(uint256 amount);
 
     uint256 shareDecimal = 1e6;
     uint256 assetDecimal = 1e6;
@@ -743,6 +745,134 @@ contract ProtocolVaultTest is Base {
         console.log("HWM B: %d", strategyFundB.hwm);
     }
 
+    function testRemoveInvalidFrozenShares() public {
+        // Initialize: Set frozen shares for LP and SP
+        bytes32[] memory accountIds = new bytes32[](1);
+        accountIds[0] = userA_id;
+        uint256 lpFrozenShares = 5 * shareDecimal;
+        svLedger.setAccountFrozenShares(accountIds, lpFrozenShares);
+
+        bytes32[] memory strategyProviderIds = new bytes32[](1);
+        strategyProviderIds[0] = spA_id;
+        uint256 spFrozenShares = 10 * shareDecimal;
+        svLedger.setSPFrozenShares(strategyProviderIds, spFrozenShares);
+
+        // Create parameters for removing frozen shares
+        UpdateLedgerParams[] memory params = new UpdateLedgerParams[](2);
+
+        // LP withdraw frozen shares removal
+        Operation memory lpOperation =
+            Operation({id: userA_id, requestId: keccak256(abi.encode("lpWithdraw")), amount: 2 * shareDecimal});
+        params[0] = UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: lpOperation});
+
+        // SP withdraw frozen shares removal
+        Operation memory spOperation =
+            Operation({id: spA_id, requestId: keccak256(abi.encode("spWithdraw")), amount: 3 * shareDecimal});
+        params[1] = UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: spOperation});
+
+        // Sign the transaction
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+
+        // Execute removeInvalidFrozenShares
+        vm.prank(operator);
+        svLedger.removeInvalidFrozenShares(vaultId, params, signature);
+
+        // Verify LP frozen shares decreased
+        assertEq(svLedger.getAccountFrozenShares(userA_id), lpFrozenShares - 2 * shareDecimal);
+
+        // Verify SP frozen shares decreased
+        assertEq(svLedger.getSPFrozenShares(spA_id), spFrozenShares - 3 * shareDecimal);
+    }
+
+    function testRemoveInvalidFrozenSharesIdempotency() public {
+        // Initialize: Set frozen shares
+        bytes32[] memory accountIds = new bytes32[](1);
+        accountIds[0] = userA_id;
+        uint256 lpFrozenShares = 5 * shareDecimal;
+        svLedger.setAccountFrozenShares(accountIds, lpFrozenShares);
+
+        // Create operation parameters
+        UpdateLedgerParams[] memory params = new UpdateLedgerParams[](1);
+        Operation memory lpOperation =
+            Operation({id: userA_id, requestId: keccak256(abi.encode("lpWithdraw")), amount: 2 * shareDecimal});
+        params[0] = UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: lpOperation});
+
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+
+        // First call
+        vm.prank(operator);
+        svLedger.removeInvalidFrozenShares(vaultId, params, signature);
+
+        // Verify shares decreased
+        assertEq(svLedger.getAccountFrozenShares(userA_id), lpFrozenShares - 2 * shareDecimal);
+
+        // Second call with the same request, should not decrease shares again
+        vm.prank(operator);
+        svLedger.removeInvalidFrozenShares(vaultId, params, signature);
+
+        // Verify shares did not decrease further
+        assertEq(svLedger.getAccountFrozenShares(userA_id), lpFrozenShares - 2 * shareDecimal);
+    }
+
+    function testRevertRemoveInvalidFrozenSharesNotEnoughShares() public {
+        // Initialize: Set small frozen shares
+        bytes32[] memory accountIds = new bytes32[](1);
+        accountIds[0] = userA_id;
+        uint256 lpFrozenShares = 1 * shareDecimal;
+        svLedger.setAccountFrozenShares(accountIds, lpFrozenShares);
+
+        // Create operation parameters, attempting to remove more than actual frozen amount
+        UpdateLedgerParams[] memory params = new UpdateLedgerParams[](1);
+        Operation memory lpOperation = Operation({
+            id: userA_id,
+            requestId: keccak256(abi.encode("lpWithdraw")),
+            amount: 2 * shareDecimal // More than actual frozen amount
+        });
+        params[0] = UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: lpOperation});
+
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+
+        // Expected to fail due to insufficient shares
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(NotEnoughFrozenShare.selector, 2 * shareDecimal));
+        svLedger.removeInvalidFrozenShares(vaultId, params, signature);
+    }
+
+    function testRevertRemoveInvalidFrozenSharesInvalidType() public {
+        // Initialize
+        bytes32[] memory accountIds = new bytes32[](1);
+        accountIds[0] = userA_id;
+        svLedger.setAccountFrozenShares(accountIds, 5 * shareDecimal);
+
+        // Create invalid operation type
+        UpdateLedgerParams[] memory params = new UpdateLedgerParams[](1);
+        Operation memory lpOperation =
+            Operation({id: userA_id, requestId: keccak256(abi.encode("lpDeposit")), amount: 2 * shareDecimal});
+        params[0] = UpdateLedgerParams({
+            operationType: OperationType.LP_DEPOSIT, // Using incorrect operation type
+            operation: lpOperation
+        });
+
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+
+        // Expected to fail due to invalid operation type
+        vm.prank(operator);
+        vm.expectRevert(InvalidWithdrawType.selector);
+        svLedger.removeInvalidFrozenShares(vaultId, params, signature);
+    }
+
+    function _getRemoveInvalidFrozenSharesSignature(
+        uint256 _periodId,
+        bytes32 _vaultId,
+        UpdateLedgerParams[] memory params
+    ) internal view returns (bytes memory) {
+        bytes32 messageHash = keccak256(abi.encode(_vaultId, params));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
     function _getUploadFundAssetsSignature(
         uint256 _periodId,
         bytes32 _vaultId,
@@ -831,12 +961,8 @@ contract ProtocolVaultTest is Base {
         bytes32 _vaultId = 0x0557859bbf4cd066a1afddf7899147516ea4e73f48928b58551caf5db46a5c9e;
         uint256 _periodId = 2;
 
-        bytes32 messageHash = keccak256(
-            abi.encode(_periodId, _vaultId, assetsDistributions)
-        );
-        console.logBytes(
-            abi.encode(_periodId, _vaultId, assetsDistributions)
-        );
+        bytes32 messageHash = keccak256(abi.encode(_periodId, _vaultId, assetsDistributions));
+        console.logBytes(abi.encode(_periodId, _vaultId, assetsDistributions));
         console.logBytes32(messageHash);
     }
 }

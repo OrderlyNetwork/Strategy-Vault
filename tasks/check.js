@@ -8,9 +8,6 @@ const { checkNetworkEnvRestrictions } = require('./utils')
 const broker = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
 const { assert } = require("chai");
 
-const mainnets = ['mainnet', 'op', 'base', 'arb']
-const tests = ['sepolia', 'op_sepolia', 'arb_sepolia', 'base_sepolia']
-
 task("check-evm", "Check strategy vault contracts on EVM")
     .addParam("env", "environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
@@ -84,6 +81,12 @@ async function checkProtocolVault(env) {
 
     //check isAllowedBroker
     assert.equal(await pvContract.isAllowedBroker(broker), true, ` ${env} broker config error`);
+
+    //check minDepositForLP
+    assert.equal((await pvContract.minDepositForLp()).toString(), deployment[env].minDepositForLp, ` ${env} minDepositForLP config error`);
+
+    //check minDepositForSP
+    assert.equal((await pvContract.minDepositForSp()).toString(), deployment[env].minDepositForSp, ` ${env} minDepositForSP config error`);
 }
 
 async function checkEVMCrossChainManager(env) {

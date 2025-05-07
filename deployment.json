@@ -50,7 +50,7 @@
       "base_sepolia": "0xdc7348975aE9334DbdcB944DDa9163Ba8406a0ec",
       "op_sepolia": "0xEfF2896077B6ff95379EfA89Ff903598190805EC"
     },
-    "operator": "0x567e913462333628A7600EBe73e2e70Ccc4488e6",
+    "operator": "0xDeDCe9F202AF4Fa5902b8163C5019cbB051d9653",
     "owner": "0x7D1e7BeAd9fBb72e35Dc8E6d1966c2e57DbDA3F0",
     "admin": "0x7D1e7BeAd9fBb72e35Dc8E6d1966c2e57DbDA3F0",
     "engine": "0x567e913462333628A7600EBe73e2e70Ccc4488e6",
@@ -58,6 +58,8 @@
     "protocolVault": "0x6B6059259B4096ea6420Eb5e08a22214d2303aE9",
     "crossChainManager": "0x510dD61a988797114A9a51b0d228E894037BD9cb",
     "pvLedger": "0x94127527554AE522eF2De9418BF159DA822592B7",
+    "minDepositForLp": 10000000,
+    "minDepositForSp": 10000000,
     "deployedNetwork": [
       "arb_sepolia",
       "base_sepolia",
@@ -65,18 +67,28 @@
     ]
   },
   "mainnet": {
-    "pv_salt": "0x0000000000000000000000000000000000000000000000000000000000000007",
-    "cc_salt": "0x0000000000000000000000000000000000000000000000000000000000000008",
-    "dex": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9",
-    "operator": "0x4754233A67Ff9f88a1Aa5E9Dd3732492459123a9",
-    "owner": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",
-    "admin": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",
-    "engine": "0xbFD02260FEC21159Ee5E506A362923ece232b9A0",
-    "allowedSP": "0xbddfd22eF902A4898147A1ca5B985D03C62a8C41",
-    "protocolVault": "",
-    "crossChainManager": "",
-    "pvLedger": ""
+    "pv_salt": "0xd4bfadf6b189cc0cca121a7f51c8bec4cd76c3df328ac3925afae31f9c197272",
+    "cc_salt": "0x78259083cd46b2051f67c235712510fd569f9cdbc238403685a1c89a102e37e1",
+    "dex": {
+      "op": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9",
+      "arb": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9",
+      "base": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9"
+    },
+    "operator": "0x14d2F7c5b77DA96f138B655aA6a94fa644795838",
+    "owner": "0x4e834Ca9310d7710a409638A7aa70CB22F141Df3",
+    "admin": "0x4e834Ca9310d7710a409638A7aa70CB22F141Df3",
+    "engine": "0x12ee63096Fdc63eDc6FeC4B4Bd68150C130364dE",
+    "allowedSP": "0x8bAA309D93FFFB54A64444FD98E10d92D4d9Eb22",
+    "minDepositForLp": 10000000,
+    "minDepositForSp": 10000000,
+    "protocolVault": "0x70Fe7d65Ac7c1a1732f64d2E6fC0E33622D0C991",
+    "crossChainManager": "0x58c9747ccAAE56182C7d9c814F5eaca395D8c93B",
+    "pvLedger": "0xB7E792f0da9104A27288421583748215AefFFd78",
+    "deployedNetwork": [
+      "arb",
+      "base",
+      "op"
+    ]
   },
-  "factory": "0x2b1e9a839a873e05eee8d90c6aff7aa3e724e6cf",
-  "deployedNetwork": {}
+  "factory": "0x63b5af2724018347a1747a504e45f4e4c5ad0d04"
 }
