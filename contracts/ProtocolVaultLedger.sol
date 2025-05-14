@@ -133,7 +133,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
                 accountToken.frozenShares += amount;
             } else {
-                emit NotEnoughWithdrawShare(operationData.chainNonce);
+                emit NotEnoughWithdrawShare(payloadType, chainId, operationData.chainNonce);
                 return;
             }
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
@@ -149,7 +149,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 ) {
                     strategyFundToken.frozenShares += amount;
                 } else {
-                    emit NotEnoughWithdrawShare(operationData.chainNonce);
+                    emit NotEnoughWithdrawShare(payloadType, chainId, operationData.chainNonce);
                     return;
                 }
             }
@@ -245,11 +245,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @param vaultId The vault ID
     /// @param params The parameters containing the invalid frozen shares to remove
     /// @param signature The signature to verify
-    function removeInvalidFrozenShares(
-        bytes32 vaultId,
-        UpdateLedgerParams[] calldata params,
-        bytes calldata signature
-    ) external onlyOperator {
+    function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
+        external
+        onlyOperator
+    {
         Signature.verifyRemoveInvalidFrozenShares(vaultId, params, signature, engine);
 
         OperationRes[] memory operationRes = new OperationRes[](params.length);
@@ -282,12 +281,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 }
 
                 //Event
-                operationRes[i] = OperationRes({
-                    id: id,
-                    requestId: requestId,
-                    amount: operationAmount,
-                    operationType: operationType
-                });
+                operationRes[i] =
+                    OperationRes({id: id, requestId: requestId, amount: operationAmount, operationType: operationType});
 
                 isOpHandled[requestId] = true;
             }
@@ -339,12 +334,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     revert InvalidOpType(operationType);
                 }
 
-                operationRes[i] = OperationRes({
-                    id: operation.id,
-                    requestId: requestId,
-                    amount: amount,
-                    operationType: operationType
-                });
+                operationRes[i] =
+                    OperationRes({id: operation.id, requestId: requestId, amount: amount, operationType: operationType});
                 isOpHandled[requestId] = true;
             }
         }
