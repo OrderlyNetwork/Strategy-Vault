@@ -57,7 +57,7 @@ interface IProtocolVaultLedger {
     event OperatorManagerSet(address operatorAddress);
     event AssetsDistributed(uint256 periodId, bytes32 vaultId);
     event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
-    event NotEnoughWithdrawShare(uint256 chainNonce);
+    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
     event InvalidPayloadType();
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
 
@@ -107,11 +107,8 @@ interface IProtocolVaultLedger {
         bytes32[] calldata requestIds,
         bytes memory signature
     ) external;
-    function removeInvalidFrozenShares(
-        bytes32 vaultId,
-        UpdateLedgerParams[] calldata params,
-        bytes calldata signature
-    ) external;
+    function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
+        external;
 
     /*=========================================================================================
     *                                       VIEW
