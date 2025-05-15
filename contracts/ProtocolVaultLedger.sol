@@ -655,7 +655,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         if (strategyProviderIds.length != feeRates.length) {
             revert InvalidInput();
         }
-        if (latestPeriodId != 0 && !isUpdateStrategyFundAssets[latestPeriodId]) {
+        if (latestPeriodId != 0 && !isUpdateStrategyFundAssets[latestPeriodId - 1]) {
             revert NotAllowedTime();
         }
 
