@@ -5,12 +5,12 @@ function checkNetworkEnvRestrictions(currentNetwork, env) {
     if (currentNetwork === 'orderly_sepolia') {
         const allowedEnvs = ['dev', 'qa', 'staging'];
         if (!allowedEnvs.includes(env)) {
-            throw new Error(`network is 'orderly', env must be one of ${allowedEnvs.join(', ')} rather than '${env}'`);
+            throw new Error(`network is 'orderly_sepolia', env must be one of ${allowedEnvs.join(', ')} rather than '${env}'`);
         }
         return true;
     } else if (currentNetwork === 'orderly') {
         if (env !== 'mainnet') {
-            throw new Error(`network is 'orderly_sepolia', env must be 'mainnet' rather than '${env}'`);
+            throw new Error(`network is 'orderly', env must be 'mainnet' rather than '${env}'`);
         }
         return true;
     } else {
