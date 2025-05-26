@@ -14,7 +14,7 @@ function checkNetworkEnvRestrictions(currentNetwork, env) {
         }
         return true;
     } else {
-        throw new Error(`network is '${currentNetwork}', env can not be 'orderly' or 'orderly_sepolia'`);
+        throw new Error(`network is '${currentNetwork}', env can only be 'orderly' or 'orderly_sepolia'`);
     }
 }
 

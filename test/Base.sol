@@ -150,7 +150,7 @@ contract Base is TestHelperOz5 {
         aVaultCrossChainManager.setOptions(PayloadType.SP_WITHDRAW, 150000, 0);
 
         bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 120000, 0);
-        bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 200000, 0);
+        bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 300000, 0);
 
         svLedger.setCrossChainManager(address(bVaultCrossChainManager));
         vm.stopPrank();

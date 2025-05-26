@@ -142,7 +142,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            (uint256 periodId, ClaimInfo[] memory userClaims) = abi.decode(payload, (uint256, ClaimInfo[]));
+            (uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaims) =
+                abi.decode(payload, (uint256, uint256, ClaimInfo[]));
 
             //Convert the amount
             uint256 dstChainId = strategyVaultCCmessage.dstChainId;
@@ -153,7 +154,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
                 }
             }
             //Call Protocol Vault
-            IProtocolVault(vault).updateUnClaimed(periodId, userClaims);
+            IProtocolVault(vault).updateUnClaimed(periodId, ccFee, userClaims);
         } else {
             revert InvalidPayloadType();
         }
@@ -197,6 +198,21 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         bytes memory options = _getOptions(payloadType);
 
         MessagingFee memory fee = _quote(_dstEid, _message, options, _payInLzToken);
+        return (fee.nativeFee, fee.lzTokenFee);
+    }
+
+    function quoteClaim(uint256 chainId, StrategyVaultCCMessage memory message)
+        external
+        view
+        returns (uint256 nativeFee, uint256 lzTokenFee)
+    {
+        uint32 dstEid = chainIdToEid[chainId];
+        bytes memory options = _getOptions(PayloadType.UPDATE_USER_CLAIM);
+
+        bytes memory lzMessage = abi.encode(message);
+
+        MessagingFee memory fee = _quote(dstEid, lzMessage, options, false);
+
         return (fee.nativeFee, fee.lzTokenFee);
     }
     /*=========================================================================================
