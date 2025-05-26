@@ -635,12 +635,23 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     delete userClaimInfo[requestIds[i]];
                 }
             }
+            uint256 ccFee;
 
+            //cross chain message
             StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
                 payloadType: PayloadType.UPDATE_USER_CLAIM,
                 srcChainId: block.chainid,
                 dstChainId: chainId,
-                payload: abi.encode(periodId, userClaimInfos)
+                payload: abi.encode(periodId, ccFee, userClaimInfos)
+            });
+            (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
+
+            //set gas
+            message = StrategyVaultCCMessage({
+                payloadType: PayloadType.UPDATE_USER_CLAIM,
+                srcChainId: block.chainid,
+                dstChainId: chainId,
+                payload: abi.encode(periodId, ccFee / len, userClaimInfos)
             });
 
             //cross-chain

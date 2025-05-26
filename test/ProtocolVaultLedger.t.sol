@@ -19,13 +19,16 @@ import {
     AllocateFundRes,
     StrategyFundState
 } from "../contracts/ProtocolVaultLedger.sol";
-import {UserClaimedInfo} from "../contracts/ProtocolVault.sol";
+import {UserClaimedInfo, RoleType, ClaimParams} from "../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract ProtocolVaultTest is Base {
     error AlreadyCalled();
     error InvalidWithdrawType();
     error NotEnoughFrozenShare(uint256 amount);
+    error NotEnoughCCFee();
+    error InvalidClaimToken(address token);
+    error NotEnoughUnclaimedAssets(uint256 amount);
 
     uint256 shareDecimal = 1e6;
     uint256 assetDecimal = 1e6;
@@ -149,7 +152,7 @@ contract ProtocolVaultTest is Base {
     }
 
     function testEstimateUpdateUnclaimed() public {
-        bytes32[] memory requestIds = new bytes32[](1);
+        bytes32[] memory requestIds = new bytes32[](3);
         for (uint256 i = 0; i < requestIds.length; i++) {
             requestIds[i] = keccak256(abi.encode(i));
         }
@@ -170,9 +173,81 @@ contract ProtocolVaultTest is Base {
         uint256 gasUsed = gasBefore - gasAfter;
         console.log("Gas used:", gasUsed);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
+    }
 
-        uint256 balance = address(bVaultCrossChainManager).balance;
-        console.log("cc fee:", 10 * 10 ** 18 - balance);
+    function testClaimWithCrosschainFee() public {
+        // Setup: Create a withdrawal that needs to be claimed
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+
+        // Set up the claim info on the ledger
+        uint256 asset = 1000 * assetDecimal;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+
+        // Process the unclaimed assets update
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        // Verify ccFee is recorded correctly
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        assertEq(userClaimedInfo_A.unClaimedAssets, asset);
+        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
+        console.log("Cross-chain fee per user:", ccFeePerUser);
+        // User A claims with correct fee
+        mockToken.mint(address(protocolVault), asset * 2);
+
+        vm.deal(userA, ccFeePerUser);
+        ClaimParams memory claimParams =
+            ClaimParams({roleType: RoleType.LP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
+        uint256 usdcBalanceBefore = mockToken.balanceOf(userA);
+
+        vm.prank(userA);
+        protocolVault.claimWithFee{value: ccFeePerUser}(claimParams);
+
+        uint256 usdcBalanceAfter = mockToken.balanceOf(userA);
+
+        // Verify user received the assets
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, asset, "User should receive the correct amount of assets");
+
+        // Verify the claim state is reset
+        userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        assertEq(userClaimedInfo_A.unClaimedAssets, 0, "Unclaimed assets should be reset to 0");
+        assertEq(userClaimedInfo_A.requestIds.length, 0, "Request IDs should be cleared");
+
+        // Check that the protocol vault has received the cross-chain fee
+        assertEq(address(protocolVault).balance, ccFeePerUser, "Protocol vault should receive the cross-chain fee");
+    }
+
+    function testUpdateUnclaimedCrossChainFeeAccumulate() public {
+        // Setup: Create a withdrawal that needs to be claimed
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+
+        // Set up the claim info on the ledger
+        uint256 asset = 1000 * assetDecimal;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds[1], userA_id, asset);
+
+        // Process the unclaimed assets update
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        // Verify ccFee is recorded correctly
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
+        console.log("Cross-chain fee per user:", ccFeePerUser);
+        assertEq(userClaimedInfo_A.unClaimedAssets, asset * 2);
     }
 
     function testSpecialDecimalUpdateUnclaimed() public {
@@ -247,28 +322,6 @@ contract ProtocolVaultTest is Base {
         //will not happen cc
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
     }
-
-    function testRevertNouEnoughClaim() public {}
-
-    // function testUpdateLPWithBE() public {
-    //     Operation memory newOperation_1 = Operation({id: 0x7511aa47fe8ed6efaa2b36dde242b11bc62d0688201230f95054cbd39a93aa7e, requestId: 0xf7b40edb5b14a27a8f5701f948354976e137c50ac4687833693958cca24b9cff, amount: 200000});
-    //     Operation memory newOperation_2 =
-    //         Operation({id: 0xf9fdd8648d22ef32e665f03249fe52804bc181cca3a98e3a16d18b41e34bc8d1, requestId: 0x55dc31b591c376fc5d12b100b2bc1c96a69c9376f8f3a1f757c52e1639a4f0b9, amount: 100000});
-    //     Operation memory newOperation_3 =
-    //         Operation({id: 0xf9fdd8648d22ef32e665f03249fe52804bc181cca3a98e3a16d18b41e34bc8d1, requestId: 0x7e6835135f3ae462bf312fa8e495f4ebac5f81e1c29aca273864fc3d16dadf56, amount: 200000});
-
-    //     //initialize UpdateLedgerParams dymnamic arrary
-    //     UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](3);
-
-    //     updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
-    //     updateLedgerParams[1] =
-    //         UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_2});
-    //     updateLedgerParams[2] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_3});
-
-    //     bytes memory signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
-    //     vm.prank(operator);
-    //     svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
-    // }
 
     function testUpgradeFundAssetsSignature() public {
         initialize();

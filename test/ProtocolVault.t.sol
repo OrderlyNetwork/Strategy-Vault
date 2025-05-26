@@ -240,6 +240,8 @@ contract TestProtocolVault is Base {
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
+        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
+
         //check
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(userClaimedInfo_A.unClaimedAssets, amount);
@@ -252,9 +254,11 @@ contract TestProtocolVault is Base {
         ClaimParams memory claimParams =
             ClaimParams({roleType: RoleType.LP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         vm.prank(userA);
-        protocolVault.claim(claimParams);
+        protocolVault.claimWithFee{value: ccFeePerUser}(claimParams);
 
+        ccFeePerUser = protocolVault.crossChainFee(userA_id);
         //check
+        assertEq(ccFeePerUser, 0);
         userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
         assertEq(IERC20(mockToken).balanceOf(userA), amount + userBalanceBefore);
@@ -297,16 +301,17 @@ contract TestProtocolVault is Base {
         uint256 userBalanceBefore = IERC20(mockToken).balanceOf(sp);
 
         //SP claim
+        uint256 ccFeePerUser = protocolVault.crossChainFee(spId);
+
         mockToken.mint(address(protocolVault), amount);
 
         ClaimParams memory claimParams =
             ClaimParams({roleType: RoleType.SP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         vm.prank(sp);
-        console.logBytes32(spId);
-
-        protocolVault.claim(claimParams);
-
+        protocolVault.claimWithFee{value: ccFeePerUser}(claimParams);
+        ccFeePerUser = protocolVault.crossChainFee(spId);
         //check
+        assertEq(ccFeePerUser, 0);
         spClaimedInfo = protocolVault.getUserClaimedInfo(spId);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
         assertEq(IERC20(mockToken).balanceOf(sp), amount + userBalanceBefore);
@@ -453,7 +458,7 @@ contract TestProtocolVault is Base {
         vm.prank(userA);
 
         vm.expectRevert(abi.encodeWithSelector(NotEnoughUnclaimedAssets.selector, 0));
-        protocolVault.claim(claimParams);
+        protocolVault.claimWithFee(claimParams);
     }
 
     function testRevertPause() public {

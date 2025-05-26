@@ -9,6 +9,12 @@ interface IVaultCrossChainManager {
         external
         view
         returns (uint256 nativeFee, uint256 lzTokenFee);
-    function sendMessageWithValueAndRefund(StrategyVaultCCMessage memory message, address refundAddress) external payable;
+    function quoteClaim(uint256 chainId, StrategyVaultCCMessage memory message)
+        external
+        view
+        returns (uint256 nativeFee, uint256 lzTokenFee);
+    function sendMessageWithValueAndRefund(StrategyVaultCCMessage memory message, address refundAddress)
+        external
+        payable;
     function sendMessage(StrategyVaultCCMessage memory message) external;
 }
