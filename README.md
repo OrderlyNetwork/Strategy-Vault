@@ -17,6 +17,8 @@ $ forge build
 or 
 
 ```shell
+$ npx hardhat vars set PRIVATE_KEY
+$ npx hardhat vars set DEPLOY_KEY
 $ npx hardhat compile
 ```
 

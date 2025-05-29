@@ -602,14 +602,14 @@ contract TestProtocolVault is Base {
         for (uint256 i = 0; i < whitelistUsers.length; i++) {
             vm.startPrank(whitelistUsers[i]);
             mockToken.approve(address(protocolVault), amount);
-            DepositParams memory depositParams = DepositParams({
+            DepositParams memory depositParam = DepositParams({
                 payloadType: PayloadType.LP_DEPOSIT,
                 receiver: whitelistUsers[i],
                 token: address(mockToken),
                 amount: amount,
                 brokerHash: ORDERLY_BROKER
             });
-            protocolVault.deposit{value: nativeFee}(depositParams);
+            protocolVault.deposit{value: nativeFee}(depositParam);
             vm.stopPrank();
         }
 

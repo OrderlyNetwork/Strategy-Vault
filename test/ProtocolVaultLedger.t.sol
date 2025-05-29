@@ -67,6 +67,8 @@ contract ProtocolVaultTest is Base {
 
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
+        //mint token
+        mockToken.mint(address(protocolVault), amount);
         vm.startPrank(operator);
         uint256 gasBefore = gasleft();
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
@@ -113,8 +115,10 @@ contract ProtocolVaultTest is Base {
 
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        vm.startPrank(operator);
+        //mint token
+        mockToken.mint(address(protocolVault), 1000 * 10 ** 18);
 
+        vm.startPrank(operator);
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
@@ -824,7 +828,7 @@ contract ProtocolVaultTest is Base {
         params[1] = UpdateLedgerParams({operationType: OperationType.SP_WITHDRAW, operation: spOperation});
 
         // Sign the transaction
-        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(vaultId, params);
 
         // Execute removeInvalidFrozenShares
         vm.prank(operator);
@@ -850,7 +854,7 @@ contract ProtocolVaultTest is Base {
             Operation({id: userA_id, requestId: keccak256(abi.encode("lpWithdraw")), amount: 2 * shareDecimal});
         params[0] = UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: lpOperation});
 
-        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(vaultId, params);
 
         // First call
         vm.prank(operator);
@@ -883,7 +887,7 @@ contract ProtocolVaultTest is Base {
         });
         params[0] = UpdateLedgerParams({operationType: OperationType.LP_WITHDRAW, operation: lpOperation});
 
-        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(vaultId, params);
 
         // Expected to fail due to insufficient shares
         vm.prank(operator);
@@ -906,7 +910,7 @@ contract ProtocolVaultTest is Base {
             operation: lpOperation
         });
 
-        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(periodId, vaultId, params);
+        bytes memory signature = _getRemoveInvalidFrozenSharesSignature(vaultId, params);
 
         // Expected to fail due to invalid operation type
         vm.prank(operator);
@@ -914,11 +918,11 @@ contract ProtocolVaultTest is Base {
         svLedger.removeInvalidFrozenShares(vaultId, params, signature);
     }
 
-    function _getRemoveInvalidFrozenSharesSignature(
-        uint256 _periodId,
-        bytes32 _vaultId,
-        UpdateLedgerParams[] memory params
-    ) internal view returns (bytes memory) {
+    function _getRemoveInvalidFrozenSharesSignature(bytes32 _vaultId, UpdateLedgerParams[] memory params)
+        internal
+        view
+        returns (bytes memory)
+    {
         bytes32 messageHash = keccak256(abi.encode(_vaultId, params));
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));

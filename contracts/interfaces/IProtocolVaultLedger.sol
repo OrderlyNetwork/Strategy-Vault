@@ -107,8 +107,11 @@ interface IProtocolVaultLedger {
         bytes32[] calldata requestIds,
         bytes memory signature
     ) external;
-    function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
-        external;
+    function removeInvalidFrozenShares(
+        bytes32 vaultId,
+        UpdateLedgerParams[] calldata params,
+        bytes calldata signature
+    ) external;
 
     /*=========================================================================================
     *                                       VIEW
