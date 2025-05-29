@@ -11,7 +11,6 @@ const config: HardhatUserConfig = {
 
 
 const PRIVATE_KEY = vars.get("PRIVATE_KEY");
-const SP_KEY = vars.get("SP_KEY");
 const DEPLOY_KEY = vars.get("DEPLOY_KEY");
 
 module.exports = {
@@ -58,7 +57,7 @@ module.exports = {
       accounts: [DEPLOY_KEY],
     },
     base_sepolia: {
-      url: "https://base-sepolia.gateway.tenderly.co",
+      url: "https://sepolia.base.org",
       accounts: [PRIVATE_KEY],
     },
     sepolia: {

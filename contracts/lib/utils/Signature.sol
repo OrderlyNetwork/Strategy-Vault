@@ -19,6 +19,7 @@ import {
     AllocateFundRes,
     StrategyFundState
 } from "../types/LedgerStruct.sol";
+import {AdapterDeposit} from "../types/VaultStruct.sol";
 
 library Signature {
     error InvalidSigner();
@@ -117,6 +118,16 @@ library Signature {
         address signer
     ) internal pure {
         bytes32 messageHash = keccak256(abi.encode(vaultId, params));
+        verifySignature(signer, messageHash, signature);
+    }
+
+    function verifyAdapterDeposit(
+        AdapterDeposit memory adapterDeposit,
+        uint256 chainId,
+        bytes calldata signature,
+        address signer
+    ) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(adapterDeposit, chainId));
         verifySignature(signer, messageHash, signature);
     }
 

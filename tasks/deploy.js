@@ -64,6 +64,16 @@ task("deploy-ccmanager", "Deploy CrossChainManager contract")
         await deployCrossChainManager(taskArgs.env);
     });
 
+task("deploy-adapter", "Deploy VaultAdapter contract")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await deployVaultAdapter(taskArgs.env);
+    });
+
 async function deployProtocolLedger(env) {
     const [owner] = await ethers.getSigners();
 
@@ -108,7 +118,7 @@ async function deployProtocolVault(env) {
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
     //const implAddr = "0x83F367998EC5C78C107F32666B053D6A8991D773";
-    
+
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
@@ -129,15 +139,6 @@ async function deployProtocolVault(env) {
     updateAddressConfig(env, 'protocolVault', ProtocolVaultAddr);
 }
 
-async function deployProtocolVaultImpl(ProtocolVault) {
-    const ProtocolVaultContract = await ProtocolVault.deploy();
-    const implAddr = ProtocolVaultContract.target;
-    await ProtocolVaultContract.waitForDeployment();
-
-    console.log("ProtocolVaultContract Impl deployed to:", implAddr);
-
-    return implAddr;
-}
 async function deployCrossChainManagerImpl(VaultCrossChainManager) {
     const VaultCrossChainManagerContract = await VaultCrossChainManager.deploy();
     const implAddr = VaultCrossChainManagerContract.target;
@@ -232,5 +233,80 @@ function updateAddressConfig(env, contractName, address) {
         console.error(`Error updating address config: ${error.message}`);
         throw error;
     }
+}
+
+async function deployVaultAdapter(env) {
+    const currentNetwork = hre.network.name;
+
+    // Get configuration values
+    const operator = deployment[env].operator;
+    const dexVault = deployment[env].dex[currentNetwork];
+    const engine = deployment[env].engine;
+    const usdc = config[currentNetwork].USDC;
+    const owner = deployment[env].owner;
+
+    if (!operator || !dexVault || !engine || !usdc || !owner) {
+        throw new Error(`Missing required configuration for ${env} environment on ${currentNetwork}`);
+    }
+    //deploy impl
+    const VaultAdapter = await ethers.getContractFactory("VaultAdapter");
+    const implAddr = await deployVaultAdapterImpl(VaultAdapter);
+    //const implAddr = "0x83F367998EC5C78C107F32666B053D6A8991D773";
+    //Deploy contract by factory
+    const bytecode = getVaultAdapterBytecode(VaultAdapter, implAddr, operator, dexVault, engine, usdc, owner);
+    const salt = deployment[env].adapter_salt;
+
+    const VaultFactory = await ethers.getContractAt(
+        "VaultFactory",
+        deployment[env].factory
+    )
+    const tx = await VaultFactory.deploy(salt, bytecode)
+    await tx.wait()
+
+    console.log("VaultAdapter deployed Done");
+    const vaultAdapterAddr = await VaultFactory.getDeployed(salt);
+    updateAddressConfig(env, 'vaultAdapter', vaultAdapterAddr);
+}
+
+async function deployVaultAdapterImpl(VaultAdapter) {
+    const VaultAdapterContract = await VaultAdapter.deploy();
+    const implAddr = VaultAdapterContract.target;
+    await VaultAdapterContract.waitForDeployment();
+
+    console.log("VaultAdapter Impl deployed to:", implAddr);
+
+    return implAddr;
+}
+async function deployProtocolVaultImpl(ProtocolVault) {
+    const ProtocolVaultContract = await ProtocolVault.deploy();
+    const implAddr = ProtocolVaultContract.target;
+    await ProtocolVaultContract.waitForDeployment();
+
+    console.log("ProtocolVaultContract Impl deployed to:", implAddr);
+
+    return implAddr;
+}
+function getVaultAdapterBytecode(VaultAdapter, implAddr, operator, dexVault, engine, usdc, owner) {
+    const initializeData = VaultAdapter.interface.encodeFunctionData(
+        "initialize",
+        [
+            operator,
+            dexVault,
+            engine,
+            usdc,
+            owner
+        ]
+    );
+    const constructorArgs = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "bytes"],
+        [implAddr, initializeData]
+    );
+
+    //final bytecode
+    const bytecode = ethers.concat([
+        ERC1967ProxyArtifact.bytecode,
+        constructorArgs
+    ]);
+    return bytecode;
 }
 
