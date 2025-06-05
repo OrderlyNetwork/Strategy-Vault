@@ -932,7 +932,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         internal
         view
         virtual
-        returns (uint256 assets)
+        returns (uint256)
     {
         uint256 decimal = tokenDecimal[USDC_HASH];
         return (_totalShares == 0)
