@@ -223,12 +223,23 @@ async function checkVaultAdapter(env) {
         assert.equal(mappedToken.toLowerCase(), config[currentNetwork].USDC.toLowerCase(), `${env} USDC token mapping error`);
         console.log("USDC token mapping verified ✓");
 
-        //check broker
-        console.log("Checking broker...");
-        const brokerHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"; // ORDERLY_BROKER
-        const isAllowed = await adapterContract.isAllowedBroker(brokerHash);
-        assert.equal(isAllowed, true, `${env} broker config error`);
-        console.log("Broker verified ✓");
+        //check brokers
+        console.log("Checking allowed brokers...");
+        const allowedBrokers = deployment.allowedBrokersForAdapter;
+        
+        if (!allowedBrokers || allowedBrokers.length === 0) {
+            console.log("No allowed brokers found in deployment config");
+        } else {
+            console.log(`Found ${allowedBrokers.length} brokers to verify:`);
+            
+            for (const brokerHash of allowedBrokers) {
+                console.log(`Checking broker: ${brokerHash}`);
+                const isAllowed = await adapterContract.isAllowedBroker(brokerHash);
+                assert.equal(isAllowed, true, `${env} broker ${brokerHash} config error - not allowed`);
+                console.log(`✓ Broker ${brokerHash} verified`);
+            }
+            console.log("All brokers verified ✓");
+        }
     } catch (error) {
         console.error(`Failed to verify configuration: ${error.message}`);
         throw error;

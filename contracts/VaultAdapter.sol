@@ -206,13 +206,16 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
             revert ZeroAddress();
         }
         engine = _engine;
+        emit EngineSet(_engine);
     }
 
     function setAllowedBroker(bytes32 brokerHash, bool isAllowed) external onlyOwner {
         isAllowedBroker[brokerHash] = isAllowed;
+        emit BrokerAllowedSet(brokerHash, isAllowed);
     }
 
     function setAllowedTokenHashToToken(bytes32 tokenHash, address token) external onlyOwner {
         tokenHashToToken[tokenHash] = token;
+        emit TokenHashToTokenSet(tokenHash, token);
     }
 }

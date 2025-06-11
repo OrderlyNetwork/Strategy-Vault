@@ -7,6 +7,9 @@ interface IVaultAdapter {
     event DepositFromCeffu(AdapterDeposit adapterDeposit, bool isNative);
     event OperatorSet(address operator);
     event DexVaultSet(address dexVault);
+    event EngineSet(address engine);
+    event BrokerAllowedSet(bytes32 brokerHash, bool isAllowed);
+    event TokenHashToTokenSet(bytes32 tokenHash, address token);
 
     error Unauthorized();
     error ZeroAddress();
