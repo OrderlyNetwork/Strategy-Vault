@@ -278,7 +278,8 @@ async function configProtocolVault(env) {
 
 async function configVaultAdapter(env) {
     console.log(`Configuring VaultAdapter for ${env} environment...`);
-    
+    const currentNetwork = hre.network.name;
+
     // Get the contract instance
     const vaultAdapterContract = await ethers.getContractAt(
         "VaultAdapter",
@@ -287,23 +288,23 @@ async function configVaultAdapter(env) {
 
     // Get allowed brokers from deployment config
     const allowedBrokers = deployment.allowedBrokersForAdapter;
-    
+
     if (!allowedBrokers || allowedBrokers.length === 0) {
         console.log("No allowed brokers found in deployment config");
         return;
     }
-    
+
     let configuredCount = 0;
     let skippedCount = 0;
 
     //set allowed brokers
     for (const brokerHash of allowedBrokers) {
         console.log(`Checking broker: ${brokerHash}`);
-        
+
         try {
             // Check if broker is already allowed
             const isAllowed = await vaultAdapterContract.isAllowedBroker(brokerHash);
-            
+
             if (isAllowed) {
                 console.log(`✓ Broker ${brokerHash} is already configured`);
                 skippedCount++;
@@ -318,6 +319,19 @@ async function configVaultAdapter(env) {
         } catch (error) {
             console.error(`✗ Failed to configure broker ${brokerHash}:`, error.message);
         }
+    }
+
+    //set usdt token hash
+    const usdtHash = "0x8b1a1d9c2b109e527c9134b25b1a1833b16b6594f92daa9f6d9b7a6024bce9d0"; // USDT hash
+    const usdtToken = config[currentNetwork].USDT;
+    const mappedUsdtToken = await vaultAdapterContract.tokenHashToToken(usdtHash);
+
+    if (usdtToken != mappedUsdtToken) {
+        tx = await vaultAdapterContract.setAllowedTokenHashToToken(usdtHash, usdtToken);
+        await tx.wait();
+        console.log(`USDT token hash ${usdtHash} set to ${usdtToken} successfully`);
+    } else {
+        console.log(`USDT token hash ${usdtHash} is already set to ${usdtToken}`);
     }
 
     //set protocol vault

@@ -189,7 +189,6 @@ async function checkVaultAdapter(env) {
         deployment[env].vaultAdapter
     )
 
-    console.log("Checking contract deployment...");
     // 检查合约代码是否存在
     const code = await ethers.provider.getCode(deployment[env].vaultAdapter);
     if (code === "0x") {
@@ -199,45 +198,47 @@ async function checkVaultAdapter(env) {
 
     try {
         //check dex operator
-        console.log("Checking operator...");
         const operator = await adapterContract.operator();
         assert.equal(operator.toLowerCase(), deployment[env].dex_operator.toLowerCase(), `${env} operator config error`);
         console.log("Operator verified ✓");
 
         //check dexVault
-        console.log("Checking dexVault...");
         const dexVault = await adapterContract.dexVault();
         assert.equal(dexVault.toLowerCase(), deployment[env].dex[currentNetwork].toLowerCase(), `${env} dex on ${currentNetwork} config error`);
         console.log("DexVault verified ✓");
 
         //check engine
-        console.log("Checking engine...");
         const engine = await adapterContract.engine();
         assert.equal(engine.toLowerCase(), deployment[env].adapter_engine.toLowerCase(), `${env} engine config error`);
         console.log("Engine verified ✓");
 
         //check USDC token mapping
-        console.log("Checking USDC token mapping...");
         const usdcHash = "0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa"; // USDC hash
         const mappedToken = await adapterContract.tokenHashToToken(usdcHash);
         assert.equal(mappedToken.toLowerCase(), config[currentNetwork].USDC.toLowerCase(), `${env} USDC token mapping error`);
         console.log("USDC token mapping verified ✓");
 
+        //check USDT token mapping
+        console.log("Checking USDT token mapping...");
+        const usdtHash = "0x8b1a1d9c2b109e527c9134b25b1a1833b16b6594f92daa9f6d9b7a6024bce9d0"; // USDT hash
+        const mappedUsdtToken = await adapterContract.tokenHashToToken(usdtHash);
+        assert.equal(mappedUsdtToken.toLowerCase(), config[currentNetwork].USDT.toLowerCase(), `${env} USDT token mapping error`);
+        console.log("USDT token mapping verified ✓");
+
         //check protocol vault
-        console.log("Checking protocol vault...");
         const protocolVault = await adapterContract.protocolVault();
         assert.equal(protocolVault.toLowerCase(), deployment[env].protocolVault.toLowerCase(), `${env} protocol vault config error`);
         console.log("Protocol vault verified ✓");
-        
+
+
         //check brokers
-        console.log("Checking allowed brokers...");
         const allowedBrokers = deployment.allowedBrokersForAdapter;
-        
+
         if (!allowedBrokers || allowedBrokers.length === 0) {
             console.log("No allowed brokers found in deployment config");
         } else {
             console.log(`Found ${allowedBrokers.length} brokers to verify:`);
-            
+
             for (const brokerHash of allowedBrokers) {
                 console.log(`Checking broker: ${brokerHash}`);
                 const isAllowed = await adapterContract.isAllowedBroker(brokerHash);

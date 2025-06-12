@@ -253,6 +253,7 @@
     },
     "arb_sepolia": {
         "USDC": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "USDT": "0xEf54C221Fc94517877F0F40eCd71E0A3866D66C2",
         "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
         "chainId": 421614,
         "eid": 40231,
@@ -397,6 +398,7 @@
     },
     "base_sepolia": {
         "USDC": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "USDT": "0x78398524Ab8500736B56eaAb1a590733c2B04144",
         "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
         "chainId": 84532,
         "eid": 40245,
