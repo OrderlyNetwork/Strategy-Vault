@@ -223,6 +223,12 @@ async function checkVaultAdapter(env) {
         assert.equal(mappedToken.toLowerCase(), config[currentNetwork].USDC.toLowerCase(), `${env} USDC token mapping error`);
         console.log("USDC token mapping verified ✓");
 
+        //check protocol vault
+        console.log("Checking protocol vault...");
+        const protocolVault = await adapterContract.protocolVault();
+        assert.equal(protocolVault.toLowerCase(), deployment[env].protocolVault.toLowerCase(), `${env} protocol vault config error`);
+        console.log("Protocol vault verified ✓");
+        
         //check brokers
         console.log("Checking allowed brokers...");
         const allowedBrokers = deployment.allowedBrokersForAdapter;
