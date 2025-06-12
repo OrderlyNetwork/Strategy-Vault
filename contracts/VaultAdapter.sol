@@ -83,20 +83,11 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
      * @param adapterDeposit The deposit parameters
      * @param signature The signature for validation
      */
-    function depositNative(AdapterDeposit memory adapterDeposit, bytes calldata signature)
-        external
-        payable
-        onlyOperator
-    {
-        // Validate native token deposit
-        if (msg.value != adapterDeposit.amount) {
-            revert InvalidNativeAmount();
-        }
-
+    function depositNative(AdapterDeposit memory adapterDeposit, bytes calldata signature) external onlyOperator {
         // Process the deposit
         (uint256 fee, VaultDepositFE memory depositData) = _processDeposit(adapterDeposit, signature);
         //Transfer native tokens to the DexVault
-        uint256 totalValue = msg.value + fee;
+        uint256 totalValue = adapterDeposit.amount + fee;
         IDexVault(dexVault).depositTo{value: totalValue}(adapterDeposit.receiver, depositData);
 
         // Emit event

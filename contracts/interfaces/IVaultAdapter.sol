@@ -11,6 +11,7 @@ interface IVaultAdapter {
     event BrokerAllowedSet(bytes32 brokerHash, bool isAllowed);
     event TokenHashToTokenSet(bytes32 tokenHash, address token);
     event ProtocolVaultSet(address protocolVault);
+
     //0x82b42900
     error Unauthorized();
     //0xd92e233d
@@ -24,4 +25,7 @@ interface IVaultAdapter {
     error BrokerNotAllowed();
     error RecordAlreadyHandled(uint256 recordId);
     error InvalidAmount();
+
+    function depositTo(AdapterDeposit memory adapterDeposit, bytes calldata signature) external;
+    function depositNative(AdapterDeposit memory adapterDeposit, bytes calldata signature) external;
 }
