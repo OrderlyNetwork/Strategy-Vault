@@ -296,6 +296,7 @@ async function configVaultAdapter(env) {
     let configuredCount = 0;
     let skippedCount = 0;
 
+    //set allowed brokers
     for (const brokerHash of allowedBrokers) {
         console.log(`Checking broker: ${brokerHash}`);
         
@@ -318,6 +319,12 @@ async function configVaultAdapter(env) {
             console.error(`✗ Failed to configure broker ${brokerHash}:`, error.message);
         }
     }
+
+    //set protocol vault
+    const protocolVault = deployment[env].protocolVault;
+    tx = await vaultAdapterContract.setProtocolVault(protocolVault);
+    await tx.wait();
+    console.log(`Protocol Vault set to ${protocolVault} successfully`);
 }
 
 async function configEVMCrossChainManager(env) {

@@ -18,12 +18,11 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
 
     /// @dev keccak256(abi.encodePacked(broker string))
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
-    /// @dev Protocol vault address
-    address constant PROTOCOL_VAULT = 0x70Fe7d65Ac7c1a1732f64d2E6fC0E33622D0C991;
 
     address public operator;
     address public dexVault;
     address public engine;
+    address public protocolVault;
 
     /// @dev Broker Id => isAllowed
     mapping(bytes32 => bool) public isAllowedBroker;
@@ -165,7 +164,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
         address receiver = adapterDeposit.receiver;
         bytes32 id = roleType == RoleType.LP
             ? VaultUtils.getAccountId(receiver, brokerHash)
-            : VaultUtils.getStrategyProviderId(PROTOCOL_VAULT, receiver, brokerHash);
+            : VaultUtils.getStrategyProviderId(protocolVault, receiver, brokerHash);
 
         // Create deposit data structure
         VaultDepositFE memory depositData = VaultDepositFE({
@@ -217,5 +216,10 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
     function setAllowedTokenHashToToken(bytes32 tokenHash, address token) external onlyOwner {
         tokenHashToToken[tokenHash] = token;
         emit TokenHashToTokenSet(tokenHash, token);
+    }
+
+    function setProtocolVault(address _protocolVault) external onlyOwner {
+        protocolVault = _protocolVault;
+        emit ProtocolVaultSet(_protocolVault);
     }
 }

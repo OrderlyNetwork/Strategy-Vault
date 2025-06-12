@@ -10,7 +10,8 @@ interface IVaultAdapter {
     event EngineSet(address engine);
     event BrokerAllowedSet(bytes32 brokerHash, bool isAllowed);
     event TokenHashToTokenSet(bytes32 tokenHash, address token);
-
+    event ProtocolVaultSet(address protocolVault);
+    
     error Unauthorized();
     error ZeroAddress();
     error InvalidRoleType();

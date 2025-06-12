@@ -25,7 +25,7 @@ interface IProtocolVault {
     event AllowedTokenSet(address token, bool isAllowed);
     event AdminSet(address admin);
     event AllowedStrategySet(address strategy, bool isAllowed);
-
+    
     error InvalidDepositAmount(uint256 amount);
     error InvalidRoleType();
     error NotEnoughUnclaimedAssets(uint256 amount);
