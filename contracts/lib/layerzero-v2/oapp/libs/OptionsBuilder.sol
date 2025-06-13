@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.20;
 
-import { BytesLib } from "solidity-bytes-utils/contracts/BytesLib.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {BytesLib} from "solidity-bytes-utils/contracts/BytesLib.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { ExecutorOptions } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/ExecutorOptions.sol";
-import { DVNOptions } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/libs/DVNOptions.sol";
+import {ExecutorOptions} from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/ExecutorOptions.sol";
+import {DVNOptions} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/libs/DVNOptions.sol";
 
 /**
  * @title OptionsBuilder
@@ -50,11 +50,12 @@ library OptionsBuilder {
      * eg. if (_gas: 200k, and _value: 1 ether) AND (_gas: 100k, _value: 0.5 ether) are sent in an option to the LayerZeroEndpoint,
      * that becomes (300k, 1.5 ether) when the message is executed on the remote lzReceive() function.
      */
-    function addExecutorLzReceiveOption(
-        bytes memory _options,
-        uint128 _gas,
-        uint128 _value
-    ) internal pure onlyType3(_options) returns (bytes memory) {
+    function addExecutorLzReceiveOption(bytes memory _options, uint128 _gas, uint128 _value)
+        internal
+        pure
+        onlyType3(_options)
+        returns (bytes memory)
+    {
         bytes memory option = ExecutorOptions.encodeLzReceiveOption(_gas, _value);
         return addExecutorOption(_options, ExecutorOptions.OPTION_TYPE_LZRECEIVE, option);
     }
@@ -68,11 +69,12 @@ library OptionsBuilder {
      *
      * @dev When multiples of this option are added, they are summed by the executor on the remote chain.
      */
-    function addExecutorNativeDropOption(
-        bytes memory _options,
-        uint128 _amount,
-        bytes32 _receiver
-    ) internal pure onlyType3(_options) returns (bytes memory) {
+    function addExecutorNativeDropOption(bytes memory _options, uint128 _amount, bytes32 _receiver)
+        internal
+        pure
+        onlyType3(_options)
+        returns (bytes memory)
+    {
         bytes memory option = ExecutorOptions.encodeNativeDropOption(_amount, _receiver);
         return addExecutorOption(_options, ExecutorOptions.OPTION_TYPE_NATIVE_DROP, option);
     }
@@ -89,12 +91,12 @@ library OptionsBuilder {
      * @dev If the OApp sends N lzCompose calls on the remote, you must provide N incremented indexes starting with 0.
      * ie. When your remote OApp composes (N = 3) messages, you must set this option for index 0,1,2
      */
-    function addExecutorLzComposeOption(
-        bytes memory _options,
-        uint16 _index,
-        uint128 _gas,
-        uint128 _value
-    ) internal pure onlyType3(_options) returns (bytes memory) {
+    function addExecutorLzComposeOption(bytes memory _options, uint16 _index, uint128 _gas, uint128 _value)
+        internal
+        pure
+        onlyType3(_options)
+        returns (bytes memory)
+    {
         bytes memory option = ExecutorOptions.encodeLzComposeOption(_index, _gas, _value);
         return addExecutorOption(_options, ExecutorOptions.OPTION_TYPE_LZCOMPOSE, option);
     }
@@ -104,9 +106,12 @@ library OptionsBuilder {
      * @param _options The existing options container.
      * @return options The updated options container.
      */
-    function addExecutorOrderedExecutionOption(
-        bytes memory _options
-    ) internal pure onlyType3(_options) returns (bytes memory) {
+    function addExecutorOrderedExecutionOption(bytes memory _options)
+        internal
+        pure
+        onlyType3(_options)
+        returns (bytes memory)
+    {
         return addExecutorOption(_options, ExecutorOptions.OPTION_TYPE_ORDERED_EXECUTION, bytes(""));
     }
 
@@ -116,10 +121,12 @@ library OptionsBuilder {
      * @param _dvnIdx The DVN index for the pre-crime option.
      * @return options The updated options container.
      */
-    function addDVNPreCrimeOption(
-        bytes memory _options,
-        uint8 _dvnIdx
-    ) internal pure onlyType3(_options) returns (bytes memory) {
+    function addDVNPreCrimeOption(bytes memory _options, uint8 _dvnIdx)
+        internal
+        pure
+        onlyType3(_options)
+        returns (bytes memory)
+    {
         return addDVNOption(_options, _dvnIdx, DVNOptions.OPTION_TYPE_PRECRIME, bytes(""));
     }
 
@@ -130,19 +137,19 @@ library OptionsBuilder {
      * @param _option The encoded data for the executor option.
      * @return options The updated options container.
      */
-    function addExecutorOption(
-        bytes memory _options,
-        uint8 _optionType,
-        bytes memory _option
-    ) internal pure onlyType3(_options) returns (bytes memory) {
-        return
-            abi.encodePacked(
-                _options,
-                ExecutorOptions.WORKER_ID,
-                _option.length.toUint16() + 1, // +1 for optionType
-                _optionType,
-                _option
-            );
+    function addExecutorOption(bytes memory _options, uint8 _optionType, bytes memory _option)
+        internal
+        pure
+        onlyType3(_options)
+        returns (bytes memory)
+    {
+        return abi.encodePacked(
+            _options,
+            ExecutorOptions.WORKER_ID,
+            _option.length.toUint16() + 1, // +1 for optionType
+            _optionType,
+            _option
+        );
     }
 
     /**
@@ -153,21 +160,20 @@ library OptionsBuilder {
      * @param _option The encoded data for the DVN option.
      * @return options The updated options container.
      */
-    function addDVNOption(
-        bytes memory _options,
-        uint8 _dvnIdx,
-        uint8 _optionType,
-        bytes memory _option
-    ) internal pure onlyType3(_options) returns (bytes memory) {
-        return
-            abi.encodePacked(
-                _options,
-                DVNOptions.WORKER_ID,
-                _option.length.toUint16() + 2, // +2 for optionType and dvnIdx
-                _dvnIdx,
-                _optionType,
-                _option
-            );
+    function addDVNOption(bytes memory _options, uint8 _dvnIdx, uint8 _optionType, bytes memory _option)
+        internal
+        pure
+        onlyType3(_options)
+        returns (bytes memory)
+    {
+        return abi.encodePacked(
+            _options,
+            DVNOptions.WORKER_ID,
+            _option.length.toUint16() + 2, // +2 for optionType and dvnIdx
+            _dvnIdx,
+            _optionType,
+            _option
+        );
     }
 
     /**

@@ -14,24 +14,24 @@ contract DecimalConverterTest is Test {
     }
 
     function testHigherToLowerDecimals() public pure {
-        uint256 amount = 1000 * 10**18; // 1000 tokens with 18 decimals
+        uint256 amount = 1000 * 10 ** 18; // 1000 tokens with 18 decimals
         uint128 srcDecimal = 18;
         uint128 dstDecimal = 6;
-        
+
         // check should be 1000 * 10**6
-        assertEq(amount.convertDecimal(srcDecimal, dstDecimal), 1000 * 10**6);
+        assertEq(amount.convertDecimal(srcDecimal, dstDecimal), 1000 * 10 ** 6);
     }
 
-    function testLowerToHigherDecimals() public  pure{
-        uint256 amount = 1000 * 10**6; // 1000 tokens with 6 decimals
+    function testLowerToHigherDecimals() public pure {
+        uint256 amount = 1000 * 10 ** 6; // 1000 tokens with 6 decimals
         uint128 srcDecimal = 6;
         uint128 dstDecimal = 18;
-        
+
         // check
-        assertEq(amount.convertDecimal(srcDecimal, dstDecimal), 1000 * 10**18);
+        assertEq(amount.convertDecimal(srcDecimal, dstDecimal), 1000 * 10 ** 18);
     }
 
-    function testZeroAmount() public pure{
+    function testZeroAmount() public pure {
         uint256 amount = 0;
         assertEq(amount.convertDecimal(18, 6), 0);
         assertEq(amount.convertDecimal(6, 18), 0);
@@ -41,12 +41,12 @@ contract DecimalConverterTest is Test {
         uint256 amount = type(uint256).max;
         uint128 srcDecimal = 6;
         uint128 dstDecimal = 18;
-        
+
         vm.expectRevert();
         amount.convertDecimal(srcDecimal, dstDecimal);
     }
 
-    function testSpecificCases() public pure{
+    function testSpecificCases() public pure {
         uint256 oneEth = 1 ether; // 1 * 10**18
         assertEq(oneEth.convertDecimal(18, 6), 1_000_000);
 

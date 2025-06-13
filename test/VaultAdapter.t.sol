@@ -183,7 +183,8 @@ contract VaultAdapterTest is Base {
 
     function testDepositNative() public {
         // Create deposit params for LP with native token
-        AdapterDeposit memory depositLP = _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 100);
+        AdapterDeposit memory depositLP =
+            _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 100);
         bytes memory signatureLP = _signDeposit(depositLP);
 
         // Prepare operator with native token
@@ -200,7 +201,8 @@ contract VaultAdapterTest is Base {
         assertEq(address(mockDexVault).balance, balanceBefore + 1 ether);
 
         // Create deposit params for SP with native token
-        AdapterDeposit memory depositSP = _createDeposit(RoleType.SP, receiver, 0.5 ether, ORDERLY_BROKER, NATIVE_HASH, 101);
+        AdapterDeposit memory depositSP =
+            _createDeposit(RoleType.SP, receiver, 0.5 ether, ORDERLY_BROKER, NATIVE_HASH, 101);
         bytes memory signatureSP = _signDeposit(depositSP);
 
         // Perform SP native deposit
@@ -238,18 +240,19 @@ contract VaultAdapterTest is Base {
 
         vm.deal(adapterOperator, 2 ether);
         vm.startPrank(adapterOperator);
-        
+
         vaultAdapter.depositNative{value: 1 ether}(deposit, signature);
-        
+
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("RecordAlreadyHandled(uint256)")), 104));
         vaultAdapter.depositNative{value: 1 ether}(deposit, signature);
-        
+
         vm.stopPrank();
     }
 
     function testRevertDepositNativeInvalidBroker() public {
         bytes32 invalidBrokerHash = keccak256("invalid_broker");
-        AdapterDeposit memory deposit = _createDeposit(RoleType.LP, receiver, 1 ether, invalidBrokerHash, NATIVE_HASH, 105);
+        AdapterDeposit memory deposit =
+            _createDeposit(RoleType.LP, receiver, 1 ether, invalidBrokerHash, NATIVE_HASH, 105);
         bytes memory signature = _signDeposit(deposit);
 
         vm.deal(adapterOperator, 1 ether);
@@ -260,7 +263,7 @@ contract VaultAdapterTest is Base {
 
     function testRevertDepositNativeInvalidSignature() public {
         AdapterDeposit memory deposit = _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 107);
-        
+
         // Create invalid signature
         (, uint256 randomKey) = makeAddrAndKey("random");
         bytes32 messageHash = keccak256(abi.encode(deposit, block.chainid));
