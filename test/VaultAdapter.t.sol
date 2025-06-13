@@ -189,7 +189,7 @@ contract VaultAdapterTest is Base {
         bytes memory signatureLP = _signDeposit(depositLP);
 
         // Prepare operator with native token
-        
+
         uint256 balanceBefore = address(mockDexVault).balance;
 
         // Perform native deposit
@@ -229,7 +229,6 @@ contract VaultAdapterTest is Base {
         AdapterDeposit memory deposit = _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 104);
         bytes memory signature = _signDeposit(deposit);
 
-        
         vm.startPrank(adapterOperator);
 
         vaultAdapter.depositNative(deposit, signature);
