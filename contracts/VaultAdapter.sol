@@ -134,7 +134,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
             revert RecordAlreadyHandled(adapterDeposit.recordId);
         }
 
-        //Valite amount
+        //Validate amount
         if (adapterDeposit.amount == 0) {
             revert InvalidAmount();
         }
@@ -210,6 +210,9 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
     }
 
     function setProtocolVault(address _protocolVault) external onlyOwner {
+        if (_protocolVault == address(0)) {
+            revert ZeroAddress();
+        }
         protocolVault = _protocolVault;
         emit ProtocolVaultSet(_protocolVault);
     }
