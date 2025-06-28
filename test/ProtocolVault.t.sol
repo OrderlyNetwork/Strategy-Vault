@@ -303,7 +303,7 @@ contract TestProtocolVault is Base {
             ClaimParams({roleType: RoleType.SP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         vm.prank(sp);
         protocolVault.claim(claimParams);
-        
+
         //check
         spClaimedInfo = protocolVault.getUserClaimedInfo(spId);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);

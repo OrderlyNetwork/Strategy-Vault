@@ -623,7 +623,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             // Apply fee deduction to user claim infos
             for (uint256 i = 0; i < userClaimInfos.length; i++) {
                 bytes32 requestId = userClaimInfos[i].requestId;
-                
+
                 userClaimInfos[i].assets -= feePerUser;
                 isUserClaimHandled[requestId] = true;
                 delete userClaimInfo[requestId];

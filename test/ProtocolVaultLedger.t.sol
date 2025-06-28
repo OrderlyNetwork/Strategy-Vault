@@ -207,7 +207,7 @@ contract TestSVLedger is Base {
         // Verify claim info is recorded correctly
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(userClaimedInfo_A.unClaimedAssets, asset);
-        
+
         // User A claims
         mockToken.mint(address(protocolVault), asset * 2);
 

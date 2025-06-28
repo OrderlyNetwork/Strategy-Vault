@@ -142,8 +142,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            (uint256 periodId, ClaimInfo[] memory userClaims) =
-                abi.decode(payload, (uint256, ClaimInfo[]));
+            (uint256 periodId, ClaimInfo[] memory userClaims) = abi.decode(payload, (uint256, ClaimInfo[]));
 
             //Convert the amount
             uint256 dstChainId = strategyVaultCCmessage.dstChainId;

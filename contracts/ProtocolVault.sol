@@ -267,10 +267,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit DepositToStrategy(periodId, vaultId, receiver, amount, dexNonce);
     }
 
-    function updateUnClaimed(uint256 periodId, ClaimInfo[] memory userClaimInfos)
-        external
-        onlyVaultCrossChainManager
-    {
+    function updateUnClaimed(uint256 periodId, ClaimInfo[] memory userClaimInfos) external onlyVaultCrossChainManager {
         for (uint256 i = 0; i < userClaimInfos.length; i++) {
             bytes32 userId = userClaimInfos[i].accountId == bytes32(0)
                 ? userClaimInfos[i].strategyProviderId
