@@ -600,61 +600,44 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @param chainId chain id that unclaimed assets will be updated
     /// @param periodId period id
     /// @param vaultId  vault id
+    /// @param ccFee cross chain fee in USDC amount
     /// @param requestIds request Id array
     /// @param signature signature signature of BE
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
+        uint256 ccFee,
         bytes32 vaultId,
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external onlyOperator {
         Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, requestIds, signature, engine);
 
-        //length that unhandled requestId
-        uint256 len;
-        for (uint256 i = 0; i < requestIds.length; i++) {
-            if (_isValidRequestId(requestIds[i])) {
-                len++;
+        // Build claim infos using shared logic
+        ClaimInfo[] memory userClaimInfos = _buildClaimInfos(requestIds);
+
+        // Handle cross chain message if there are valid claims
+        if (userClaimInfos.length > 0) {
+            uint256 feePerUser = ccFee / userClaimInfos.length;
+
+            // Apply fee deduction to user claim infos
+            for (uint256 i = 0; i < userClaimInfos.length; i++) {
+                bytes32 requestId = userClaimInfos[i].requestId;
+                
+                userClaimInfos[i].assets -= feePerUser;
+                isUserClaimHandled[requestId] = true;
+                delete userClaimInfo[requestId];
             }
-        }
 
-        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](len);
-        //cross chain message
-        if (len != 0) {
-            //new index to avoid out of range
-            uint256 index;
-            //handle requestid claim
-            for (uint256 i = 0; i < requestIds.length; i++) {
-                //ignore if handled
-                if (_isValidRequestId(requestIds[i])) {
-                    userClaimInfos[index] = userClaimInfo[requestIds[i]];
-
-                    isUserClaimHandled[requestIds[i]] = true;
-                    index++;
-                    delete userClaimInfo[requestIds[i]];
-                }
-            }
-            uint256 ccFee;
-
-            //cross chain message
+            // Cross chain message
             StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
                 payloadType: PayloadType.UPDATE_USER_CLAIM,
                 srcChainId: block.chainid,
                 dstChainId: chainId,
-                payload: abi.encode(periodId, ccFee, userClaimInfos)
-            });
-            (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
-
-            //set gas
-            message = StrategyVaultCCMessage({
-                payloadType: PayloadType.UPDATE_USER_CLAIM,
-                srcChainId: block.chainid,
-                dstChainId: chainId,
-                payload: abi.encode(periodId, ccFee / len, userClaimInfos)
+                payload: abi.encode(periodId, userClaimInfos)
             });
 
-            //cross-chain
+            // Send cross-chain message
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
         }
 
@@ -768,6 +751,36 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function getStrategyFund(bytes32 spId) public view returns (StrategyFundToken memory) {
         return strategyFundTokenInfo[spId][USDC_HASH];
+    }
+
+    /// @notice Estimate cross-chain native fee for claim operations
+    /// @param chainId chain id that unclaimed assets will be updated
+    /// @param periodId period id
+    /// @param requestIds request Id array
+    /// @return nativeFee native token fee required
+    function quoteClaim(uint256 chainId, uint256 periodId, bytes32[] memory requestIds)
+        external
+        view
+        returns (uint256 nativeFee)
+    {
+        // Build claim infos using shared logic
+        ClaimInfo[] memory userClaimInfos = _buildClaimInfos(requestIds);
+
+        // If no valid requests, return zero fee
+        if (userClaimInfos.length == 0) {
+            return 0;
+        }
+
+        // Create cross-chain message for fee estimation (with ccFee = 0 for initial estimation)
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: PayloadType.UPDATE_USER_CLAIM,
+            srcChainId: block.chainid,
+            dstChainId: chainId,
+            payload: abi.encode(periodId, userClaimInfos)
+        });
+
+        // Return only the native fee
+        (nativeFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
     }
     /*=========================================================================================
     *                                       INTERNAL
@@ -899,6 +912,31 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function _isValidRequestId(bytes32 requestId) internal view returns (bool) {
         return !isUserClaimHandled[requestId] && userClaimInfo[requestId].assets > 0;
+    }
+
+    /// @notice Build claim info array from request IDs (shared logic for updateUnclaimed and quoteClaim)
+    /// @param requestIds request Id array
+    /// @return userClaimInfos array of valid claim info
+    function _buildClaimInfos(bytes32[] memory requestIds) internal view returns (ClaimInfo[] memory userClaimInfos) {
+        // Count valid request IDs
+        uint256 validCount;
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            if (_isValidRequestId(requestIds[i])) {
+                validCount++;
+            }
+        }
+
+        // Build ClaimInfo array for valid requests
+        if (validCount > 0) {
+            userClaimInfos = new ClaimInfo[](validCount);
+            uint256 index;
+            for (uint256 i = 0; i < requestIds.length; i++) {
+                if (_isValidRequestId(requestIds[i])) {
+                    userClaimInfos[index] = userClaimInfo[requestIds[i]];
+                    index++;
+                }
+            }
+        }
     }
 
     /**

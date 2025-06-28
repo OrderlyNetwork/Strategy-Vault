@@ -142,8 +142,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            (uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaims) =
-                abi.decode(payload, (uint256, uint256, ClaimInfo[]));
+            (uint256 periodId, ClaimInfo[] memory userClaims) =
+                abi.decode(payload, (uint256, ClaimInfo[]));
 
             //Convert the amount
             uint256 dstChainId = strategyVaultCCmessage.dstChainId;
@@ -154,7 +154,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
                 }
             }
             //Call Protocol Vault
-            IProtocolVault(vault).updateUnClaimed(periodId, ccFee, userClaims);
+            IProtocolVault(vault).updateUnClaimed(periodId, userClaims);
         } else {
             revert InvalidPayloadType();
         }

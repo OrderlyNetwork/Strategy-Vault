@@ -103,6 +103,7 @@ interface IProtocolVaultLedger {
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
+        uint256 ccFee,
         bytes32 vaultId,
         bytes32[] calldata requestIds,
         bytes memory signature
@@ -123,4 +124,9 @@ interface IProtocolVaultLedger {
         external
         view
         returns (AccountState[] memory);
+
+    function quoteClaim(uint256 chainId, uint256 periodId, bytes32[] memory requestIds)
+        external
+        view
+        returns (uint256 nativeFee);
 }

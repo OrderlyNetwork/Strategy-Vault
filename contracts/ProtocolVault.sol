@@ -68,8 +68,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     bool public lpWhitelistEnabled;
     uint256 public lpWhitelistEndTime;
     mapping(address => bool) public lpWhitelist;
-    /// @dev id to cross chain fee that user should afford
-    mapping(bytes32 => uint256) public crossChainFee;
 
     //receive native token
     receive() external payable {}
@@ -234,43 +232,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit UserClaimed(claimParams.roleType, id, amount, requestIds);
     }
 
-    function claimWithFee(ClaimParams memory claimParams) external payable whenNotPaused {
-        bytes32 id;
-        bytes32 brokerHash = claimParams.brokerHash;
-
-        if (claimParams.roleType == RoleType.LP) {
-            id = _getAccountId(msg.sender, brokerHash);
-        } else if (claimParams.roleType == RoleType.SP) {
-            id = _getStrategyProviderId(msg.sender, brokerHash);
-        } else {
-            revert InvalidRoleType();
-        }
-
-        //check
-        if (msg.value != crossChainFee[id]) {
-            revert NotEnoughCCFee();
-        }
-
-        if (claimParams.token != tokenHashToAddress[USDC_HASH]) {
-            revert InvalidClaimToken(claimParams.token);
-        }
-        uint256 amount = userClaimedById[id][USDC_HASH].unClaimedAssets;
-        if (amount == 0) {
-            revert NotEnoughUnclaimedAssets(amount);
-        }
-
-        //effect
-        userClaimedById[id][USDC_HASH].unClaimedAssets = 0;
-        bytes32[] memory requestIds = userClaimedById[id][USDC_HASH].requestIds;
-        delete userClaimedById[id][USDC_HASH].requestIds;
-        delete crossChainFee[id];
-
-        //transfer to user
-        SafeTransferLib.safeTransfer(ERC20(claimParams.token), msg.sender, amount);
-
-        emit UserClaimed(claimParams.roleType, id, amount, requestIds);
-    }
-
     //--------------------------------------FROM Strategy-----------------------------------------
     function depositFromStrategy(uint256 periodId, address token, uint256 amount) external allowedStrategy {
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
@@ -306,7 +267,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit DepositToStrategy(periodId, vaultId, receiver, amount, dexNonce);
     }
 
-    function updateUnClaimed(uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaimInfos)
+    function updateUnClaimed(uint256 periodId, ClaimInfo[] memory userClaimInfos)
         external
         onlyVaultCrossChainManager
     {
@@ -316,7 +277,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
                 : userClaimInfos[i].accountId;
             userClaimedById[userId][USDC_HASH].unClaimedAssets += userClaimInfos[i].assets;
             userClaimedById[userId][USDC_HASH].requestIds.push(userClaimInfos[i].requestId);
-            crossChainFee[userId] += ccFee;
         }
 
         bytes32 vaultId = _getVaultId(ORDERLY_BROKER);

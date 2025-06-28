@@ -134,7 +134,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
             revert RecordAlreadyHandled(adapterDeposit.recordId);
         }
 
-        //Validate amount
+        // Validate amount
         if (adapterDeposit.amount == 0) {
             revert InvalidAmount();
         }

@@ -22,21 +22,27 @@ import {
 import {UserClaimedInfo, RoleType, ClaimParams} from "../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-contract ProtocolVaultTest is Base {
+contract TestSVLedger is Base {
     error AlreadyCalled();
-    error InvalidWithdrawType();
+    error InvalidPeriodId();
+    error InvalidOperator();
+    error NotEnoughLPDeposit(uint256 amount);
     error NotEnoughFrozenShare(uint256 amount);
-    error NotEnoughCCFee();
-    error InvalidClaimToken(address token);
-    error NotEnoughUnclaimedAssets(uint256 amount);
-
-    uint256 shareDecimal = 1e6;
-    uint256 assetDecimal = 1e6;
-    uint256 priceDecimal = 1e6;
-    uint256 periodId;
-    bytes32 vaultId;
+    error NotAllowedTime();
+    error NotEnoughWithdrawShare(uint256 amount);
+    error NotEnoughSPDeposit();
+    error InvalidInput();
+    error InvalidOpType(OperationType operationType);
+    error InvalidWithdrawType();
 
     bytes32[] public spIds;
+
+    uint256 assetDecimal = 10 ** 6;
+    uint256 shareDecimal = 10 ** 6;
+    uint256 priceDecimal = 10 ** 6;
+
+    uint256 periodId;
+    bytes32 vaultId;
 
     function setUp() public override {
         super.setUp();
@@ -141,7 +147,7 @@ contract ProtocolVaultTest is Base {
         svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
 
         vm.startPrank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
@@ -172,7 +178,7 @@ contract ProtocolVaultTest is Base {
 
         vm.startPrank(operator);
         uint256 gasBefore = gasleft();
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         uint256 gasAfter = gasleft();
         uint256 gasUsed = gasBefore - gasAfter;
         console.log("Gas used:", gasUsed);
@@ -195,24 +201,22 @@ contract ProtocolVaultTest is Base {
 
         // Process the unclaimed assets update
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
-        // Verify ccFee is recorded correctly
+        // Verify claim info is recorded correctly
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(userClaimedInfo_A.unClaimedAssets, asset);
-        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
-        console.log("Cross-chain fee per user:", ccFeePerUser);
-        // User A claims with correct fee
+        
+        // User A claims
         mockToken.mint(address(protocolVault), asset * 2);
 
-        vm.deal(userA, ccFeePerUser);
         ClaimParams memory claimParams =
             ClaimParams({roleType: RoleType.LP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         uint256 usdcBalanceBefore = mockToken.balanceOf(userA);
 
         vm.prank(userA);
-        protocolVault.claimWithFee{value: ccFeePerUser}(claimParams);
+        protocolVault.claim(claimParams);
 
         uint256 usdcBalanceAfter = mockToken.balanceOf(userA);
 
@@ -223,9 +227,6 @@ contract ProtocolVaultTest is Base {
         userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(userClaimedInfo_A.unClaimedAssets, 0, "Unclaimed assets should be reset to 0");
         assertEq(userClaimedInfo_A.requestIds.length, 0, "Request IDs should be cleared");
-
-        // Check that the protocol vault has received the cross-chain fee
-        assertEq(address(protocolVault).balance, ccFeePerUser, "Protocol vault should receive the cross-chain fee");
     }
 
     function testUpdateUnclaimedCrossChainFeeAccumulate() public {
@@ -244,13 +245,11 @@ contract ProtocolVaultTest is Base {
 
         // Process the unclaimed assets update
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
-        // Verify ccFee is recorded correctly
+        // Verify unclaimed assets are accumulated correctly
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
-        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
-        console.log("Cross-chain fee per user:", ccFeePerUser);
         assertEq(userClaimedInfo_A.unClaimedAssets, asset * 2);
     }
 
@@ -272,7 +271,7 @@ contract ProtocolVaultTest is Base {
         svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
 
         vm.startPrank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
@@ -299,7 +298,7 @@ contract ProtocolVaultTest is Base {
         svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
 
         vm.startPrank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         //repeat requestId
@@ -310,7 +309,7 @@ contract ProtocolVaultTest is Base {
 
         bytes memory new_signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, newRequestIds);
 
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, newRequestIds, new_signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, newRequestIds, new_signature);
     }
 
     function testClaimZero() public {
@@ -324,7 +323,7 @@ contract ProtocolVaultTest is Base {
 
         vm.startPrank(operator);
         //will not happen cc
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
     }
 
     function testUpgradeFundAssetsSignature() public {

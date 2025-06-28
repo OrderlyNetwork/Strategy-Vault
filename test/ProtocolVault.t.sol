@@ -236,11 +236,9 @@ contract TestProtocolVault is Base {
         svLedger.setLpClaimInfo(requestIds[1], userB_id, amount);
 
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
-
-        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
 
         //check
         UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
@@ -254,11 +252,9 @@ contract TestProtocolVault is Base {
         ClaimParams memory claimParams =
             ClaimParams({roleType: RoleType.LP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         vm.prank(userA);
-        protocolVault.claimWithFee{value: ccFeePerUser}(claimParams);
+        protocolVault.claim(claimParams);
 
-        ccFeePerUser = protocolVault.crossChainFee(userA_id);
         //check
-        assertEq(ccFeePerUser, 0);
         userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
         assertEq(IERC20(mockToken).balanceOf(userA), amount + userBalanceBefore);
@@ -285,7 +281,7 @@ contract TestProtocolVault is Base {
         svLedger.setLpClaimInfo(requestIds[0], userA_id, amount);
         svLedger.setSpClaimInfo(requestIds[1], spId, amount);
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
@@ -301,17 +297,14 @@ contract TestProtocolVault is Base {
         uint256 userBalanceBefore = IERC20(mockToken).balanceOf(sp);
 
         //SP claim
-        uint256 ccFeePerUser = protocolVault.crossChainFee(spId);
-
         mockToken.mint(address(protocolVault), amount);
 
         ClaimParams memory claimParams =
             ClaimParams({roleType: RoleType.SP, token: address(mockToken), brokerHash: ORDERLY_BROKER});
         vm.prank(sp);
-        protocolVault.claimWithFee{value: ccFeePerUser}(claimParams);
-        ccFeePerUser = protocolVault.crossChainFee(spId);
+        protocolVault.claim(claimParams);
+        
         //check
-        assertEq(ccFeePerUser, 0);
         spClaimedInfo = protocolVault.getUserClaimedInfo(spId);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
         assertEq(IERC20(mockToken).balanceOf(sp), amount + userBalanceBefore);
@@ -458,7 +451,7 @@ contract TestProtocolVault is Base {
         vm.prank(userA);
 
         vm.expectRevert(abi.encodeWithSelector(NotEnoughUnclaimedAssets.selector, 0));
-        protocolVault.claimWithFee(claimParams);
+        protocolVault.claim(claimParams);
     }
 
     function testRevertPause() public {
