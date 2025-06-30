@@ -44,7 +44,8 @@ contract VaultAdapterTest is Base {
         );
 
         vaultAdapter = VaultAdapter(payable(proxy));
-
+        // Deposit ETH to adapter
+        vm.deal(address(vaultAdapter), 5 ether);
         // Mint tokens to adapter
         mockToken.mint(address(vaultAdapter), 1000e6);
     }
@@ -183,16 +184,17 @@ contract VaultAdapterTest is Base {
 
     function testDepositNative() public {
         // Create deposit params for LP with native token
-        AdapterDeposit memory depositLP = _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 100);
+        AdapterDeposit memory depositLP =
+            _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 100);
         bytes memory signatureLP = _signDeposit(depositLP);
 
         // Prepare operator with native token
-        vm.deal(adapterOperator, 2 ether);
+
         uint256 balanceBefore = address(mockDexVault).balance;
 
         // Perform native deposit
         vm.prank(adapterOperator);
-        vaultAdapter.depositNative{value: 1 ether}(depositLP, signatureLP);
+        vaultAdapter.depositNative(depositLP, signatureLP);
 
         // Check record has been marked as handled
         assertTrue(vaultAdapter.isRecordHandled(100));
@@ -200,12 +202,13 @@ contract VaultAdapterTest is Base {
         assertEq(address(mockDexVault).balance, balanceBefore + 1 ether);
 
         // Create deposit params for SP with native token
-        AdapterDeposit memory depositSP = _createDeposit(RoleType.SP, receiver, 0.5 ether, ORDERLY_BROKER, NATIVE_HASH, 101);
+        AdapterDeposit memory depositSP =
+            _createDeposit(RoleType.SP, receiver, 0.5 ether, ORDERLY_BROKER, NATIVE_HASH, 101);
         bytes memory signatureSP = _signDeposit(depositSP);
 
         // Perform SP native deposit
         vm.prank(adapterOperator);
-        vaultAdapter.depositNative{value: 0.5 ether}(depositSP, signatureSP);
+        vaultAdapter.depositNative(depositSP, signatureSP);
 
         // Check record has been marked as handled
         assertTrue(vaultAdapter.isRecordHandled(101));
@@ -219,48 +222,38 @@ contract VaultAdapterTest is Base {
 
         vm.deal(address(this), 1 ether);
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("Unauthorized()"))));
-        vaultAdapter.depositNative{value: 1 ether}(deposit, signature);
-    }
-
-    function testRevertDepositNativeInvalidAmount() public {
-        AdapterDeposit memory deposit = _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 103);
-        bytes memory signature = _signDeposit(deposit);
-
-        vm.deal(adapterOperator, 2 ether);
-        vm.prank(adapterOperator);
-        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("InvalidNativeAmount()"))));
-        vaultAdapter.depositNative{value: 2 ether}(deposit, signature);
+        vaultAdapter.depositNative(deposit, signature);
     }
 
     function testRevertDepositNativeDuplicateRecord() public {
         AdapterDeposit memory deposit = _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 104);
         bytes memory signature = _signDeposit(deposit);
 
-        vm.deal(adapterOperator, 2 ether);
         vm.startPrank(adapterOperator);
-        
-        vaultAdapter.depositNative{value: 1 ether}(deposit, signature);
-        
+
+        vaultAdapter.depositNative(deposit, signature);
+
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("RecordAlreadyHandled(uint256)")), 104));
-        vaultAdapter.depositNative{value: 1 ether}(deposit, signature);
-        
+        vaultAdapter.depositNative(deposit, signature);
+
         vm.stopPrank();
     }
 
     function testRevertDepositNativeInvalidBroker() public {
         bytes32 invalidBrokerHash = keccak256("invalid_broker");
-        AdapterDeposit memory deposit = _createDeposit(RoleType.LP, receiver, 1 ether, invalidBrokerHash, NATIVE_HASH, 105);
+        AdapterDeposit memory deposit =
+            _createDeposit(RoleType.LP, receiver, 1 ether, invalidBrokerHash, NATIVE_HASH, 105);
         bytes memory signature = _signDeposit(deposit);
 
         vm.deal(adapterOperator, 1 ether);
         vm.prank(adapterOperator);
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("BrokerNotAllowed()"))));
-        vaultAdapter.depositNative{value: 1 ether}(deposit, signature);
+        vaultAdapter.depositNative(deposit, signature);
     }
 
     function testRevertDepositNativeInvalidSignature() public {
         AdapterDeposit memory deposit = _createDeposit(RoleType.LP, receiver, 1 ether, ORDERLY_BROKER, NATIVE_HASH, 107);
-        
+
         // Create invalid signature
         (, uint256 randomKey) = makeAddrAndKey("random");
         bytes32 messageHash = keccak256(abi.encode(deposit, block.chainid));
@@ -270,7 +263,7 @@ contract VaultAdapterTest is Base {
         vm.deal(adapterOperator, 1 ether);
         vm.prank(adapterOperator);
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("InvalidSigner()"))));
-        vaultAdapter.depositNative{value: 1 ether}(deposit, invalidSignature);
+        vaultAdapter.depositNative(deposit, invalidSignature);
     }
 
     function testRevertDepositToInvalidTokenHash() public {

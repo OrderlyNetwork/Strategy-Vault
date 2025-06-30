@@ -5,6 +5,7 @@ import "./tasks/deploy.js";
 import "./tasks/config.js";
 import "./tasks/check.js";
 import "./tasks/transferOwnerShip.js";
+import "./tasks/verify.js";
 const config: HardhatUserConfig = {
   solidity: "0.8.26",
 };

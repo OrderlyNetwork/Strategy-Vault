@@ -18,12 +18,11 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
 
     /// @dev keccak256(abi.encodePacked(broker string))
     bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
-    /// @dev Protocol vault address
-    address constant PROTOCOL_VAULT = 0x70Fe7d65Ac7c1a1732f64d2E6fC0E33622D0C991;
 
     address public operator;
     address public dexVault;
     address public engine;
+    address public protocolVault;
 
     /// @dev Broker Id => isAllowed
     mapping(bytes32 => bool) public isAllowedBroker;
@@ -84,20 +83,11 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
      * @param adapterDeposit The deposit parameters
      * @param signature The signature for validation
      */
-    function depositNative(AdapterDeposit memory adapterDeposit, bytes calldata signature)
-        external
-        payable
-        onlyOperator
-    {
-        // Validate native token deposit
-        if (msg.value != adapterDeposit.amount) {
-            revert InvalidNativeAmount();
-        }
-
+    function depositNative(AdapterDeposit memory adapterDeposit, bytes calldata signature) external onlyOperator {
         // Process the deposit
         (uint256 fee, VaultDepositFE memory depositData) = _processDeposit(adapterDeposit, signature);
         //Transfer native tokens to the DexVault
-        uint256 totalValue = msg.value + fee;
+        uint256 totalValue = adapterDeposit.amount + fee;
         IDexVault(dexVault).depositTo{value: totalValue}(adapterDeposit.receiver, depositData);
 
         // Emit event
@@ -144,7 +134,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
             revert RecordAlreadyHandled(adapterDeposit.recordId);
         }
 
-        //Valite amount
+        // Validate amount
         if (adapterDeposit.amount == 0) {
             revert InvalidAmount();
         }
@@ -165,7 +155,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
         address receiver = adapterDeposit.receiver;
         bytes32 id = roleType == RoleType.LP
             ? VaultUtils.getAccountId(receiver, brokerHash)
-            : VaultUtils.getStrategyProviderId(PROTOCOL_VAULT, receiver, brokerHash);
+            : VaultUtils.getStrategyProviderId(protocolVault, receiver, brokerHash);
 
         // Create deposit data structure
         VaultDepositFE memory depositData = VaultDepositFE({
@@ -206,13 +196,24 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
             revert ZeroAddress();
         }
         engine = _engine;
+        emit EngineSet(_engine);
     }
 
     function setAllowedBroker(bytes32 brokerHash, bool isAllowed) external onlyOwner {
         isAllowedBroker[brokerHash] = isAllowed;
+        emit BrokerAllowedSet(brokerHash, isAllowed);
     }
 
     function setAllowedTokenHashToToken(bytes32 tokenHash, address token) external onlyOwner {
         tokenHashToToken[tokenHash] = token;
+        emit TokenHashToTokenSet(tokenHash, token);
+    }
+
+    function setProtocolVault(address _protocolVault) external onlyOwner {
+        if (_protocolVault == address(0)) {
+            revert ZeroAddress();
+        }
+        protocolVault = _protocolVault;
+        emit ProtocolVaultSet(_protocolVault);
     }
 }

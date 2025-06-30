@@ -35,7 +35,7 @@ contract Base is TestHelperOz5 {
     uint32 constant LEDGER_CHAIN_ID = 291;
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
     bytes32 constant NATIVE_HASH = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    
+
     address public owner = address(0x123);
     address public sp = address(0x2);
     address public user = address(0x1);
@@ -187,7 +187,7 @@ contract Base is TestHelperOz5 {
         //mint token
         mockToken.mint(user, 100000e18);
         mockToken.mint(sp, 100000e18);
-    
+
         //approve
         vm.prank(user);
         mockToken.approve(address(protocolVault), 100e6);

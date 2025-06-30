@@ -7,7 +7,7 @@ enum PayloadType {
     SP_DEPOSIT,
     SP_WITHDRAW,
     ASSETS_DISTRIBUTION,
-    UPDATE_USER_CLAIM  
+    UPDATE_USER_CLAIM
 }
 
 struct StrategyVaultCCMessage {
@@ -25,4 +25,3 @@ struct LzOptions {
     uint128 gas;
     uint128 value;
 }
-

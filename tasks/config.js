@@ -127,6 +127,16 @@ task("lz-orderly-config", "Config Lz on orderly")
         await lz_orderly_config(taskArgs.env, taskArgs.chain);
     });
 
+task("config-adapter", "Config VaultAdapter allowed brokers")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await configVaultAdapter(taskArgs.env);
+    });
+
 async function configProtocolVaultLedger(env) {
     //get the contract instance
     const pvLedgerContract = await ethers.getContractAt(
@@ -265,6 +275,72 @@ async function configProtocolVault(env) {
     console.log("transfer native to protocol vaultsuccessfully");
 
 }
+
+async function configVaultAdapter(env) {
+    console.log(`Configuring VaultAdapter for ${env} environment...`);
+    const currentNetwork = hre.network.name;
+
+    // Get the contract instance
+    const vaultAdapterContract = await ethers.getContractAt(
+        "VaultAdapter",
+        deployment[env].vaultAdapter
+    );
+
+    // Get allowed brokers from deployment config
+    const allowedBrokers = deployment.allowedBrokersForAdapter;
+
+    if (!allowedBrokers || allowedBrokers.length === 0) {
+        console.log("No allowed brokers found in deployment config");
+        return;
+    }
+
+    let configuredCount = 0;
+    let skippedCount = 0;
+
+    //set allowed brokers
+    for (const brokerHash of allowedBrokers) {
+        console.log(`Checking broker: ${brokerHash}`);
+
+        try {
+            // Check if broker is already allowed
+            const isAllowed = await vaultAdapterContract.isAllowedBroker(brokerHash);
+
+            if (isAllowed) {
+                console.log(`✓ Broker ${brokerHash} is already configured`);
+                skippedCount++;
+            } else {
+                console.log(`→ Configuring broker ${brokerHash}...`);
+                // Set broker as allowed
+                const tx = await vaultAdapterContract.setAllowedBroker(brokerHash, true);
+                await tx.wait();
+                console.log(`✓ Broker ${brokerHash} configured successfully`);
+                configuredCount++;
+            }
+        } catch (error) {
+            console.error(`✗ Failed to configure broker ${brokerHash}:`, error.message);
+        }
+    }
+
+    //set usdt token hash
+    const usdtHash = "0x8b1a1d9c2b109e527c9134b25b1a1833b16b6594f92daa9f6d9b7a6024bce9d0"; // USDT hash
+    const usdtToken = config[currentNetwork].USDT;
+    const mappedUsdtToken = await vaultAdapterContract.tokenHashToToken(usdtHash);
+
+    if (usdtToken != mappedUsdtToken) {
+        tx = await vaultAdapterContract.setAllowedTokenHashToToken(usdtHash, usdtToken);
+        await tx.wait();
+        console.log(`USDT token hash ${usdtHash} set to ${usdtToken} successfully`);
+    } else {
+        console.log(`USDT token hash ${usdtHash} is already set to ${usdtToken}`);
+    }
+
+    //set protocol vault
+    const protocolVault = deployment[env].protocolVault;
+    tx = await vaultAdapterContract.setProtocolVault(protocolVault);
+    await tx.wait();
+    console.log(`Protocol Vault set to ${protocolVault} successfully`);
+}
+
 async function configEVMCrossChainManager(env) {
     //get the contract instance
     const ccManagerContract = await ethers.getContractAt(
