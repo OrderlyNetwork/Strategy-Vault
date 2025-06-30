@@ -239,9 +239,9 @@ async function deployVaultAdapter(env) {
     const currentNetwork = hre.network.name;
 
     // Get configuration values
-    const operator = deployment[env].operator;
+    const operator = deployment[env].dex_operator;
     const dexVault = deployment[env].dex[currentNetwork];
-    const engine = deployment[env].engine;
+    const engine = deployment[env].adapter_engine;
     const usdc = config[currentNetwork].USDC;
     const owner = deployment[env].owner;
 

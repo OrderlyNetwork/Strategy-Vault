@@ -145,9 +145,12 @@ abstract contract RateLimiter {
      * @return currentAmountInFlight The current amount that was sent.
      * @return amountCanBeSent The amount that can be sent.
      */
-    function getAmountCanBeSent(
-        uint32 _dstEid
-    ) external view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeSent) {
+    function getAmountCanBeSent(uint32 _dstEid)
+        external
+        view
+        virtual
+        returns (uint256 currentAmountInFlight, uint256 amountCanBeSent)
+    {
         RateLimit memory rl = rateLimits[_dstEid];
         return _amountCanBeSent(rl.amountInFlight, rl.lastUpdated, rl.limit, rl.window);
     }
@@ -184,12 +187,12 @@ abstract contract RateLimiter {
      * @return currentAmountInFlight The amount in the current window.
      * @return amountCanBeSent The amount that can be sent.
      */
-    function _amountCanBeSent(
-        uint256 _amountInFlight,
-        uint256 _lastUpdated,
-        uint256 _limit,
-        uint256 _window
-    ) internal view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeSent) {
+    function _amountCanBeSent(uint256 _amountInFlight, uint256 _lastUpdated, uint256 _limit, uint256 _window)
+        internal
+        view
+        virtual
+        returns (uint256 currentAmountInFlight, uint256 amountCanBeSent)
+    {
         uint256 timeSinceLastDeposit = block.timestamp - _lastUpdated;
         if (timeSinceLastDeposit >= _window) {
             currentAmountInFlight = 0;
@@ -214,12 +217,8 @@ abstract contract RateLimiter {
         // @dev By default dstEid that have not been explicitly set will return amountCanBeSent == 0.
         RateLimit storage rl = rateLimits[_dstEid];
 
-        (uint256 currentAmountInFlight, uint256 amountCanBeSent) = _amountCanBeSent(
-            rl.amountInFlight,
-            rl.lastUpdated,
-            rl.limit,
-            rl.window
-        );
+        (uint256 currentAmountInFlight, uint256 amountCanBeSent) =
+            _amountCanBeSent(rl.amountInFlight, rl.lastUpdated, rl.limit, rl.window);
         if (_amount > amountCanBeSent) revert RateLimitExceeded();
 
         // @dev Update the storage to contain the new amount and current timestamp.
