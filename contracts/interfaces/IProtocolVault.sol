@@ -41,10 +41,11 @@ interface IProtocolVault {
     error NotAllowedStrategyProvider(bytes32 strategyProviderId);
     error InvalidClaimToken(address token);
     error ZeroAmount();
+    error NotEnoughCrossChainFee();
 
     function deposit(DepositParams memory depositParams) external payable;
     function withdraw(WithdrawParams memory withdrawParams) external payable;
     function claim(ClaimParams memory claimParams) external;
     function depositToStrategy(uint256 periodId, address receiver, uint256 amount) external;
-    function updateUnClaimed(uint256 periodId, ClaimInfo[] memory userClaimInfos) external;
+    function updateUnClaimed(uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaimInfos) external;
 }

@@ -1021,4 +1021,114 @@ contract TestSVLedger is Base {
         console.logBytes(abi.encode(_periodId, _vaultId, assetsDistributions));
         console.logBytes32(messageHash);
     }
+
+    function testUpdateUnclaimedWithCcFee() public {
+        bytes32[] memory requestIds = new bytes32[](3);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+        requestIds[2] = keccak256(abi.encode(2));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+
+        // Set up the claim info on the ledger
+        uint256 asset = 1000 * assetDecimal;
+        uint256 ccFee = 30; // Total fee that will be divided among users
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+        svLedger.setLpClaimInfo(requestIds[2], userA_id, asset);
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        // Verify fee calculation: feePerUser = 30 / 3 = 10, actualTotalFee = 10 * 3 = 30
+        uint256 expectedFeePerUser = ccFee / requestIds.length; // 10
+        uint256 expectedActualTotalFee = expectedFeePerUser * requestIds.length; // 30
+        uint256 expectedUserAssets = asset - expectedFeePerUser; // 1000 - 10 = 990
+
+        // Check user claims (assets should be reduced by fee)
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        UserClaimedInfo memory userClaimedInfo_B = protocolVault.getUserClaimedInfo(userB_id);
+        
+        assertEq(userClaimedInfo_A.unClaimedAssets, expectedUserAssets * 2, "User A should have assets from 2 requests minus fees");
+        assertEq(userClaimedInfo_B.unClaimedAssets, expectedUserAssets, "User B should have assets from 1 request minus fee");
+        
+        // Check that the cross chain fee is accumulated correctly (actualTotalFee, not original ccFee)
+        assertEq(protocolVault.claimCrossChainFee(), expectedActualTotalFee, "Cross chain fee should equal actualTotalFee");
+    }
+
+    function testUpdateUnclaimedWithCcFeeRemainder() public {
+        bytes32[] memory requestIds = new bytes32[](3);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+        requestIds[2] = keccak256(abi.encode(2));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+
+        // Set up the claim info on the ledger
+        uint256 asset = 1000 * assetDecimal;
+        uint256 ccFee = 31; // Fee that doesn't divide evenly (31 / 3 = 10 remainder 1)
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+        svLedger.setLpClaimInfo(requestIds[2], userA_id, asset);
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        // Verify fee calculation: feePerUser = 31 / 3 = 10, actualTotalFee = 10 * 3 = 30 (remainder lost)
+        uint256 expectedFeePerUser = ccFee / requestIds.length; // 10
+        uint256 expectedActualTotalFee = expectedFeePerUser * requestIds.length; // 30
+        uint256 expectedUserAssets = asset - expectedFeePerUser; // 1000 - 10 = 990
+        uint256 lostFee = ccFee - expectedActualTotalFee; // 1
+
+        // Check that the cross chain fee is actualTotalFee (30), not original ccFee (31)
+        assertEq(protocolVault.claimCrossChainFee(), expectedActualTotalFee, "Cross chain fee should equal actualTotalFee, not original ccFee");
+        assertEq(lostFee, 1, "Should lose 1 unit due to division truncation");
+    }
+
+    function testMultipleUpdateUnclaimedFeeAccumulation() public {
+        // First batch
+        bytes32[] memory requestIds1 = new bytes32[](2);
+        requestIds1[0] = keccak256(abi.encode(0));
+        requestIds1[1] = keccak256(abi.encode(1));
+
+        bytes memory signature1 = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds1);
+
+        uint256 asset = 1000 * assetDecimal;
+        uint256 ccFee1 = 20;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        
+        svLedger.setLpClaimInfo(requestIds1[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds1[1], userB_id, asset);
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee1, vaultId, requestIds1, signature1);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        uint256 expectedFee1 = (ccFee1 / requestIds1.length) * requestIds1.length; // 10 * 2 = 20
+        assertEq(protocolVault.claimCrossChainFee(), expectedFee1, "First fee accumulation should be correct");
+
+        // Second batch
+        bytes32[] memory requestIds2 = new bytes32[](1);
+        requestIds2[0] = keccak256(abi.encode(2));
+
+        bytes memory signature2 = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds2);
+
+        uint256 ccFee2 = 15;
+        svLedger.setLpClaimInfo(requestIds2[0], userA_id, asset);
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee2, vaultId, requestIds2, signature2);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        uint256 expectedFee2 = (ccFee2 / requestIds2.length) * requestIds2.length; // 15 * 1 = 15
+        uint256 totalExpectedFee = expectedFee1 + expectedFee2; // 20 + 15 = 35
+        
+        assertEq(protocolVault.claimCrossChainFee(), totalExpectedFee, "Total fee accumulation should be correct");
+    }
 }

@@ -68,6 +68,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     bool public lpWhitelistEnabled;
     uint256 public lpWhitelistEndTime;
     mapping(address => bool) public lpWhitelist;
+    /// @dev cross chain fee for claims
+    uint256 public claimCrossChainFee;
 
     //receive native token
     receive() external payable {}
@@ -267,7 +269,12 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit DepositToStrategy(periodId, vaultId, receiver, amount, dexNonce);
     }
 
-    function updateUnClaimed(uint256 periodId, ClaimInfo[] memory userClaimInfos) external onlyVaultCrossChainManager {
+    function updateUnClaimed(uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaimInfos)
+        external
+        onlyVaultCrossChainManager
+    {
+        claimCrossChainFee += ccFee;
+
         for (uint256 i = 0; i < userClaimInfos.length; i++) {
             bytes32 userId = userClaimInfos[i].accountId == bytes32(0)
                 ? userClaimInfos[i].strategyProviderId
@@ -280,11 +287,16 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit UnClaimedUpdated(periodId, vaultId, userClaimInfos);
     }
 
-    /// @notice withdraw native token
-    /// @param to the receiver address
-    /// @param amount the amount to withdraw
-    function withdrawNativeToken(address payable to, uint256 amount) external onlyOwner {
-        to.sendValue(amount);
+    function withdrawToken(address token, address to, uint256 amount) external onlyOwner {
+        if (address(token) != address(0)) {
+            if (amount > claimCrossChainFee) {
+                revert NotEnoughCrossChainFee();
+            }
+            claimCrossChainFee -= amount;
+            SafeTransferLib.safeTransfer(ERC20(token), to, amount);
+        } else {
+            payable(to).sendValue(amount);
+        }
     }
 
     //--------------------------------------CONFIG--------------------------------------------

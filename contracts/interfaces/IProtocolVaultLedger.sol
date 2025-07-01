@@ -125,7 +125,7 @@ interface IProtocolVaultLedger {
         view
         returns (AccountState[] memory);
 
-    function quoteClaim(uint256 chainId, uint256 periodId, bytes32[] memory requestIds)
+    function quoteClaim(uint256 chainId, uint256 periodId, uint256 ccFee, bytes32[] memory requestIds)
         external
         view
         returns (uint256 nativeFee);

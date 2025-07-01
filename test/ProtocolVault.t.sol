@@ -24,6 +24,7 @@ contract TestProtocolVault is Base {
     error EnforcedPause();
     error NotEnoughUnclaimedAssets(uint256 amount);
     error VaultClosed();
+    error NotEnoughCrossChainFee();
 
     function setUp() public override {
         super.setUp();
@@ -623,5 +624,231 @@ contract TestProtocolVault is Base {
         vm.expectRevert("Not in whitelist");
         protocolVault.deposit{value: nativeFee}(depositParams);
         vm.stopPrank();
+    }
+
+    function testWithdrawCrossChainFee() public {
+        // Setup: Create some cross chain fees
+        uint256 periodId;
+        bytes32 vaultId;
+        uint256 amount = 100e6;
+        uint256 ccFee = 20; // Total fee
+
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+
+        // Add claim info on ledger
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, amount);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, amount);
+
+        // Process unclaimed update with fees
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        // Calculate expected accumulated fee: feePerUser = 20/2 = 10, actualTotalFee = 10*2 = 20
+        uint256 expectedAccumulatedFee = (ccFee / requestIds.length) * requestIds.length;
+        assertEq(protocolVault.claimCrossChainFee(), expectedAccumulatedFee, "Cross chain fee should be accumulated correctly");
+
+        // Mint tokens to vault to represent collected fees
+        mockToken.mint(address(protocolVault), expectedAccumulatedFee);
+
+        // Owner withdraws part of the fees
+        uint256 withdrawAmount = 15;
+        uint256 ownerBalanceBefore = mockToken.balanceOf(owner);
+        
+        vm.prank(owner);
+        protocolVault.withdrawToken(address(mockToken), owner, withdrawAmount);
+
+        // Verify withdrawal
+        uint256 ownerBalanceAfter = mockToken.balanceOf(owner);
+        assertEq(ownerBalanceAfter - ownerBalanceBefore, withdrawAmount, "Owner should receive withdrawn amount");
+        assertEq(protocolVault.claimCrossChainFee(), expectedAccumulatedFee - withdrawAmount, "Cross chain fee should be reduced after withdrawal");
+    }
+
+    function testWithdrawCrossChainFeeExceedsAvailable() public {
+        // Setup: Create some cross chain fees
+        uint256 periodId;
+        bytes32 vaultId;
+        uint256 amount = 100e6;
+        uint256 ccFee = 10;
+
+        bytes32[] memory requestIds = new bytes32[](1);
+        requestIds[0] = keccak256(abi.encode(0));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, amount);
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        uint256 expectedAccumulatedFee = ccFee; // Only 1 user, so actualTotalFee = ccFee
+        assertEq(protocolVault.claimCrossChainFee(), expectedAccumulatedFee, "Cross chain fee should be accumulated");
+
+        // Try to withdraw more than available
+        uint256 excessiveWithdrawAmount = expectedAccumulatedFee + 1;
+        
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(NotEnoughCrossChainFee.selector));
+        protocolVault.withdrawToken(address(mockToken), owner, excessiveWithdrawAmount);
+    }
+
+    function testMultipleFeeAccumulationAndWithdrawal() public {
+        uint256 periodId;
+        bytes32 vaultId;
+        uint256 amount = 100e6;
+
+        // First batch of fees
+        uint256 ccFee1 = 12;
+        bytes32[] memory requestIds1 = new bytes32[](3);
+        requestIds1[0] = keccak256(abi.encode(0));
+        requestIds1[1] = keccak256(abi.encode(1));
+        requestIds1[2] = keccak256(abi.encode(2));
+
+        bytes memory signature1 = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds1);
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+
+        for (uint256 i = 0; i < requestIds1.length; i++) {
+            svLedger.setLpClaimInfo(requestIds1[i], userA_id, amount);
+        }
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee1, vaultId, requestIds1, signature1);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        uint256 expectedFee1 = (ccFee1 / requestIds1.length) * requestIds1.length; // 4 * 3 = 12
+        assertEq(protocolVault.claimCrossChainFee(), expectedFee1, "First fee accumulation should be correct");
+
+        // Second batch of fees
+        uint256 ccFee2 = 21;
+        bytes32[] memory requestIds2 = new bytes32[](2);
+        requestIds2[0] = keccak256(abi.encode(3));
+        requestIds2[1] = keccak256(abi.encode(4));
+
+        bytes memory signature2 = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds2);
+
+        for (uint256 i = 0; i < requestIds2.length; i++) {
+            svLedger.setLpClaimInfo(requestIds2[i], userB_id, amount);
+        }
+
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee2, vaultId, requestIds2, signature2);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        uint256 expectedFee2 = (ccFee2 / requestIds2.length) * requestIds2.length; // 10 * 2 = 20
+        uint256 totalExpectedFee = expectedFee1 + expectedFee2; // 12 + 20 = 32
+        assertEq(protocolVault.claimCrossChainFee(), totalExpectedFee, "Total fee accumulation should be correct");
+
+        // Mint tokens to represent collected fees
+        mockToken.mint(address(protocolVault), totalExpectedFee);
+
+        // Owner withdraws all fees
+        uint256 ownerBalanceBefore = mockToken.balanceOf(owner);
+        
+        vm.prank(owner);
+        protocolVault.withdrawToken(address(mockToken), owner, totalExpectedFee);
+
+        // Verify complete withdrawal
+        uint256 ownerBalanceAfter = mockToken.balanceOf(owner);
+        assertEq(ownerBalanceAfter - ownerBalanceBefore, totalExpectedFee, "Owner should receive all fees");
+        assertEq(protocolVault.claimCrossChainFee(), 0, "Cross chain fee should be zero after full withdrawal");
+    }
+
+    function testWithdrawNativeToken() public {
+        // Send some native tokens to the vault
+        uint256 nativeAmount = 1 ether;
+        vm.deal(address(protocolVault), nativeAmount);
+
+        uint256 ownerBalanceBefore = owner.balance;
+
+        // Withdraw native tokens
+        vm.prank(owner);
+        protocolVault.withdrawToken(address(0), owner, nativeAmount);
+
+        uint256 ownerBalanceAfter = owner.balance;
+        assertEq(ownerBalanceAfter - ownerBalanceBefore, nativeAmount, "Owner should receive native tokens");
+        assertEq(address(protocolVault).balance, 0, "Vault should have no native tokens left");
+    }
+
+    function testSingleUserCcFeeCollectionAndWithdrawal() public {
+        // Setup: Create cross chain fee scenario with single user
+        uint256 periodId;
+        bytes32 vaultId;
+        uint256 userAsset = 1000e6; // User has 1000 USDC to claim
+        uint256 ccFee = 50; // 50 USDC cross chain fee
+
+        bytes32[] memory requestIds = new bytes32[](1);
+        requestIds[0] = keccak256(abi.encode("singleUser"));
+
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+
+        // Add claim info for single user
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, userAsset);
+
+        // Process unclaimed update with fees
+        vm.prank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        // For single user: feePerUser = ccFee / 1 = 50, actualTotalFee = 50 * 1 = 50
+        uint256 expectedFeePerUser = ccFee; // 50
+        uint256 expectedActualTotalFee = ccFee; // 50 (same as ccFee for single user)
+        uint256 expectedUserAssets = userAsset - expectedFeePerUser; // 1000 - 50 = 950
+
+        // Verify user claim info (asset should be reduced by fee)
+        UserClaimedInfo memory userClaimedInfo = protocolVault.getUserClaimedInfo(userA_id);
+        assertEq(userClaimedInfo.unClaimedAssets, expectedUserAssets, "User assets should be reduced by ccFee");
+        assertEq(userClaimedInfo.requestIds.length, 1, "User should have 1 request ID");
+        assertEq(userClaimedInfo.requestIds[0], requestIds[0], "Request ID should match");
+
+        // Verify protocol vault accumulated the correct fee
+        assertEq(protocolVault.claimCrossChainFee(), expectedActualTotalFee, "Protocol should collect exactly the ccFee amount");
+
+        // Mint tokens to vault to represent the collected fees
+        mockToken.mint(address(protocolVault), expectedActualTotalFee);
+        
+        // Owner withdraws the collected fees
+        uint256 ownerBalanceBefore = mockToken.balanceOf(owner);
+        
+        vm.prank(owner);
+        protocolVault.withdrawToken(address(mockToken), owner, expectedActualTotalFee);
+
+        // Verify owner received the fees
+        uint256 ownerBalanceAfter = mockToken.balanceOf(owner);
+        assertEq(ownerBalanceAfter - ownerBalanceBefore, expectedActualTotalFee, "Owner should receive all collected fees");
+        
+        // Verify protocol vault fee counter is reset
+        assertEq(protocolVault.claimCrossChainFee(), 0, "Cross chain fee should be zero after withdrawal");
+
+        // Verify the fee amount calculation
+        assertEq(expectedActualTotalFee, ccFee, "For single user, actualTotalFee should equal original ccFee");
+        
+        // Additional verification: User can still claim their remaining assets
+        mockToken.mint(address(protocolVault), expectedUserAssets);
+        
+        uint256 userBalanceBefore = mockToken.balanceOf(userA);
+        ClaimParams memory claimParams = ClaimParams({
+            roleType: RoleType.LP, 
+            token: address(mockToken), 
+            brokerHash: ORDERLY_BROKER
+        });
+        
+        vm.prank(userA);
+        protocolVault.claim(claimParams);
+        
+        uint256 userBalanceAfter = mockToken.balanceOf(userA);
+        assertEq(userBalanceAfter - userBalanceBefore, expectedUserAssets, "User should receive assets minus fee");
+        
+        // Final verification: User claim info should be cleared
+        userClaimedInfo = protocolVault.getUserClaimedInfo(userA_id);
+        assertEq(userClaimedInfo.unClaimedAssets, 0, "User unclaimed assets should be zero after claim");
+        assertEq(userClaimedInfo.requestIds.length, 0, "User request IDs should be cleared after claim");
     }
 }

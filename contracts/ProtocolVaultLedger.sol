@@ -629,12 +629,13 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 delete userClaimInfo[requestId];
             }
 
+            uint256 actualTotalFee = feePerUser * userClaimInfos.length;
             // Cross chain message
             StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
                 payloadType: PayloadType.UPDATE_USER_CLAIM,
                 srcChainId: block.chainid,
                 dstChainId: chainId,
-                payload: abi.encode(periodId, userClaimInfos)
+                payload: abi.encode(periodId, actualTotalFee, userClaimInfos)
             });
 
             // Send cross-chain message
@@ -758,7 +759,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @param periodId period id
     /// @param requestIds request Id array
     /// @return nativeFee native token fee required
-    function quoteClaim(uint256 chainId, uint256 periodId, bytes32[] memory requestIds)
+    function quoteClaim(uint256 chainId, uint256 periodId, uint256 ccFee, bytes32[] memory requestIds)
         external
         view
         returns (uint256 nativeFee)
@@ -776,7 +777,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             payloadType: PayloadType.UPDATE_USER_CLAIM,
             srcChainId: block.chainid,
             dstChainId: chainId,
-            payload: abi.encode(periodId, userClaimInfos)
+            payload: abi.encode(periodId, ccFee, userClaimInfos)
         });
 
         // Return only the native fee
