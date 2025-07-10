@@ -146,6 +146,22 @@ async function deployCrossChainManagerImpl(VaultCrossChainManager) {
 
     console.log("VaultCrossChainManager Impl deployed to:", implAddr);
 
+    // Verify VaultCrossChainManager implementation contract
+    try {
+        console.log(`Verifying VaultCrossChainManager implementation contract: ${implAddr}`);
+        await hre.run("verify:verify", {
+            address: implAddr,
+            constructorArguments: []
+        });
+        console.log(`✅ VaultCrossChainManager implementation contract verified successfully: ${implAddr}`);
+    } catch (error) {
+        console.log(`⚠️ VaultCrossChainManager implementation contract verification failed: ${error.message}`);
+        // If already verified, no need to throw exception
+        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
+            console.error("VaultCrossChainManager implementation contract verification error:", error);
+        }
+    }
+
     return implAddr;
 }
 function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env) {
@@ -275,6 +291,22 @@ async function deployVaultAdapterImpl(VaultAdapter) {
 
     console.log("VaultAdapter Impl deployed to:", implAddr);
 
+    // Verify VaultAdapter implementation contract
+    try {
+        console.log(`Verifying VaultAdapter implementation contract: ${implAddr}`);
+        await hre.run("verify:verify", {
+            address: implAddr,
+            constructorArguments: []
+        });
+        console.log(`✅ VaultAdapter implementation contract verified successfully: ${implAddr}`);
+    } catch (error) {
+        console.log(`⚠️ VaultAdapter implementation contract verification failed: ${error.message}`);
+        // If already verified, no need to throw exception
+        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
+            console.error("VaultAdapter implementation contract verification error:", error);
+        }
+    }
+
     return implAddr;
 }
 async function deployProtocolVaultImpl(ProtocolVault) {
@@ -283,6 +315,22 @@ async function deployProtocolVaultImpl(ProtocolVault) {
     await ProtocolVaultContract.waitForDeployment();
 
     console.log("ProtocolVaultContract Impl deployed to:", implAddr);
+
+    // Verify ProtocolVault implementation contract
+    try {
+        console.log(`Verifying ProtocolVault implementation contract: ${implAddr}`);
+        await hre.run("verify:verify", {
+            address: implAddr,
+            constructorArguments: []
+        });
+        console.log(`✅ ProtocolVault implementation contract verified successfully: ${implAddr}`);
+    } catch (error) {
+        console.log(`⚠️ ProtocolVault implementation contract verification failed: ${error.message}`);
+        // If already verified, no need to throw exception
+        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
+            console.error("ProtocolVault implementation contract verification error:", error);
+        }
+    }
 
     return implAddr;
 }

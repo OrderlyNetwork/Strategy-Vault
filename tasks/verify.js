@@ -85,22 +85,6 @@ async function verifyVaultAdapterContracts(implAddr, proxyAddr, operator, dexVau
     console.log("Starting VaultAdapter contract verification...");
     
     try {
-        // Verify VaultAdapter implementation contract
-        console.log(`Verifying VaultAdapter implementation contract: ${implAddr}`);
-        await hre.run("verify:verify", {
-            address: implAddr,
-            constructorArguments: []
-        });
-        console.log(`✅ VaultAdapter implementation contract verified successfully: ${implAddr}`);
-    } catch (error) {
-        console.log(`⚠️ VaultAdapter implementation contract verification failed: ${error.message}`);
-        // If already verified, no need to throw exception
-        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
-            console.error("VaultAdapter implementation contract verification error:", error);
-        }
-    }
-
-    try {
         // Prepare constructor arguments for ERC1967Proxy
         const VaultAdapter = await ethers.getContractFactory("VaultAdapter");
         const initializeData = VaultAdapter.interface.encodeFunctionData(
@@ -146,22 +130,6 @@ async function verifyVaultAdapterContracts(implAddr, proxyAddr, operator, dexVau
 async function verifyProtocolVaultContracts(implAddr, proxyAddr, dexVault, owner, usdc, minDepositForLp, minDepositForSp) {
     console.log("Starting ProtocolVault contract verification...");
     
-    try {
-        // Verify ProtocolVault implementation contract
-        console.log(`Verifying ProtocolVault implementation contract: ${implAddr}`);
-        await hre.run("verify:verify", {
-            address: implAddr,
-            constructorArguments: []
-        });
-        console.log(`✅ ProtocolVault implementation contract verified successfully: ${implAddr}`);
-    } catch (error) {
-        console.log(`⚠️ ProtocolVault implementation contract verification failed: ${error.message}`);
-        // If already verified, no need to throw exception
-        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
-            console.error("ProtocolVault implementation contract verification error:", error);
-        }
-    }
-
     try {
         // Prepare constructor arguments for ERC1967Proxy
         const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
