@@ -290,7 +290,7 @@ async function deployVaultAdapter(env) {
     //deploy impl
     const VaultAdapter = await ethers.getContractFactory("VaultAdapter");
     const implAddr = await deployVaultAdapterImpl(VaultAdapter);
-    //const implAddr = "0x83F367998EC5C78C107F32666B053D6A8991D773";
+    //const implAddr = "0xf797A001070B2C77Cc4f96DF636f93c2a3F37032";
     //Deploy contract by factory
     const bytecode = getVaultAdapterBytecode(VaultAdapter, implAddr, operator, dexVault, engine, usdc, owner);
     const salt = deployment[env].adapter_salt;
