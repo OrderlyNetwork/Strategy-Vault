@@ -15,6 +15,9 @@ const PRIVATE_KEY = vars.get("PRIVATE_KEY");
 const DEPLOY_KEY = vars.get("DEPLOY_KEY");
 
 module.exports = {
+  paths: {
+    sources: "./contracts",
+  },
   solidity: {
     version: "0.8.27",
     settings: {
