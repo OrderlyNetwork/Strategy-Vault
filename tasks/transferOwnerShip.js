@@ -24,7 +24,7 @@ task("transfer-evm-ownership", "Transfer ownership of EVM contracts to the confi
         console.log(`New owner address (from deployment.json): ${newOwnerAddress}`);
 
         // Only transfer EVM contracts
-        const evmContracts = ["crossChainManager", "protocolVault"];
+        const evmContracts = ["crossChainManager", "protocolVault", "vaultAdapter"];
         
         // Filter out contracts that don't exist in this environment
         const validContracts = evmContracts.filter(contractName => 
@@ -83,6 +83,41 @@ task("transfer-orderly-ownership", "Transfer ownership of Orderly contracts to t
         }
     });
 
+task("transfer-adapter-ownership", "Transfer ownership of VaultAdapter contract to the configured owner")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+
+        const currentNetwork = hre.network.name;
+        
+        // Get owner address from deployment.json
+        if (!deployment[taskArgs.env].owner) {
+            throw new Error(`Owner address not configured for ${taskArgs.env} environment in deployment.json`);
+        }
+        
+        const newOwnerAddress = deployment[taskArgs.env].owner;
+        console.log(`Transferring VaultAdapter ownership on ${currentNetwork} network in ${taskArgs.env} environment`);
+        console.log(`New owner address (from deployment.json): ${newOwnerAddress}`);
+
+        // Check if vaultAdapter exists in this environment
+        if (!deployment[taskArgs.env].vaultAdapter || deployment[taskArgs.env].vaultAdapter === "") {
+            throw new Error(`VaultAdapter address not found for ${taskArgs.env} environment. Please deploy first.`);
+        }
+
+        const vaultAdapterAddress = deployment[taskArgs.env].vaultAdapter;
+        console.log(`VaultAdapter contract address: ${vaultAdapterAddress}`);
+
+        // Get current signer
+        const [signer] = await ethers.getSigners();
+        console.log(`Current signer: ${signer.address}`);
+
+        // Transfer ownership of VaultAdapter
+        await transferContractOwnership("vaultAdapter", vaultAdapterAddress, newOwnerAddress, taskArgs.env);
+    });
+
 async function transferContractOwnership(contractName, contractAddress, newOwnerAddress, env) {
     console.log(`\nTransferring ownership of ${contractName} at ${contractAddress} to ${newOwnerAddress}...`);
     
@@ -97,6 +132,9 @@ async function transferContractOwnership(contractName, contractAddress, newOwner
                 break;
             case "protocolVault":
                 contract = await ethers.getContractAt("ProtocolVault", contractAddress);
+                break;
+            case "vaultAdapter":
+                contract = await ethers.getContractAt("VaultAdapter", contractAddress);
                 break;
             default:
                 throw new Error(`Unknown contract type: ${contractName}`);

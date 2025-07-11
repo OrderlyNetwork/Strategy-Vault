@@ -27,6 +27,7 @@ import {PayloadType} from "./lib/types/CrossChainStruct.sol";
 import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title protocol vault ledger
 /// @notice This contract is used to record all information of protocol vault
