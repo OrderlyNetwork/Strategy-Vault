@@ -434,7 +434,7 @@
         }
     },
     "bsc_test": {
-        "USDT": "0x337610d27c682e347c9cd60bd4b3b107c9d34ddd",
+        "USDT": "0xe8709025f99dd1b8533fb9b78ca879ee4ec7e70a",
         "USDC": "0x31873b5804bABE258d6ea008f55e08DD00b7d51E",
         "chainId": 97
     }
