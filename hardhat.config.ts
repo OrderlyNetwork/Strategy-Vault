@@ -5,16 +5,19 @@ import "./tasks/deploy.js";
 import "./tasks/config.js";
 import "./tasks/check.js";
 import "./tasks/transferOwnerShip.js";
+import "./tasks/verify.js";
 const config: HardhatUserConfig = {
   solidity: "0.8.26",
 };
 
 
 const PRIVATE_KEY = vars.get("PRIVATE_KEY");
-const SP_KEY = vars.get("SP_KEY");
 const DEPLOY_KEY = vars.get("DEPLOY_KEY");
 
 module.exports = {
+  paths: {
+    sources: "./contracts",
+  },
   solidity: {
     version: "0.8.27",
     settings: {
@@ -58,7 +61,7 @@ module.exports = {
       accounts: [DEPLOY_KEY],
     },
     base_sepolia: {
-      url: "https://base-sepolia.gateway.tenderly.co",
+      url: "https://sepolia.base.org",
       accounts: [PRIVATE_KEY],
     },
     sepolia: {
@@ -88,6 +91,10 @@ module.exports = {
     arb_sepolia: {
       url: "https://sepolia-rollup.arbitrum.io/rpc",
       accounts: [PRIVATE_KEY],
+    },
+    bsc_test: {
+      url: "https://data-seed-prebsc-1-s2.bnbchain.org:8545",
+      accounts: [PRIVATE_KEY],
     }
   },
   etherscan: {
@@ -96,11 +103,12 @@ module.exports = {
       orderly: '123',//not needed
       sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
       arbitrumSepolia: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
-      arbitrumOne:'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
+      arbitrumOne: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
       op_sepolia: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
       baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
-      base:'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
-      optimisticEthereum: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN'
+      base: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
+      optimisticEthereum: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
+      bscTestnet: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE'
     },
     customChains: [
       {

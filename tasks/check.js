@@ -40,6 +40,37 @@ task("check-orderly", "Check strategy vault contracts on Orderly")
         console.log("✅ ----------------------Check Ledger Config Done----------------------")
     });
 
+task("check-adapter", "Check VaultAdapter contract configuration")
+    .addParam("env", "environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+
+        const currentNetwork = hre.network.name;
+        const env = taskArgs.env;
+
+        if (!deployment[env].vaultAdapter) {
+            throw new Error(`VaultAdapter address not found in deployment.json for ${env} environment`);
+        }
+
+        console.log(`Checking VaultAdapter on network: ${currentNetwork}`);
+        console.log(`VaultAdapter address: ${deployment[env].vaultAdapter}`);
+
+        try {
+            await checkVaultAdapter(env);
+            console.log("✅ ----------------------VaultAdapter Config Done----------------------")
+        } catch (error) {
+            console.error("❌ Error checking VaultAdapter configuration:");
+            console.error(`Network: ${currentNetwork}`);
+            console.error(`Environment: ${env}`);
+            console.error(`Contract Address: ${deployment[env].vaultAdapter}`);
+            console.error(`Error: ${error.message}`);
+            throw error;
+        }
+    });
+
 async function checkProtocolVault(env) {
     //get the contract instance
     const pvContract = await ethers.getContractAt(
@@ -53,7 +84,7 @@ async function checkProtocolVault(env) {
     if (!netwroks.includes(currentNetwork)) {
         throw new Error(` ${env} on ${currentNetwork} not deployed`);
     }
-    
+
     //check dexVault
     const dexVault = await pvContract.dexVault();
     assert.equal(dexVault.toLowerCase(), deployment[env].dex[currentNetwork].toLowerCase(), ` ${env} dex on ${currentNetwork} config error`);
@@ -146,5 +177,78 @@ async function checkLedger(env) {
 
     //check engine
     const engine = await pvLedgerContract.engine();
-    assert.equal(engine.toLowerCase(), deployment[env].engine.toLowerCase(), ` ${env} engine config error`);
+    assert.equal(engine.toLowerCase(), deployment[env].adapter_engineengine.toLowerCase(), ` ${env} engine config error`);
+}
+
+async function checkVaultAdapter(env) {
+    const currentNetwork = hre.network.name;
+
+    //get the contract instance
+    const adapterContract = await ethers.getContractAt(
+        "VaultAdapter",
+        deployment[env].vaultAdapter
+    )
+
+    // 检查合约代码是否存在
+    const code = await ethers.provider.getCode(deployment[env].vaultAdapter);
+    if (code === "0x") {
+        throw new Error(`No contract code found at address ${deployment[env].vaultAdapter}`);
+    }
+    console.log("Contract code verified ✓");
+
+    try {
+        //check dex operator
+        const operator = await adapterContract.operator();
+        assert.equal(operator.toLowerCase(), deployment[env].dex_operator.toLowerCase(), `${env} operator config error`);
+        console.log("Operator verified ✓");
+
+        //check dexVault
+        const dexVault = await adapterContract.dexVault();
+        assert.equal(dexVault.toLowerCase(), deployment[env].dex[currentNetwork].toLowerCase(), `${env} dex on ${currentNetwork} config error`);
+        console.log("DexVault verified ✓");
+
+        //check engine
+        const engine = await adapterContract.engine();
+        assert.equal(engine.toLowerCase(), deployment[env].adapter_engine.toLowerCase(), `${env} engine config error`);
+        console.log("Engine verified ✓");
+
+        //check USDC token mapping
+        const usdcHash = "0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa"; // USDC hash
+        const mappedToken = await adapterContract.tokenHashToToken(usdcHash);
+        assert.equal(mappedToken.toLowerCase(), config[currentNetwork].USDC.toLowerCase(), `${env} USDC token mapping error`);
+        console.log("USDC token mapping verified ✓");
+
+        //check USDT token mapping
+        console.log("Checking USDT token mapping...");
+        const usdtHash = "0x8b1a1d9c2b109e527c9134b25b1a1833b16b6594f92daa9f6d9b7a6024bce9d0"; // USDT hash
+        const mappedUsdtToken = await adapterContract.tokenHashToToken(usdtHash);
+        assert.equal(mappedUsdtToken.toLowerCase(), config[currentNetwork].USDT.toLowerCase(), `${env} USDT token mapping error`);
+        console.log("USDT token mapping verified ✓");
+
+        //check protocol vault
+        const protocolVault = await adapterContract.protocolVault();
+        assert.equal(protocolVault.toLowerCase(), deployment[env].protocolVault.toLowerCase(), `${env} protocol vault config error`);
+        console.log("Protocol vault verified ✓");
+
+
+        //check brokers
+        const allowedBrokers = deployment.allowedBrokersForAdapter;
+
+        if (!allowedBrokers || allowedBrokers.length === 0) {
+            console.log("No allowed brokers found in deployment config");
+        } else {
+            console.log(`Found ${allowedBrokers.length} brokers to verify:`);
+
+            for (const brokerHash of allowedBrokers) {
+                console.log(`Checking broker: ${brokerHash}`);
+                const isAllowed = await adapterContract.isAllowedBroker(brokerHash);
+                assert.equal(isAllowed, true, `${env} broker ${brokerHash} config error - not allowed`);
+                console.log(`✓ Broker ${brokerHash} verified`);
+            }
+            console.log("All brokers verified ✓");
+        }
+    } catch (error) {
+        console.error(`Failed to verify configuration: ${error.message}`);
+        throw error;
+    }
 }

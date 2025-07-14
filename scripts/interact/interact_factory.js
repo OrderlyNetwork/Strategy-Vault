@@ -1,13 +1,18 @@
 const { ethers } = require("hardhat")
 
 async function main() {
-    let factoryAddr = "0xdf2da6d4c2e893b727bba966054c86bd38d3f150"
+    let factoryAddr = "0x2b1E9a839a873E05eeE8D90c6AfF7aA3E724E6cF"
     const factory = await ethers.getContractAt(
         "VaultFactory",
         factoryAddr
     )
 
-    console.log(await factory.owner())
+    //console.log(await factory.owner())
+    await factory.setManagers(
+        ["0xDd3287043493E0a08d2B348397554096728B459c"],
+        true
+    )
+    console.log("set managers")
 }
 
 main()

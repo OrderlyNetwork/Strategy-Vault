@@ -58,11 +58,26 @@ struct OperationData {
     bytes32 strategyProviderId;
     ///@dev token hash
     bytes32 tokenHash;
-    ///@dev keccak256(abi.encodePacked(broker address))
+    ///@dev broker string hash
     bytes32 brokerHash;
 }
 
 struct UserClaimedInfo {
     uint256 unClaimedAssets;
     bytes32[] requestIds;
+}
+
+struct AdapterDeposit {
+    ///@dev role type. LP or SP
+    RoleType roleType;
+    ///@dev receiver address
+    address receiver;
+    ///@dev token amount
+    uint128 amount;
+    ///@dev broker string hash
+    bytes32 brokerHash;
+    ///@dev token name hash
+    bytes32 tokenHash;
+    ///@dev the only index of the transaction
+    uint256 recordId;
 }
