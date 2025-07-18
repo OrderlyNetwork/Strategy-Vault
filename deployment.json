@@ -93,7 +93,8 @@
     "dex": {
       "op": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9",
       "arb": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9",
-      "base": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9"
+      "base": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9",
+      "bsc": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9"
     },
     "operator": "0x14d2F7c5b77DA96f138B655aA6a94fa644795838",
     "dex_operator": "0x81698d4bE3C2CDE0Fbd2cc457bA1Aa0d5df11DDD",
