@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {VaultType} from "./VaultStruct.sol";
+import {PayloadType} from "./CrossChainStruct.sol";
 //--------------------------------------Ledger Storage--------------------------------------------
 
 struct AccountToken {
@@ -160,4 +161,38 @@ struct ClaimInfo {
     bytes32 strategyProviderId;
     ///@dev assets amount that user can claim
     uint256 assets;
+}
+
+enum ChainType {
+    EVM,
+    SOL
+}
+
+struct DexRequestData {
+    ///@dev payloadType type
+    PayloadType payloadType;
+    ///@dev unique request id from dex
+    uint256 dexRequestId;
+    ///@dev receiver address in bytes32. Prefix with zero for evm. Decode Base58 for solana.
+    bytes32 receiver;
+    ///@dev deposit assets amount
+    uint256 amount;
+    ///@dev unique vault id
+    bytes32 vaultId;
+    ///@dev token symbol string
+    string token;
+    ///@dev dex broker id string
+    string dexBrokerId;
+}
+
+struct DexRequest {
+    ///@dev chaint type
+    ChainType chainType;
+    ///@dev account id or strategy provider id
+    bytes32 id;
+    ///@dev dex request data
+    DexRequestData dexRequestData;
+    bytes32 r;
+    bytes32 s;
+    uint8 v;
 }
