@@ -218,7 +218,7 @@
     },
     "arb": {
         "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-        "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+        "USDT": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",
         "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
         "chainId": 42161,
         "eid": 30110,
@@ -364,7 +364,7 @@
     },
     "base": {
         "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+        "USDT": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
         "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
         "chainId": 8453,
         "eid": 30184,

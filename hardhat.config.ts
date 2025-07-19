@@ -49,7 +49,7 @@ module.exports = {
       accounts: [DEPLOY_KEY],
     },
     op: {
-      url: "https://optimism.llamarpc.com",
+      url: "https://optimism-mainnet.public.blastapi.io",
       accounts: [DEPLOY_KEY],
     },
     op_sepolia: {
