@@ -17,12 +17,20 @@ import {
     AccountState,
     UpdateUserClaim,
     AllocateFundRes,
-    StrategyFundState
+    StrategyFundState,
+    DexRequestData,
+    DexRequest
 } from "../types/LedgerStruct.sol";
 import {AdapterDeposit} from "../types/VaultStruct.sol";
 
 library Signature {
+    /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
+    bytes32 internal constant TYPE_HASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+    /// @dev `keccak256("DexRequest(uint8 payloadType,uint256 nonce,address receiver,uint256 amount,bytes32 vaultId,string token,string dexBrokerId)")`.
+    bytes32 internal constant REQUEST_HASH = 0x590ef38f093814e411b876bc59d8020504481133ef17b2b49abbdedc31d57084;
+
     error InvalidSigner();
+    error InvalidUser();
 
     function verifyUpdateFundAssets(
         uint256 periodId,
@@ -128,6 +136,36 @@ library Signature {
         address signer
     ) internal pure {
         bytes32 messageHash = keccak256(abi.encode(adapterDeposit, chainId));
+        verifySignature(signer, messageHash, signature);
+    }
+
+    function verifyEVMSig(DexRequestData memory data, uint8 v, bytes32 r, bytes32 s, address signer) internal view {
+        bytes32 eip712DomainHash = keccak256(
+            abi.encode(TYPE_HASH, keccak256(bytes("Orderly")), keccak256(bytes("1")), block.chainid, address(this))
+        );
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                REQUEST_HASH,
+                data.payloadType,
+                data.dexRequestId,
+                signer,
+                data.amount,
+                data.vaultId,
+                keccak256(abi.encodePacked(data.token)),
+                keccak256(abi.encodePacked(data.dexBrokerId))
+            )
+        );
+
+        if (signer != ECDSA.recover(MessageHashUtils.toTypedDataHash(eip712DomainHash, hashStruct), v, r, s)) {
+            revert InvalidUser();
+        }
+    }
+
+    function verifyDexRequest(DexRequest[] calldata dexRequests, bytes calldata signature, address signer)
+        internal
+        pure
+    {
+        bytes32 messageHash = keccak256(abi.encode(dexRequests));
         verifySignature(signer, messageHash, signature);
     }
 

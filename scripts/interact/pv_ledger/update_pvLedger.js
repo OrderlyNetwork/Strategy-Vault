@@ -4,7 +4,7 @@ const { checkNetworkEnvRestrictions } = require("../../../tasks/utils");
 
 async function main() {
     //!need to change with your env
-    const env = "qa";
+    const env = "dev";
     const currentNetwork = hre.network.name;
 
     checkNetworkEnvRestrictions(currentNetwork, env);
@@ -17,7 +17,7 @@ async function main() {
     const implAddr = ProtocolVaultLedgerContract.target;
     console.log("ProtocolVaultLedgerContract Impl deployed to:", implAddr);
 
-    //updage
+    //update
     const protocolVaultLedger = await ethers.getContractAt(
         "ProtocolVaultLedger",
         deployment[env].pvLedger
