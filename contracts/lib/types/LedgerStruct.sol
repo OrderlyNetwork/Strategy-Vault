@@ -188,6 +188,7 @@ struct DexRequestData {
 struct DexRequest {
     ///@dev chaint type
     ChainType chainType;
+    uint256 chainId;
     ///@dev account id or strategy provider id
     bytes32 id;
     ///@dev dex request data
