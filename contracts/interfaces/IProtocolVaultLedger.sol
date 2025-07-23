@@ -60,7 +60,7 @@ interface IProtocolVaultLedger {
     event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
     event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-    event DexRequestsHandled(DexRequest dexRequest);
+    event DexRequestHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 dexRequestId);
     //--------------------------------------FROM VAULT-----------------------------------------
 
