@@ -139,10 +139,12 @@ library Signature {
         verifySignature(signer, messageHash, signature);
     }
 
-    function verifyEVMSig(DexRequestData memory data, uint8 v, bytes32 r, bytes32 s, address signer) internal view {
-        bytes32 eip712DomainHash = keccak256(
-            abi.encode(TYPE_HASH, keccak256(bytes("Orderly")), keccak256(bytes("1")), block.chainid, address(this))
-        );
+    function verifyEVMSig(DexRequestData memory data, uint8 v, bytes32 r, bytes32 s, uint256 chainId, address signer)
+        internal
+        view
+    {
+        bytes32 eip712DomainHash =
+            keccak256(abi.encode(TYPE_HASH, keccak256(bytes("Orderly")), keccak256(bytes("1")), chainId, address(this)));
         bytes32 hashStruct = keccak256(
             abi.encode(
                 REQUEST_HASH,

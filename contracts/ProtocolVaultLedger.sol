@@ -160,7 +160,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             if (
                 _handleRequest(request.dexRequestData.payloadType, request.id, tokenHash, request.dexRequestData.amount)
             ) {
-                emit DexRequestsHandled(dexRequests);
+                emit DexRequestsHandled(request);
             } else {
                 emit DexWithdrawNotEnough(requestId);
             }
@@ -966,7 +966,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         VaultUtils.validateId(vault, receiver, vaultBroker[data.vaultId], request.id);
 
         // verify signature
-        Signature.verifyEVMSig(data, request.v, request.r, request.s, receiver);
+        Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);
     }
 
     function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount)
