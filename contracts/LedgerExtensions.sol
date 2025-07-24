@@ -248,7 +248,7 @@ contract LedgerExtensions is LedgerBase, ILedgerExtensions {
         VaultUtils.validateId(vault, receiver, vaultBroker[data.vaultId], request.id);
 
         // Verify signature
-        Signature.verifyEVMSig(data, request.v, request.r, request.s, receiver);
+        Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);
     }
 
     /// @notice Create a StrategyVaultCCMessage with standard fields
