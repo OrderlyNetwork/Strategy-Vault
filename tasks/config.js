@@ -339,6 +339,15 @@ async function configVaultAdapter(env) {
     tx = await vaultAdapterContract.setProtocolVault(protocolVault);
     await tx.wait();
     console.log(`Protocol Vault set to ${protocolVault} successfully`);
+
+    //send cc fee 
+    const [sender] = await ethers.getSigners();
+    tx = await sender.sendTransaction({
+        to: deployment[env].vaultAdapter,
+        value: ethers.parseEther('0.1'),
+    });
+    await tx.wait()
+    console.log("transfer native to vault adapter successfully");
 }
 
 async function configEVMCrossChainManager(env) {

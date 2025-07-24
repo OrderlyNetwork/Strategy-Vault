@@ -37,6 +37,7 @@
     },
     "op": {
         "USDC": "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
+        "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
         "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
         "chainId": 10,
         "eid": 30111,
@@ -217,6 +218,7 @@
     },
     "arb": {
         "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "USDT": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",
         "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
         "chainId": 42161,
         "eid": 30110,
@@ -362,6 +364,7 @@
     },
     "base": {
         "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "USDT": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
         "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
         "chainId": 8453,
         "eid": 30184,
@@ -432,5 +435,15 @@
                 "optionalDVNs": []
             }
         }
+    },
+    "bsc_test": {
+        "USDT": "0x337610d27c682e347c9cd60bd4b3b107c9d34ddd",
+        "USDC": "0x31873b5804bABE258d6ea008f55e08DD00b7d51E",
+        "chainId": 97
+    },
+    "bsc": {
+        "USDT": "0x55d398326f99059fF775485246999027B3197955",
+        "USDC": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+        "chainId": 56
     }
-  }
+}
