@@ -2,9 +2,11 @@
 pragma solidity ^0.8.26;
 
 import {
-    UpdateLedgerParams, AssetsDistribution, ClaimInfo, DexRequest, OperationRes
+    UpdateLedgerParams, AssetsDistribution, ClaimInfo, DexRequest, OperationRes, 
+    StrategyFundState, AccountState, StrategyFundToken
 } from "../lib/types/LedgerStruct.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
+import {PayloadType} from "../lib/types/VaultStruct.sol";
 
 /// @title ILedgerExtensions
 /// @notice Interface for the Ledger Extensions contract
@@ -22,32 +24,17 @@ interface ILedgerExtensions {
     event DexRequestsHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 dexRequestId);
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
+    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
 
-    //--------------------------------------LOW FREQUENCY FUNCTIONS-----------------------------------------
-
-    /// @notice Handle DEX requests (low frequency)
-    /// @param dexRequests Array of DEX requests
-    /// @param signature Signature for verification
     function handleDexRequests(DexRequest[] calldata dexRequests, bytes calldata signature) external;
-
-    /// @notice Distribute assets to strategy (low frequency)
-    /// @param periodId Period ID
-    /// @param vaultId Vault ID
-    /// @param assetsDistributions Asset distribution info
-    /// @param signature Signature for verification
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
+        external;
     function distributeAssets(
         uint256 periodId,
         bytes32 vaultId,
         AssetsDistribution[] memory assetsDistributions,
         bytes calldata signature
     ) external;
-
-    /// @notice Update unclaimed assets (low frequency)
-    /// @param chainId Chain ID that unclaimed assets will be updated
-    /// @param periodId Period ID
-    /// @param vaultId Vault ID
-    /// @param requestIds Request ID array
-    /// @param signature Signature for verification
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
@@ -55,14 +42,29 @@ interface ILedgerExtensions {
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external;
-
-    /// @notice Remove invalid frozen shares (low frequency)
-    /// @param vaultId The vault ID
-    /// @param params The parameters containing the invalid frozen shares to remove
-    /// @param signature The signature to verify
     function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
         external;
 
-    /// @notice Handle user claims
-    function handleOpFromVault(uint256 payloadType, uint256 chainId, OperationData calldata operationData) external;
+    // View functions
+    function checkMainAndStrategyFund(uint256 periodId, bytes32 vaultId, bytes32[] calldata strategyProviderIds)
+        external
+        view
+        returns (uint256, StrategyFundState[] memory);
+    
+    function checkLP(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds)
+        external
+        view
+        returns (AccountState[] memory);
+    
+    function convertToShares(uint256 amount, uint256 _totalAssets, uint256 _totalShares)
+        external
+        view
+        returns (uint256);
+    
+    function convertToAssets(uint256 shares, uint256 _totalAssets, uint256 _totalShares)
+        external
+        view
+        returns (uint256);
+    
+    function getStrategyFund(bytes32 spId) external view returns (StrategyFundToken memory);
 }

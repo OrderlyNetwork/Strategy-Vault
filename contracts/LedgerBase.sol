@@ -58,11 +58,11 @@ abstract contract LedgerBase {
     mapping(bytes32 => bytes32) public vaultBroker;
 
     /*=========================================================================================
-    *                                   MODIFIERS
+    *                                        MODIFIERS
     *=========================================================================================*/
-
+    
     /// @notice Only operator can call
-    modifier onlyOperator() {
+    modifier onlyOperator() virtual {
         if (msg.sender != operator) {
             revert IProtocolVaultLedger.InvalidOperator();
         }
@@ -90,59 +90,5 @@ abstract contract LedgerBase {
     /// @return accountToken storage reference to account token
     function _getAccountToken(bytes32 accountId) internal view virtual returns (AccountToken storage accountToken) {
         return accountTokenInfo[accountId][USDC_HASH];
-    }
-
-    /// @notice Handle different types of requests
-    /// @param payloadType Type of payload
-    /// @param id Account or strategy provider ID
-    /// @param tokenHash Token hash
-    /// @param amount Amount
-    /// @return bool Success status
-    function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount)
-        internal
-        virtual
-        returns (bool)
-    {
-        AccountToken storage accountToken = accountTokenInfo[id][tokenHash];
-        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[id][tokenHash];
-
-        if (payloadType == PayloadType.LP_DEPOSIT) {
-            accountToken.unAllocatedAssets += amount;
-        } else if (payloadType == PayloadType.LP_WITHDRAW) {
-            if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
-                accountToken.frozenShares += amount;
-            } else {
-                return false;
-            }
-        } else if (payloadType == PayloadType.SP_DEPOSIT) {
-            strategyFundToken.unAllocatedAssets += amount;
-        } else if (payloadType == PayloadType.SP_WITHDRAW) {
-            if (
-                _checkWithdraw(
-                    amount, strategyFundToken.frozenShares, strategyFundToken.pendingState.pendingStrategyProviderShares
-                )
-            ) {
-                strategyFundToken.frozenShares += amount;
-            } else {
-                return false;
-            }
-        } else {
-            revert IProtocolVaultLedger.InvalidType();
-        }
-        return true;
-    }
-
-    /// @notice Check withdraw amount validity
-    /// @param withdrawAmount Amount to withdraw
-    /// @param frozenAmount Frozen amount
-    /// @param totalAmount Total amount
-    /// @return bool True if valid
-
-    function _checkWithdraw(uint256 withdrawAmount, uint256 frozenAmount, uint256 totalAmount)
-        internal
-        pure
-        returns (bool)
-    {
-        return withdrawAmount + frozenAmount <= totalAmount;
     }
 }
