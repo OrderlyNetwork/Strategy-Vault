@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.26;
 
 import {Base} from "../Base.sol";
 import {console} from "forge-std/console.sol";
@@ -15,10 +15,13 @@ import {
     UpdateLedgerParams,
     AssetsDistribution,
     AccountState,
-    ClaimInfo,
     AllocateFundRes,
-    StrategyFundState
-} from "../../contracts/ProtocolVaultLedger.sol";
+    StrategyFundState,
+    ClaimInfo,
+    ChainType,
+    DexRequest,
+    DexRequestData
+} from "../../contracts/Ledger/ProtocolVaultLedger.sol";
 import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
