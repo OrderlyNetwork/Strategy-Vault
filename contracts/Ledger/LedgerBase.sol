@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AccountToken, StrategyFundToken, ClaimInfo} from "../lib/types/LedgerStruct.sol";
-import {PayloadType} from "../lib/types/CrossChainStruct.sol";
-import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
-import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
+import {USDC_HASH} from "../lib/types/Constants.sol";
 
 /// @title Ledger Storage
 /// @notice This contract contains all storage variables for ProtocolVaultLedger
 /// @dev This contract should be inherited by both main contract and extensions contract
 abstract contract LedgerBase {
-    uint256 public constant FEE_BASE = 100;
-    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
-    uint256 constant USDC_DECIMAL = 6;
+    using Math for uint256;
 
     uint256 public pendingMainShares;
     uint256 public pendingLpDepositAssets;
     uint256 public pendingLpWithdrawAssets;
-
+    
     uint256 public mainShares;
     uint256 public mainAssetsAfterFee;
     // @dev the latest period id that contract handle
@@ -56,22 +53,6 @@ abstract contract LedgerBase {
     mapping(uint256 => bool) public isDexRequestHandled;
     /// @dev vault id to sv broker hash
     mapping(bytes32 => bytes32) public vaultBroker;
-
-    /*=========================================================================================
-    *                                        MODIFIERS
-    *=========================================================================================*/
-    
-    /// @notice Only operator can call
-    modifier onlyOperator() virtual {
-        if (msg.sender != operator) {
-            revert IProtocolVaultLedger.InvalidOperator();
-        }
-        _;
-    }
-
-    /*=========================================================================================
-    *                                   STORAGE ACCESS HELPERS
-    *=========================================================================================*/
 
     /// @notice Get strategy fund token storage reference (reduces storage access repetition)
     /// @param spId strategy provider ID

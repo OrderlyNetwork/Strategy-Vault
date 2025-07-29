@@ -22,13 +22,9 @@ import {
     DexRequest
 } from "../types/LedgerStruct.sol";
 import {AdapterDeposit} from "../types/VaultStruct.sol";
+import {TYPE_HASH, REQUEST_HASH} from "../types/Constants.sol";
 
 library Signature {
-    /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
-    bytes32 internal constant TYPE_HASH = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
-    /// @dev `keccak256("DexRequest(uint8 payloadType,uint256 nonce,address receiver,uint256 amount,bytes32 vaultId,string token,string dexBrokerId)")`.
-    bytes32 internal constant REQUEST_HASH = 0x590ef38f093814e411b876bc59d8020504481133ef17b2b49abbdedc31d57084;
-
     error InvalidSigner();
     error InvalidUser();
 

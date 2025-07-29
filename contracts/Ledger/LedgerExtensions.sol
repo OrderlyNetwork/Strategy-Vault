@@ -13,10 +13,7 @@ import {
     DexRequestData,
     OperationRes,
     OperationType,
-    Operation,
-    StrategyFundState,
-    AccountState,
-    PendingState
+    Operation
 } from "../lib/types/LedgerStruct.sol";
 import {Signature} from "../lib/utils/Signature.sol";
 import {VaultUtils} from "../lib/utils/VaultUtils.sol";
@@ -229,89 +226,6 @@ contract LedgerExtensions is LedgerBase, ILedgerExtensions {
         emit InvalidFrozenSharesRemoved(vaultId, operationRes);
     }
 
-    //--------------------------------------VIEW FUNCTIONS----------------------------------------------------
-
-    /// @notice Check main and strategy fund states
-    /// @param periodId Period ID
-    /// @param strategyProviderIds Array of strategy provider IDs
-    /// @return pendingMainShares The pending main shares
-    /// @return pendingStrategyFundStates Array of strategy fund states
-    function checkMainAndStrategyFund(uint256 periodId, bytes32, bytes32[] calldata strategyProviderIds)
-        external
-        view
-        returns (uint256, StrategyFundState[] memory)
-    {
-        _check(periodId);
-        StrategyFundState[] memory pendingStrategyFundStates = new StrategyFundState[](strategyProviderIds.length);
-
-        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            PendingState storage pendingState = _getStrategyFundToken(strategyProviderIds[i]).pendingState;
-
-            uint256 hwm = _calculateHWM(strategyProviderIds[i]);
-            pendingStrategyFundStates[i] = StrategyFundState({
-                strategyProviderId: strategyProviderIds[i],
-                totalShares: pendingState.pendingTotalShares,
-                totalAssets: pendingState.pendingTotalAssets,
-                mainShares: pendingState.pendingMainShares,
-                strategyProviderShares: pendingState.pendingStrategyProviderShares,
-                hwm: hwm
-            });
-        }
-
-        return (pendingMainShares, pendingStrategyFundStates);
-    }
-
-    /// @notice Check LP account states
-    /// @param periodId Period ID
-    /// @param accountIds Array of account IDs
-    /// @return Array of account states
-    function checkLP(uint256 periodId, bytes32, bytes32[] calldata accountIds)
-        external
-        view
-        returns (AccountState[] memory)
-    {
-        _check(periodId);
-        AccountState[] memory pendingAccountStates = new AccountState[](accountIds.length);
-        for (uint256 i = 0; i < accountIds.length; i++) {
-            AccountToken storage accountToken = _getAccountToken(accountIds[i]);
-            pendingAccountStates[i] = AccountState({accountId: accountIds[i], shares: accountToken.pendingShares});
-        }
-        return pendingAccountStates;
-    }
-
-    /// @notice Convert assets to shares
-    /// @param amount Amount of assets
-    /// @param _totalAssets Total assets
-    /// @param _totalShares Total shares
-    /// @return Number of shares
-    function convertToShares(uint256 amount, uint256 _totalAssets, uint256 _totalShares)
-        external
-        view
-        returns (uint256)
-    {
-        return _convertToShares(amount, _totalAssets, _totalShares, Math.Rounding.Floor);
-    }
-
-    /// @notice Convert shares to assets
-    /// @param shares Number of shares
-    /// @param _totalAssets Total assets
-    /// @param _totalShares Total shares
-    /// @return Amount of assets
-    function convertToAssets(uint256 shares, uint256 _totalAssets, uint256 _totalShares)
-        external
-        view
-        returns (uint256)
-    {
-        return _convertToAssets(shares, _totalAssets, _totalShares, Math.Rounding.Floor);
-    }
-
-    /// @notice Get strategy fund token information
-    /// @param spId Strategy provider ID
-    /// @return Strategy fund token
-    function getStrategyFund(bytes32 spId) external view returns (StrategyFundToken memory) {
-        return _getStrategyFundToken(spId);
-    }
-
     //--------------------------------------INTERNAL HELPER FUNCTIONS--------------------------------------------
     function _isValidRequestId(bytes32 requestId) internal view returns (bool) {
         return !isUserClaimHandled[requestId] && userClaimInfo[requestId].assets > 0;
@@ -391,54 +305,5 @@ contract LedgerExtensions is LedgerBase, ILedgerExtensions {
         if (periodId != latestPeriodId) {
             revert IProtocolVaultLedger.InvalidPeriodId();
         }
-    }
-
-    /// @notice Calculate high water mark for strategy fund
-    /// @param strategyProviderId Strategy provider ID
-    /// @return High water mark value
-    function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
-
-        uint256 hwm = strategyFundToken.hwm;
-        uint256 totalShares = strategyFundToken.totalShares;
-        uint256 decimal = USDC_DECIMAL;
-        if (totalShares == 0) {
-            return 10 ** decimal;
-        }
-
-        uint256 sharePriceAfterFee = strategyFundToken.fundAssetsAfterFee * 10 ** decimal / totalShares;
-        uint256 pendingTotalShares = strategyFundToken.pendingState.pendingTotalShares;
-        uint256 newIssueShares = (pendingTotalShares > totalShares) ? pendingTotalShares - totalShares : 0;
-
-        uint256 numerator = (totalShares * Math.max(hwm, sharePriceAfterFee)) + (newIssueShares * sharePriceAfterFee);
-        uint256 denominator = totalShares + newIssueShares;
-
-        return numerator / denominator;
-    }
-
-    /// @dev Internal conversion function (from assets amount to shares) with support for rounding direction.
-    function _convertToShares(uint256 amount, uint256 _totalAssets, uint256 _totalShares, Math.Rounding rounding)
-        internal
-        view
-        virtual
-        returns (uint256)
-    {
-        uint256 decimal = USDC_DECIMAL;
-        return (_totalAssets == 0)
-            ? amount.mulDiv(10 ** decimal, 10 ** decimal, rounding)
-            : amount.mulDiv(_totalShares, _totalAssets, rounding);
-    }
-
-    /// @dev Internal conversion function (from shares to assets) with support for rounding direction.
-    function _convertToAssets(uint256 shares, uint256 _totalAssets, uint256 _totalShares, Math.Rounding rounding)
-        internal
-        view
-        virtual
-        returns (uint256)
-    {
-        uint256 decimal = USDC_DECIMAL;
-        return (_totalShares == 0)
-            ? shares.mulDiv(10 ** decimal, 10 ** decimal, rounding)
-            : shares.mulDiv(_totalAssets, _totalShares, rounding);
     }
 }

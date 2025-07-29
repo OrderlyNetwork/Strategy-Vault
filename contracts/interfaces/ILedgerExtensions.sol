@@ -2,8 +2,14 @@
 pragma solidity ^0.8.26;
 
 import {
-    UpdateLedgerParams, AssetsDistribution, ClaimInfo, DexRequest, OperationRes, 
-    StrategyFundState, AccountState, StrategyFundToken
+    UpdateLedgerParams,
+    AssetsDistribution,
+    ClaimInfo,
+    DexRequest,
+    OperationRes,
+    StrategyFundState,
+    AccountState,
+    StrategyFundToken
 } from "../lib/types/LedgerStruct.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/VaultStruct.sol";
@@ -44,27 +50,4 @@ interface ILedgerExtensions {
     ) external;
     function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
         external;
-
-    // View functions
-    function checkMainAndStrategyFund(uint256 periodId, bytes32 vaultId, bytes32[] calldata strategyProviderIds)
-        external
-        view
-        returns (uint256, StrategyFundState[] memory);
-    
-    function checkLP(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds)
-        external
-        view
-        returns (AccountState[] memory);
-    
-    function convertToShares(uint256 amount, uint256 _totalAssets, uint256 _totalShares)
-        external
-        view
-        returns (uint256);
-    
-    function convertToAssets(uint256 shares, uint256 _totalAssets, uint256 _totalShares)
-        external
-        view
-        returns (uint256);
-    
-    function getStrategyFund(bytes32 spId) external view returns (StrategyFundToken memory);
 }

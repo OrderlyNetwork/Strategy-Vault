@@ -18,9 +18,7 @@ import {
     AllocateFundRes,
     StrategyFundState,
     ClaimInfo,
-    ChainType,
-    DexRequest,
-    DexRequestData
+    DexRequest
 } from "../../contracts/Ledger/ProtocolVaultLedger.sol";
 import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
