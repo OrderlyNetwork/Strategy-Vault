@@ -354,7 +354,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
             //hwm must be updated firstly
             strategyFundToken.hwm = _calculateHWM(strategyProviderIds[i]);
 
-            _settlePendingState(strategyFundToken);
+            //update pending state to actual state
+            PendingState storage pendingState = strategyFundToken.pendingState;
+            strategyFundToken.totalShares = pendingState.pendingTotalShares;
+            strategyFundToken.totalAssets = pendingState.pendingTotalAssets;
+            strategyFundToken.mainShares = pendingState.pendingMainShares;
+            strategyFundToken.strategyProviderShares = pendingState.pendingStrategyProviderShares;
 
             //emit event
             strategyFundStates[i] = StrategyFundState({
@@ -695,16 +700,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         if (periodId != latestPeriodId) {
             revert InvalidPeriodId();
         }
-    }
-
-    /// @notice Copy pending state to actual state for strategy fund
-    /// @param strategyFundToken The strategy fund token to update
-    function _settlePendingState(StrategyFundToken storage strategyFundToken) internal {
-        PendingState storage pendingState = strategyFundToken.pendingState;
-        strategyFundToken.totalShares = pendingState.pendingTotalShares;
-        strategyFundToken.totalAssets = pendingState.pendingTotalAssets;
-        strategyFundToken.mainShares = pendingState.pendingMainShares;
-        strategyFundToken.strategyProviderShares = pendingState.pendingStrategyProviderShares;
     }
 
     function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
