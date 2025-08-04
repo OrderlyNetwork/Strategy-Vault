@@ -21,20 +21,14 @@ import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
 import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
+import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 
 /// @title Ledger Extension
 /// @notice Contains request handling and other auxiliary functions for the protocol vault ledger
 /// @dev This contract is designed to be called via delegatecall from the main ledger contract
-contract LedgerExtension is LedgerBase {
+contract LedgerExtension is LedgerBase, ILedgerExtension {
     using Math for uint256;
-
-    // Events
-    event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
-    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
-    event DexRequestsHandled(DexRequest request);
-    event DexWithdrawNotEnough(uint256 requestId);
-    event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
 
     /// @notice Handles operations from vault
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)

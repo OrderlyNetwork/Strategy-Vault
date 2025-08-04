@@ -3,16 +3,37 @@ pragma solidity ^0.8.26;
 
 import {
     UpdateStrategyFundAssetsParams,
+    UpdateStrategyFundAssetsRes,
     UpdateLedgerParams,
     AssetsDistribution,
     AccountState,
     StrategyFundState,
+    AllocateFundRes,
+    OperationRes,
     ClaimInfo
 } from "../lib/types/LedgerStruct.sol";
 
 /// @title ILedgerCoreImpl Interface
 /// @notice Interface for core business flow methods in the protocol vault ledger
 interface ILedgerCoreImpl {
+    // Events
+    event StrategyFundAssetsUpdate(
+        uint256 periodId,
+        bytes32 vaultId,
+        uint256 mainAssetsAfterFee,
+        UpdateStrategyFundAssetsRes[] updateStrategyFundAssetsRes
+    );
+    event LPAndStrategyFundUpdated(uint256 periodId, bytes32 vaultId, OperationRes[] operationRes);
+    event FundAllocated(
+        uint256 periodId, bytes32 vaultId, bytes32[] strategyProviderIds, AllocateFundRes[] allocateFundRes
+    );
+    event MainAndStrategyFundsSettled(
+        uint256 periodId, bytes32 vaultId, uint256 mainShares, StrategyFundState[] strategyFundStates
+    );
+    event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
+    event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
+    event AssetsDistributed(uint256 periodId, bytes32 vaultId);
+    event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] userClaimInfos);
     /// @notice Operator upload NAV of each strategy fund and compute performance fee at first of the period
     /// @param periodId period id
     /// @param vaultId vault id

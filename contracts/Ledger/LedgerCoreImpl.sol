@@ -22,6 +22,7 @@ import {Signature} from "../lib/utils/Signature.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
+import {ILedgerCoreImpl} from "../interfaces/ILedgerCoreImpl.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
 import {FEE_BASE, USDC_DECIMAL} from "../lib/types/Constants.sol";
@@ -29,27 +30,8 @@ import {FEE_BASE, USDC_DECIMAL} from "../lib/types/Constants.sol";
 /// @title Ledger Core Implementation
 /// @notice Contains core business flow methods for the protocol vault ledger
 /// @dev This contract is designed to be called via delegatecall from the main ledger contract
-contract LedgerCoreImpl is LedgerBase {
+contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
     using Math for uint256;
-
-    // Events
-    event StrategyFundAssetsUpdate(
-        uint256 periodId,
-        bytes32 vaultId,
-        uint256 mainAssetsAfterFee,
-        UpdateStrategyFundAssetsRes[] updateStrategyFundAssetsRes
-    );
-    event LPAndStrategyFundUpdated(uint256 periodId, bytes32 vaultId, OperationRes[] operationRes);
-    event FundAllocated(
-        uint256 periodId, bytes32 vaultId, bytes32[] strategyProviderIds, AllocateFundRes[] allocateFundRes
-    );
-    event MainAndStrategyFundsSettled(
-        uint256 periodId, bytes32 vaultId, uint256 mainShares, StrategyFundState[] strategyFundStates
-    );
-    event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
-    event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
-    event AssetsDistributed(uint256 periodId, bytes32 vaultId);
-    event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] userClaimInfos);
 
     /// @notice Operator upload NAV of each strategy fund and compute performance fee at first of the period
     /// @param periodId period id

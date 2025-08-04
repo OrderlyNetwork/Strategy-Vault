@@ -19,7 +19,7 @@ interface ILedgerExtension {
     event DexRequestsHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-
+    
     /// @notice Handles operations from vault
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external;
