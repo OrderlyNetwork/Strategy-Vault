@@ -33,8 +33,8 @@ module.exports = {
       accounts: [PRIVATE_KEY],
     },
     bsc: {
-      url: "https://bsc-dataseed4.ninicoin.io",
-      accounts: [PRIVATE_KEY],
+      url: "https://bsc-mainnet.nodereal.io/v1/64a9df0874fb4a93b9d0a3849de012d3",
+      accounts: [DEPLOY_KEY],
     },
     polygon: {
       url: "https://polygon-mainnet.g.alchemy.com/v2/xW-oS8VD9ND03JvtAj-C1kPvvGNud8zo",
@@ -49,7 +49,7 @@ module.exports = {
       accounts: [DEPLOY_KEY],
     },
     op: {
-      url: "https://optimism.llamarpc.com",
+      url: "https://optimism-mainnet.public.blastapi.io",
       accounts: [DEPLOY_KEY],
     },
     op_sepolia: {
@@ -108,7 +108,8 @@ module.exports = {
       baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
       base: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
       optimisticEthereum: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
-      bscTestnet: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE'
+      bscTestnet: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE',
+      bsc: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE'
     },
     customChains: [
       {
@@ -134,7 +135,8 @@ module.exports = {
           apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
           browserURL: "https://sepolia-optimism.etherscan.io/",
         }
-      }
+      },
+
     ]
   }
 };

@@ -37,7 +37,7 @@ contract Base is TestHelperOz5 {
     bytes32 constant NATIVE_HASH = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
     address public owner = address(0x123);
-    address public sp = address(0x2);
+    address public sp;
     address public user = address(0x1);
     address public operator = address(0x5);
 
@@ -50,9 +50,11 @@ contract Base is TestHelperOz5 {
     bytes32 spB_id = _getStrategyProviderId(spB, ORDERLY_BROKER);
     bytes32 userA_id = _getAccountId(userA, ORDERLY_BROKER);
     bytes32 userB_id = _getAccountId(userB, ORDERLY_BROKER);
+    bytes32 spId;
 
     address engine;
     uint256 enginePrivateKey;
+    uint256 spPrivateKey;
 
     uint32 evmChainId = 1;
     uint8 public srcEid = 1;
@@ -95,9 +97,13 @@ contract Base is TestHelperOz5 {
         // Call the base setup function from the TestHelperOz5 contract
         super.setUp();
         (engine, enginePrivateKey) = makeAddrAndKey("engine");
+        (sp, spPrivateKey) = makeAddrAndKey("sp");
+        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
 
         vm.deal(user, 100 ether);
         vm.deal(sp, 100 ether);
+        vm.deal(userA, 100 ether);
+        vm.deal(userB, 100 ether);
         // Deploy the StrategyVaultLedger contract
         address svLedgerImpl = address(new MockSVLedger());
         address svLedgerProxy = address(
@@ -176,17 +182,19 @@ contract Base is TestHelperOz5 {
         vm.startPrank(owner);
         protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
         protocolVault.setLedgerEid(ledgerEid);
-        bytes32 spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
 
         //config cc contract
         vm.startPrank(owner);
         aVaultCrossChainManager.setVault(address(protocolVault));
         bVaultCrossChainManager.setLedger(svLedgerProxy);
+        bVaultCrossChainManager.setVault(address(protocolVault));
         vm.stopPrank();
         //mint token
         mockToken.mint(user, 100000e18);
         mockToken.mint(sp, 100000e18);
+        mockToken.mint(userA, 100000e18);
+        mockToken.mint(userB, 100000e18);
 
         //approve
         vm.prank(user);

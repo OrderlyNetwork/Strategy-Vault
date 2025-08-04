@@ -18,13 +18,15 @@ import {
     AccountState,
     AllocateFundRes,
     StrategyFundState,
-    ClaimInfo
+    ClaimInfo,
+    ChainType,
+    DexRequest,
+    DexRequestData
 } from "./lib/types/LedgerStruct.sol";
 import {Signature} from "./lib/utils/Signature.sol";
 import {VaultUtils} from "./lib/utils/VaultUtils.sol";
-import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
-import {PayloadType} from "./lib/types/CrossChainStruct.sol";
-import {StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
+import {OperationData} from "./lib/types/VaultStruct.sol";
+import {PayloadType, StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -37,6 +39,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     uint256 public constant FEE_BASE = 100;
     bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
+    uint256 constant USDC_DECIMAL = 6;
 
     uint256 public pendingMainShares;
     uint256 public pendingLpDepositAssets;
@@ -74,6 +77,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     mapping(uint256 => bool) public isAllocatedToFunds;
     /// @dev Determines whether the assets has been distributed in a period. Only can be called once in a period.
     mapping(uint256 => bool) public isAssetDistributed;
+    /// @dev Determines whether the dex request has been handled
+    mapping(uint256 => bool) public isDexRequestHandled;
+    /// @dev vault id to sv broker hash
+    mapping(bytes32 => bytes32) public vaultBroker;
 
     /// @notice Require only operator can call
     modifier onlyOperator() {
@@ -103,7 +110,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         __Ownable_init(owner);
 
         __UUPSUpgradeable_init();
-        tokenDecimal[USDC_HASH] = 6;
     }
 
     /*=========================================================================================
@@ -119,50 +125,49 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         external
         onlyVaultCrossChainManager
     {
-        bytes32 accountId = operationData.accountId;
-        bytes32 spId = operationData.strategyProviderId;
+        bytes32 id = operationData.accountId == bytes32(0) ? operationData.strategyProviderId : operationData.accountId;
 
-        //gas optimization
-        AccountToken storage accountToken = accountTokenInfo[accountId][operationData.tokenHash];
-        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[spId][operationData.tokenHash];
-
-        uint256 amount = operationData.amount;
-
-        if (payloadType == PayloadType.LP_DEPOSIT) {
-            accountToken.unAllocatedAssets += amount;
-        } else if (payloadType == PayloadType.LP_WITHDRAW) {
-            if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
-                accountToken.frozenShares += amount;
-            } else {
-                emit NotEnoughWithdrawShare(payloadType, chainId, operationData.chainNonce);
-                return;
-            }
-        } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
-            if (payloadType == PayloadType.SP_DEPOSIT) {
-                strategyFundToken.unAllocatedAssets += amount;
-            } else {
-                if (
-                    _checkWithdraw(
-                        amount,
-                        strategyFundToken.frozenShares,
-                        strategyFundToken.pendingState.pendingStrategyProviderShares
-                    )
-                ) {
-                    strategyFundToken.frozenShares += amount;
-                } else {
-                    emit NotEnoughWithdrawShare(payloadType, chainId, operationData.chainNonce);
-                    return;
-                }
-            }
+        if (_handleRequest(payloadType, id, operationData.tokenHash, operationData.amount)) {
+            emit OperationHandled(payloadType, chainId, operationData);
         } else {
-            emit InvalidPayloadType();
-            return;
+            emit NotEnoughWithdrawShare(payloadType, chainId, operationData.chainNonce);
         }
-
-        emit OperationHandled(payloadType, chainId, operationData);
     }
 
     //--------------------------------------FROM Operator--------------------------------------------
+    function handleDexRequests(DexRequest[] calldata dexRequests, bytes calldata signature) external onlyOperator {
+        //verify engine signature
+        Signature.verifyDexRequest(dexRequests, signature, engine);
+
+        for (uint256 i = 0; i < dexRequests.length; i++) {
+            DexRequest calldata request = dexRequests[i];
+            uint256 requestId = request.dexRequestData.dexRequestId;
+            // verify if dex request is handled
+            if (isDexRequestHandled[requestId]) {
+                revert AlreadyCalled();
+            }
+
+            ChainType chainType = request.chainType;
+            if (chainType == ChainType.EVM) {
+                _verifyEVMRequest(request);
+            } else {
+                revert InvalidChainType();
+            }
+
+            //update record
+            bytes32 tokenHash = keccak256(abi.encodePacked(request.dexRequestData.token));
+            isDexRequestHandled[requestId] = true;
+
+            if (
+                _handleRequest(request.dexRequestData.payloadType, request.id, tokenHash, request.dexRequestData.amount)
+            ) {
+                emit DexRequestHandled(request);
+            } else {
+                emit DexWithdrawNotEnough(requestId);
+            }
+        }
+    }
+
     /// @notice Operator upload NAV of each strategy fund and compute performance fee at first of the period
     /// @param periodId period id
     /// @param vaultId vault id
@@ -202,14 +207,13 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             uint256 performanceFee;
             uint256 feeShares;
             if (fundShares > 0) {
-                uint256 decimal = tokenDecimal[USDC_HASH];
                 //avoid stack too deep
                 {
-                    uint256 assetPerShare = fundAssets * 10 ** decimal / fundShares;
+                    uint256 assetPerShare = fundAssets * 10 ** USDC_DECIMAL / fundShares;
 
                     if (assetPerShare > strategyFundToken.hwm) {
                         performanceFee = (assetPerShare - strategyFundToken.hwm) * fundShares * feeRateOfFund[spId]
-                            / FEE_BASE / 10 ** decimal;
+                            / FEE_BASE / 10 ** USDC_DECIMAL;
                         feeShares = _convertToShares(
                             performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor
                         );
@@ -252,7 +256,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     {
         Signature.verifyRemoveInvalidFrozenShares(vaultId, params, signature, engine);
 
-        OperationRes[] memory operationRes = new OperationRes[](params.length);
+        OperationRes[] memory operationRes = _createOperationResArray(params.length);
 
         for (uint256 i = 0; i < params.length; i++) {
             bytes32 requestId = params[i].operation.requestId;
@@ -266,19 +270,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 if (operationType == OperationType.LP_WITHDRAW) {
                     // Handle LP frozen shares removal
                     AccountToken storage accountToken = _getAccountToken(id);
-                    if (operationAmount > accountToken.frozenShares) {
-                        revert NotEnoughFrozenShare(operationAmount);
-                    }
+                    _requireEnoughFrozenShares(operationAmount, accountToken.frozenShares);
                     accountToken.frozenShares -= operationAmount;
                 } else if (operationType == OperationType.SP_WITHDRAW) {
                     // Handle SP frozen shares removal
                     StrategyFundToken storage strategyFundToken = _getStrategyFundToken(id);
-                    if (operationAmount > strategyFundToken.frozenShares) {
-                        revert NotEnoughFrozenShare(operationAmount);
-                    }
+                    _requireEnoughFrozenShares(operationAmount, strategyFundToken.frozenShares);
                     strategyFundToken.frozenShares -= operationAmount;
                 } else {
-                    revert InvalidWithdrawType();
+                    revert InvalidType();
                 }
 
                 //Event
@@ -306,7 +306,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         _check(periodId);
         Signature.verifyUpdateLPAndStrategyFund(periodId, vaultId, updateUserLedgerParams, signature, engine);
 
-        OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
+        OperationRes[] memory operationRes = _createOperationResArray(updateUserLedgerParams.length);
 
         //handle lp operation
         for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
@@ -332,7 +332,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                     //handle SP withdraw
                     amount = _handleSpWithdraw(requestId, id, operationAmount);
                 } else {
-                    revert InvalidOpType(operationType);
+                    revert InvalidType();
                 }
 
                 operationRes[i] =
@@ -497,10 +497,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             //hwm must be updated firstly
             strategyFundToken.hwm = _calculateHWM(strategyProviderIds[i]);
 
-            strategyFundToken.totalShares = strategyFundToken.pendingState.pendingTotalShares;
-            strategyFundToken.totalAssets = strategyFundToken.pendingState.pendingTotalAssets;
-            strategyFundToken.mainShares = strategyFundToken.pendingState.pendingMainShares;
-            strategyFundToken.strategyProviderShares = strategyFundToken.pendingState.pendingStrategyProviderShares;
+            _settlePendingState(strategyFundToken);
 
             //emit event
             strategyFundStates[i] = StrategyFundState({
@@ -584,12 +581,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
                 AssetsDistribution({chainId: assetsDistributions[i].chainId, assets: assetsDistributions[i].assets});
 
             //cross chain message
-            StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-                payloadType: PayloadType.ASSETS_DISTRIBUTION,
-                srcChainId: block.chainid,
-                dstChainId: assetsDistributions[i].chainId,
-                payload: abi.encode(periodId, assetsDistribution)
-            });
+            StrategyVaultCCMessage memory message = _createCCMessage(
+                PayloadType.ASSETS_DISTRIBUTION,
+                assetsDistributions[i].chainId,
+                abi.encode(periodId, assetsDistribution)
+            );
             //cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
         }
@@ -639,21 +635,14 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
             uint256 ccFee;
 
             //cross chain message
-            StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-                payloadType: PayloadType.UPDATE_USER_CLAIM,
-                srcChainId: block.chainid,
-                dstChainId: chainId,
-                payload: abi.encode(periodId, ccFee, userClaimInfos)
-            });
+            StrategyVaultCCMessage memory message =
+                _createCCMessage(PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos));
             (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
 
             //set gas
-            message = StrategyVaultCCMessage({
-                payloadType: PayloadType.UPDATE_USER_CLAIM,
-                srcChainId: block.chainid,
-                dstChainId: chainId,
-                payload: abi.encode(periodId, ccFee / len, userClaimInfos)
-            });
+            message = _createCCMessage(
+                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / len, userClaimInfos)
+            );
 
             //cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
@@ -678,8 +667,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function setCrossChainManager(address _crossChainManager) external onlyOwner {
         crossChainManager = _crossChainManager;
-
-        emit CrossChainManagerAddressSet(_crossChainManager);
     }
 
     function setAllowedStrategyProvider(
@@ -690,15 +677,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         bytes32 strategyProviderId,
         bool knob
     ) external onlyOwner {
-        VaultUtils.checkStrategyProviderId(vault, strategyProvider, brokerHash, strategyProviderId);
-
         emit AllowedStrategyProviderSet(vaultId, vault, strategyProvider, brokerHash, strategyProviderId, knob);
     }
 
     function setOperatorManager(address _operator) public onlyOwner {
         operator = _operator;
-
-        emit OperatorManagerSet(_operator);
     }
 
     function setEngine(address _engine) public onlyOwner {
@@ -707,6 +690,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function setDecimal(bytes32 tokenHash, uint256 decimal) external onlyOwner {
         tokenDecimal[tokenHash] = decimal;
+    }
+
+    function setVaultBroker(bytes32 _vaultId, bytes32 _brokerId) external onlyOwner {
+        vaultBroker[_vaultId] = _brokerId;
     }
     /*=========================================================================================
     *                                       VIEW
@@ -721,15 +708,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         StrategyFundState[] memory pendingStrategyFundStates = new StrategyFundState[](strategyProviderIds.length);
 
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
+            PendingState storage pendingState = _getStrategyFundToken(strategyProviderIds[i]).pendingState;
 
             uint256 hwm = _calculateHWM(strategyProviderIds[i]);
             pendingStrategyFundStates[i] = StrategyFundState({
                 strategyProviderId: strategyProviderIds[i],
-                totalShares: strategyFundToken.pendingState.pendingTotalShares,
-                totalAssets: strategyFundToken.pendingState.pendingTotalAssets,
-                mainShares: strategyFundToken.pendingState.pendingMainShares,
-                strategyProviderShares: strategyFundToken.pendingState.pendingStrategyProviderShares,
+                totalShares: pendingState.pendingTotalShares,
+                totalAssets: pendingState.pendingTotalAssets,
+                mainShares: pendingState.pendingMainShares,
+                strategyProviderShares: pendingState.pendingStrategyProviderShares,
                 hwm: hwm
             });
         }
@@ -780,15 +767,57 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         }
     }
 
+    /// @notice Create a StrategyVaultCCMessage with standard fields
+    /// @param payloadType The type of cross-chain message
+    /// @param dstChainId The destination chain ID
+    /// @param payload The encoded payload data
+    /// @return message The constructed StrategyVaultCCMessage
+    function _createCCMessage(PayloadType payloadType, uint256 dstChainId, bytes memory payload)
+        internal
+        view
+        returns (StrategyVaultCCMessage memory message)
+    {
+        return StrategyVaultCCMessage({
+            payloadType: payloadType,
+            srcChainId: block.chainid,
+            dstChainId: dstChainId,
+            payload: payload
+        });
+    }
+
     function _checkWithdraw(uint256 withdrawAmount, uint256 frozenAmount, uint256 totalAmount)
         internal
         pure
         returns (bool)
     {
-        if (withdrawAmount + frozenAmount > totalAmount) {
-            return false;
+        return withdrawAmount + frozenAmount <= totalAmount;
+    }
+
+    /// @notice Copy pending state to actual state for strategy fund
+    /// @param strategyFundToken The strategy fund token to update
+    function _settlePendingState(StrategyFundToken storage strategyFundToken) internal {
+        PendingState storage pendingState = strategyFundToken.pendingState;
+        strategyFundToken.totalShares = pendingState.pendingTotalShares;
+        strategyFundToken.totalAssets = pendingState.pendingTotalAssets;
+        strategyFundToken.mainShares = pendingState.pendingMainShares;
+        strategyFundToken.strategyProviderShares = pendingState.pendingStrategyProviderShares;
+    }
+
+    /// @notice Create an array for loop results to reduce repeated array initialization
+    /// @param length The length of the array to create
+    /// @return result The initialized array
+    function _createOperationResArray(uint256 length) internal pure returns (OperationRes[] memory result) {
+        return new OperationRes[](length);
+    }
+
+    /// @notice Check if there are enough frozen shares for withdrawal
+    /// @param amount Amount to withdraw
+    /// @param frozenShares Available frozen shares
+    /// @dev Reverts if not enough frozen shares
+    function _requireEnoughFrozenShares(uint256 amount, uint256 frozenShares) internal pure {
+        if (amount > frozenShares) {
+            revert NotEnoughFrozenShare(amount);
         }
-        return true;
     }
 
     function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
@@ -812,9 +841,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     function _handleLpWithdraw(bytes32 requestId, bytes32 accountId, uint256 amount) internal returns (uint256) {
         AccountToken storage accountToken = _getAccountToken(accountId);
 
-        if (amount > accountToken.frozenShares) {
-            revert NotEnoughFrozenShare(amount);
-        }
+        _requireEnoughFrozenShares(amount, accountToken.frozenShares);
 
         //effect
         uint256 withdrawAssets = _convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
@@ -858,9 +885,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
         PendingState storage pendingState = strategyFundToken.pendingState;
 
-        if (amount > strategyFundToken.frozenShares) {
-            revert NotEnoughFrozenShare(amount);
-        }
+        _requireEnoughFrozenShares(amount, strategyFundToken.frozenShares);
         uint256 spWithdrawAssets = _convertToAssets(
             amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
         );
@@ -883,7 +908,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
         uint256 hwm = strategyFundToken.hwm;
         uint256 totalShares = strategyFundToken.totalShares;
-        uint256 decimal = tokenDecimal[USDC_HASH];
+        uint256 decimal = USDC_DECIMAL;
         if (totalShares == 0) {
             return 10 ** decimal;
         }
@@ -911,7 +936,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         virtual
         returns (uint256)
     {
-        uint256 decimal = tokenDecimal[USDC_HASH];
+        uint256 decimal = USDC_DECIMAL;
         return (_totalAssets == 0)
             ? amount.mulDiv(10 ** decimal, 10 ** decimal, rounding)
             : amount.mulDiv(_totalShares, _totalAssets, rounding);
@@ -926,10 +951,56 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         virtual
         returns (uint256)
     {
-        uint256 decimal = tokenDecimal[USDC_HASH];
+        uint256 decimal = USDC_DECIMAL;
         return (_totalShares == 0)
             ? shares.mulDiv(10 ** decimal, 10 ** decimal, rounding)
             : shares.mulDiv(_totalAssets, _totalShares, rounding);
+    }
+
+    function _verifyEVMRequest(DexRequest calldata request) internal view {
+        DexRequestData calldata data = request.dexRequestData;
+
+        address receiver = address(uint160(uint256(data.receiver)));
+        address vault = IVaultCrossChainManager(crossChainManager).vault();
+
+        //verify id
+        VaultUtils.validateId(vault, receiver, vaultBroker[data.vaultId], request.id);
+
+        // verify signature
+        Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);
+    }
+
+    function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount)
+        internal
+        returns (bool)
+    {
+        AccountToken storage accountToken = accountTokenInfo[id][tokenHash];
+        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[id][tokenHash];
+
+        if (payloadType == PayloadType.LP_DEPOSIT) {
+            accountToken.unAllocatedAssets += amount;
+        } else if (payloadType == PayloadType.LP_WITHDRAW) {
+            if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
+                accountToken.frozenShares += amount;
+            } else {
+                return false;
+            }
+        } else if (payloadType == PayloadType.SP_DEPOSIT) {
+            strategyFundToken.unAllocatedAssets += amount;
+        } else if (payloadType == PayloadType.SP_WITHDRAW) {
+            if (
+                _checkWithdraw(
+                    amount, strategyFundToken.frozenShares, strategyFundToken.pendingState.pendingStrategyProviderShares
+                )
+            ) {
+                strategyFundToken.frozenShares += amount;
+            } else {
+                return false;
+            }
+        } else {
+            revert InvalidType();
+        }
+        return true;
     }
 
     /*=========================================================================================
