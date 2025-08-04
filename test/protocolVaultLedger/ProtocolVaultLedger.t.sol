@@ -19,14 +19,16 @@ import {
     StrategyFundState,
     ClaimInfo,
     DexRequest
-} from "../../contracts/Ledger/ProtocolVaultLedger.sol";
+} from "../../contracts/lib/types/LedgerStruct.sol";
+import {ILedgerCoreImpl} from "../../contracts/interfaces/ILedgerCoreImpl.sol";
+import {ILedgerExtension} from "../../contracts/interfaces/ILedgerExtension.sol";
+import {IProtocolVaultLedger} from "../../contracts/interfaces/IProtocolVaultLedger.sol";
+import {LedgerUtils} from "../../contracts/lib/utils/LedgerUtils.sol";
 import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract ProtocolVaultTest is Base {
-    error AlreadyCalled();
-    error InvalidType();
-    error NotEnoughFrozenShare(uint256 amount);
+    // Contract-specific errors (not related to ledger implementation)
     error NotEnoughCCFee();
     error InvalidClaimToken(address token);
     error NotEnoughUnclaimedAssets(uint256 amount);
@@ -98,7 +100,7 @@ contract ProtocolVaultTest is Base {
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
 
         //revert
-        vm.expectRevert(AlreadyCalled.selector);
+        vm.expectRevert(ILedgerCoreImpl.AlreadyCalled.selector);
         svLedger.distributeAssets(periodId, vaultId, assetsDistributions, signature);
         vm.stopPrank();
     }
@@ -354,7 +356,7 @@ contract ProtocolVaultTest is Base {
         svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
 
         //revert
-        vm.expectRevert(AlreadyCalled.selector);
+        vm.expectRevert(ILedgerCoreImpl.AlreadyCalled.selector);
         svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
     }
 
@@ -364,7 +366,7 @@ contract ProtocolVaultTest is Base {
         svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
 
         //revert
-        vm.expectRevert(AlreadyCalled.selector);
+        vm.expectRevert(ILedgerCoreImpl.AlreadyCalled.selector);
         vm.prank(operator);
         svLedger.allocateToFunds(periodId, vaultId, spIds, signature);
     }
@@ -892,7 +894,7 @@ contract ProtocolVaultTest is Base {
 
         // Expected to fail due to insufficient shares
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(NotEnoughFrozenShare.selector, 2 * shareDecimal));
+        vm.expectRevert(abi.encodeWithSelector(LedgerUtils.NotEnoughFrozenShare.selector, 2 * shareDecimal));
         svLedger.removeInvalidFrozenShares(vaultId, params, signature);
     }
 
@@ -915,7 +917,7 @@ contract ProtocolVaultTest is Base {
 
         // Expected to fail due to invalid operation type
         vm.prank(operator);
-        vm.expectRevert(InvalidType.selector);
+        vm.expectRevert(ILedgerExtension.InvalidType.selector);
         svLedger.removeInvalidFrozenShares(vaultId, params, signature);
     }
 

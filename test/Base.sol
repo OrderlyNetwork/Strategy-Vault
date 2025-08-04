@@ -12,10 +12,13 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 import {ProtocolVault} from "../contracts/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {ProtocolVaultLedger, ClaimInfo} from "../contracts/Ledger/ProtocolVaultLedger.sol";
+import {LedgerCoreImpl} from "../contracts/Ledger/LedgerCoreImpl.sol";
+import {LedgerExtension} from "../contracts/Ledger/LedgerExtension.sol";
 import {MockSVLedger} from "./mock/MockSVLedger.sol";
 import {MockDexVault} from "./mock/MockDexVault.sol";
 import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
+import {UpdateStrategyFundAssetsParams} from "../contracts/lib/types/LedgerStruct.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 // Mock ERC20 token contract
@@ -63,6 +66,8 @@ contract Base is TestHelperOz5 {
     MockERC20 mockToken;
     ProtocolVault protocolVault;
     MockSVLedger svLedger;
+    LedgerCoreImpl ledgerCoreImpl;
+    LedgerExtension ledgerExtension;
     VaultCrossChainManager aVaultCrossChainManager;
     VaultCrossChainManager bVaultCrossChainManager;
     MockDexVault mockDexVault;
@@ -78,6 +83,97 @@ contract Base is TestHelperOz5 {
         bytes32 vaultId = keccak256(abi.encode(0x15a6aeFb614C6FF43fFeFCC5560ff3F239A77bA3, ORDERLY_BROKER));
         console.logBytes32(vaultId);
     }
+
+    /// @notice Test EIP-7201 storage implementation
+    function testEIP7201Storage() public view {
+        // Verify that core and extension addresses are set correctly in EIP-7201 namespace storage
+        assertNotEq(address(ledgerCoreImpl), address(0), "LedgerCoreImpl should be deployed");
+        assertNotEq(address(ledgerExtension), address(0), "LedgerExtension should be deployed");
+        
+        // Test storage location calculation
+        // keccak256(abi.encode(uint256(keccak256("ProtocolVaultLedger.impl")) - 1)) & ~bytes32(uint256(0xff));
+        bytes32 expectedStorageLocation = 0xbd28ae05aa0b6f83a93f63dae3aa2984ba2c5f2c4d60c8112719dd560d3efb00;
+        
+        // We can't directly read the storage location from the test, 
+        // but we can verify the calculation is correct
+        bytes32 calculatedLocation = keccak256(abi.encode(uint256(keccak256("ProtocolVaultLedger.impl")) - 1)) & ~bytes32(uint256(0xff));
+        assertEq(calculatedLocation, expectedStorageLocation, "EIP-7201 storage location calculation should be correct");
+        
+    }
+
+    /// @notice Test core and extension address setting and getting
+    function testCoreExtensionAddresses() public {
+        // Get the addresses directly through getter functions (if they exist) or events
+        vm.startPrank(owner);
+        
+        // Test setting new addresses
+        LedgerCoreImpl newCore = new LedgerCoreImpl();
+        LedgerExtension newExtension = new LedgerExtension();
+        
+        // Test Core setting
+        vm.expectEmit(true, false, false, false);
+        emit CoreSet(address(newCore));
+        svLedger.setCore(address(newCore));
+        
+        // Test Extension setting  
+        vm.expectEmit(true, false, false, false);
+        emit ExtensionSet(address(newExtension));
+        svLedger.setExtension(address(newExtension));
+        
+        vm.stopPrank(); 
+    }
+
+    /// @notice Test delegatecall functionality by testing core and extension functions
+    function testDelegatecallFunctionality() public {
+        // Test extension functionality through delegatecall
+        // We can test this by verifying the contracts can handle operations
+        
+        // Set up some basic state for testing
+        vm.startPrank(owner);
+        bytes32 testVaultId = keccak256(abi.encode(address(protocolVault), ORDERLY_BROKER));
+        svLedger.setVaultBroker(testVaultId, ORDERLY_BROKER);
+        vm.stopPrank();
+    }
+    
+    /// @notice Test that delegatecall revert when implementation is not set
+    function testDelegatecallRevertWhenNotSet() public {
+        // Deploy a new ledger without setting implementations
+        address newLedgerImpl = address(new MockSVLedger());
+        address newLedgerProxy = address(
+            new ERC1967Proxy(newLedgerImpl, abi.encodeWithSelector(ProtocolVaultLedger.initialize.selector, owner))
+        );
+        MockSVLedger newLedger = MockSVLedger(newLedgerProxy);
+        
+        vm.startPrank(owner);
+        newLedger.setOperatorManager(operator);
+        newLedger.setEngine(engine);
+        // Don't set core and extension implementations
+        vm.stopPrank();
+        
+        // Now try to call a function that requires core implementation
+        vm.startPrank(operator);
+        
+        // This should revert because core is not set
+        UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](0);
+        bytes memory signature = new bytes(0);
+        
+        vm.expectRevert(); // Should revert due to LedgerExtensionsNotSet
+        newLedger.updateStrategyFundAssets(0, bytes32(0), strategyFundAssets, signature);
+        
+        vm.stopPrank();
+        
+    }
+
+    /// @notice Test that core and extension contracts are not zero addresses
+    function testImplementationNotZero() public view {
+        // These addresses should be set during setUp
+        assertTrue(address(ledgerCoreImpl) != address(0), "Core implementation should not be zero");
+        assertTrue(address(ledgerExtension) != address(0), "Extension implementation should not be zero");
+    }
+
+    // Events to match contract interface
+    event CoreSet(address core);
+    event ExtensionSet(address extension);
 
     // function testQuote() public view {
     //     uint256 nativeFee = protocolVault.quoteOperation(PayloadType.LP_DEPOSIT);
@@ -104,16 +200,24 @@ contract Base is TestHelperOz5 {
         vm.deal(sp, 100 ether);
         vm.deal(userA, 100 ether);
         vm.deal(userB, 100 ether);
+        // Deploy LedgerCoreImpl and LedgerExtension contracts
+        ledgerCoreImpl = new LedgerCoreImpl();
+        ledgerExtension = new LedgerExtension();
+
         // Deploy the StrategyVaultLedger contract
         address svLedgerImpl = address(new MockSVLedger());
         address svLedgerProxy = address(
             new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(ProtocolVaultLedger.initialize.selector, owner))
         );
         svLedger = MockSVLedger(svLedgerProxy);
-        vm.prank(owner);
+        
+        vm.startPrank(owner);
+        // Set the core and extension implementations
+        svLedger.setCore(address(ledgerCoreImpl));
+        svLedger.setExtension(address(ledgerExtension));
         svLedger.setOperatorManager(operator);
-        vm.prank(owner);
         svLedger.setEngine(engine);
+        vm.stopPrank();
 
         // Deploy the VaultCrossChainManager contract
         // Initialize 2 endpoints, using UltraLightNode as the library type

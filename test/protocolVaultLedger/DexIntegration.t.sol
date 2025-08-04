@@ -11,6 +11,8 @@ import {
     AccountToken,
     StrategyFundToken
 } from "../../contracts/lib/types/LedgerStruct.sol";
+import {ILedgerExtension} from "../../contracts/interfaces/ILedgerExtension.sol";
+import {IProtocolVaultLedger} from "../../contracts/interfaces/IProtocolVaultLedger.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {VaultUtils} from "../../contracts/lib/utils/VaultUtils.sol";
 
@@ -624,7 +626,7 @@ contract DexIntegrationTest is Base {
 
         // Should revert when called by non-operator
         vm.prank(userA);
-        vm.expectRevert(abi.encodeWithSignature("InvalidOperator()"));
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
         svLedger.handleDexRequests(dexRequests, engineSignature);
     }
 
@@ -643,7 +645,7 @@ contract DexIntegrationTest is Base {
 
         // Second call with same requestId should revert
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSignature("AlreadyCalled()"));
+        vm.expectRevert(ILedgerExtension.AlreadyCalled.selector);
         svLedger.handleDexRequests(dexRequests, engineSignature);
     }
 
