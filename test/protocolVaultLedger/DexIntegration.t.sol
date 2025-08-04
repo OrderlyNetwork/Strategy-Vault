@@ -16,7 +16,7 @@ import {VaultUtils} from "../../contracts/lib/utils/VaultUtils.sol";
 
 contract DexIntegrationTest is Base {
     // Events that need to be declared for testing
-    event DexRequestsHandled(DexRequest dexRequest);
+    event DexRequestHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 requestId);
 
     // Setup
@@ -774,7 +774,7 @@ contract DexIntegrationTest is Base {
 
         // Expect DexRequestsHandled event
         vm.expectEmit(true, true, true, true);
-        emit DexRequestsHandled(dexRequests[0]);
+        emit DexRequestHandled(dexRequests[0]);
 
         vm.prank(operator);
         svLedger.handleDexRequests(dexRequests, engineSignature);
