@@ -34,6 +34,7 @@ interface IProtocolVaultLedger {
     error InvalidNonce();
     error DelegatecallFailed();
     error LedgerExtensionsNotSet();
+    error LedgerCoreImplNotSet();
 
     // Events - Main contract specific
     event StrategyFundAssetsUpdate(
@@ -64,6 +65,7 @@ interface IProtocolVaultLedger {
     event DecimalSet(bytes32 tokenHash, uint256 decimal);
     event VaultBrokerSet(bytes32 vaultId, bytes32 brokerId);
     event LedgerExtensionsSet(address ledgerExtensions);
+    event LedgerCoreImplSet(address ledgerCoreImpl);
 
     //--------------------------------------HIGH FREQUENCY FUNCTIONS-----------------------------------------
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData) external;

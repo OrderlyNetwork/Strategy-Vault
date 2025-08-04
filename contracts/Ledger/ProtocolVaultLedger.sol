@@ -26,7 +26,8 @@ import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
-import {ILedgerExtensions} from "../interfaces/ILedgerExtensions.sol";
+import {ILedgerCoreImpl} from "../interfaces/ILedgerCoreImpl.sol";
+import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
 import {FEE_BASE, USDC_DECIMAL} from "../lib/types/Constants.sol";
@@ -82,71 +83,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
         bytes calldata signature
     ) external onlyOperator {
-        _check(periodId);
-        //only can be called once in a period
-        if (isUpdateStrategyFundAssets[periodId]) {
-            revert AlreadyCalled();
-        }
-        Signature.verifyUpdateFundAssets(periodId, vaultId, strategyFundAssets, signature, engine);
-
-        uint256 assetsAfterFee;
-        //for event
-        UpdateStrategyFundAssetsRes[] memory updateStrategyFundAssetsRes =
-            new UpdateStrategyFundAssetsRes[](strategyFundAssets.length);
-
-        for (uint256 i = 0; i < strategyFundAssets.length; i++) {
-            bytes32 spId = strategyFundAssets[i].strategyProviderId;
-            //gas optimization
-            StrategyFundToken storage strategyFundToken = _getStrategyFundToken(spId);
-            PendingState storage pendingState = strategyFundToken.pendingState;
-
-            //reset performance fee
-            strategyFundToken.performanceFee = 0;
-
-            uint256 fundAssets = strategyFundAssets[i].totalAssets;
-            uint256 fundShares = strategyFundToken.totalShares;
-
-            //Performance Fee
-            uint256 performanceFee;
-            uint256 feeShares;
-            if (fundShares > 0) {
-                //avoid stack too deep
-                {
-                    uint256 assetPerShare = fundAssets * 10 ** USDC_DECIMAL / fundShares;
-
-                    if (assetPerShare > strategyFundToken.hwm) {
-                        performanceFee = (assetPerShare - strategyFundToken.hwm) * fundShares * feeRateOfFund[spId]
-                            / FEE_BASE / 10 ** USDC_DECIMAL;
-                        feeShares = LedgerUtils._convertToShares(
-                            performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor
-                        );
-
-                        strategyFundToken.performanceFee = performanceFee;
-                    }
-                }
-                assetsAfterFee +=
-                    strategyFundToken.mainShares * (fundAssets - performanceFee) / strategyFundToken.totalShares;
-            }
-
-            //Update pending state
-            strategyFundToken.pendingState.pendingTotalAssets = fundAssets;
-            strategyFundToken.fundAssetsAfterFee = fundAssets - performanceFee;
-            pendingState.pendingStrategyProviderShares += feeShares;
-            pendingState.pendingTotalShares = fundShares + feeShares;
-
-            //Add to event
-            updateStrategyFundAssetsRes[i] = UpdateStrategyFundAssetsRes({
-                strategyProviderId: strategyFundAssets[i].strategyProviderId,
-                fundAssetsAfterFee: fundAssets - performanceFee,
-                strategyProviderShares: pendingState.pendingStrategyProviderShares,
-                totalShares: fundShares + feeShares
-            });
-        }
-
-        mainAssetsAfterFee = assetsAfterFee;
-        isUpdateStrategyFundAssets[periodId] = true;
-
-        emit StrategyFundAssetsUpdate(periodId, vaultId, mainAssetsAfterFee, updateStrategyFundAssetsRes);
+        _delegateCallCore(
+            abi.encodeWithSelector(
+                ILedgerCoreImpl.updateStrategyFundAssets.selector,
+                periodId,
+                vaultId,
+                strategyFundAssets,
+                signature
+            )
+        );
     }
 
     /// @notice Operator update LP and strategy fund info
@@ -160,46 +105,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes calldata signature
     ) external onlyOperator {
-        _check(periodId);
-        Signature.verifyUpdateLPAndStrategyFund(periodId, vaultId, updateUserLedgerParams, signature, engine);
-
-        OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
-
-        //handle lp operation
-        for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
-            bytes32 requestId = updateUserLedgerParams[i].operation.requestId;
-            uint256 amount;
-
-            if (!isOpHandled[requestId]) {
-                Operation memory operation = updateUserLedgerParams[i].operation;
-                bytes32 id = operation.id;
-                uint256 operationAmount = operation.amount;
-                OperationType operationType = updateUserLedgerParams[i].operationType;
-
-                if (operationType == OperationType.LP_DEPOSIT) {
-                    //handle LP deposit
-                    amount = _handleLpDeposit(id, operationAmount);
-                } else if (operationType == OperationType.LP_WITHDRAW) {
-                    //handle LP withdraw
-                    amount = _handleLpWithdraw(requestId, id, operationAmount);
-                } else if (operationType == OperationType.SP_DEPOSIT) {
-                    //handle SP deposit
-                    amount = _handleSPDeposit(id, operationAmount);
-                } else if (operationType == OperationType.SP_WITHDRAW) {
-                    //handle SP withdraw
-                    amount = _handleSpWithdraw(requestId, id, operationAmount);
-                } else {
-                    revert InvalidType();
-                }
-
-                operationRes[i] =
-                    OperationRes({id: operation.id, requestId: requestId, amount: amount, operationType: operationType});
-                isOpHandled[requestId] = true;
-            }
-        }
-
-        //emit event
-        emit LPAndStrategyFundUpdated(periodId, vaultId, operationRes);
+        _delegateCallCore(
+            abi.encodeWithSelector(
+                ILedgerCoreImpl.updateLPAndStrategyFund.selector,
+                periodId,
+                vaultId,
+                updateUserLedgerParams,
+                signature
+            )
+        );
     }
 
     /// @notice Operator allocate all lp deposit and withdraw to strategy funds after handle all lp operation
@@ -213,121 +127,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32[] calldata strategyProviderIds,
         bytes calldata signature
     ) external onlyOperator {
-        _check(periodId);
-        //only can be called once in a period
-        if (isAllocatedToFunds[periodId]) {
-            revert AlreadyCalled();
-        }
-        Signature.verifyAllocateToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
-
-        StrategyFundToken storage strategyFundToken;
-        uint256 totalMainAssetsInFund;
-
-        //for event
-        AllocateFundRes[] memory allocateFundRes = new AllocateFundRes[](strategyProviderIds.length);
-
-        //gas saving
-        uint256 depositAssets = pendingLpDepositAssets;
-        uint256 withdrawAssets = pendingLpWithdrawAssets;
-
-        if (strategyProviderIds.length == 1) {
-            strategyFundToken = _getStrategyFundToken(strategyProviderIds[0]);
-
-            //deposit
-            uint256 distributeDepositShares = LedgerUtils._convertToShares(
-                depositAssets, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
-            );
-            strategyFundToken.pendingState.pendingTotalAssets += depositAssets;
-            strategyFundToken.pendingState.pendingTotalShares += distributeDepositShares;
-            strategyFundToken.pendingState.pendingMainShares += distributeDepositShares;
-
-            //withdraw
-            uint256 pendingLpWithdrawShares = LedgerUtils._convertToShares(
-                withdrawAssets, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
-            );
-            strategyFundToken.pendingState.pendingTotalAssets -= withdrawAssets;
-            strategyFundToken.pendingState.pendingMainShares -= pendingLpWithdrawShares;
-            strategyFundToken.pendingState.pendingTotalShares -= pendingLpWithdrawShares;
-
-            //event
-            allocateFundRes[0] = AllocateFundRes({
-                strategyProviderId: strategyProviderIds[0],
-                totalDepositAssets: depositAssets,
-                totalDepositShares: distributeDepositShares,
-                totalWithdrawAssets: withdrawAssets,
-                totalWithdrawShares: pendingLpWithdrawShares
-            });
-        } else if (strategyProviderIds.length > 1) {
-            for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
-                allocateFundRes[i].strategyProviderId = strategyProviderIds[i];
-                totalMainAssetsInFund += LedgerUtils._convertToAssets(
-                    strategyFundToken.mainShares,
-                    strategyFundToken.fundAssetsAfterFee,
-                    strategyFundToken.totalShares,
-                    Math.Rounding.Floor
-                );
-            }
-            //allocate deposit
-            if (depositAssets > 0) {
-                for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                    strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
-
-                    uint256 mainAssetsInFund = LedgerUtils._convertToAssets(
-                        strategyFundToken.mainShares,
-                        strategyFundToken.fundAssetsAfterFee,
-                        strategyFundToken.totalShares,
-                        Math.Rounding.Floor
-                    );
-                    uint256 distributeDepositAssets =
-                        depositAssets.mulDiv(mainAssetsInFund, totalMainAssetsInFund, Math.Rounding.Floor);
-
-                    uint256 distributeDepositShares = LedgerUtils._convertToShares(
-                        distributeDepositAssets,
-                        strategyFundToken.fundAssetsAfterFee,
-                        strategyFundToken.totalShares,
-                        Math.Rounding.Floor
-                    );
-                    strategyFundToken.pendingState.pendingTotalAssets += distributeDepositAssets;
-                    strategyFundToken.pendingState.pendingTotalShares += distributeDepositShares;
-                    strategyFundToken.pendingState.pendingMainShares += distributeDepositShares;
-
-                    //event
-                    allocateFundRes[i].totalDepositAssets = distributeDepositAssets;
-                    allocateFundRes[i].totalDepositShares = distributeDepositShares;
-                }
-            }
-            //allocate withdraw
-            if (withdrawAssets > 0) {
-                for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                    strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
-
-                    uint256 mainAssetsInFund = LedgerUtils._convertToAssets(
-                        strategyFundToken.mainShares,
-                        strategyFundToken.fundAssetsAfterFee,
-                        strategyFundToken.totalShares,
-                        Math.Rounding.Floor
-                    );
-                    uint256 distributeWithdrawAssets =
-                        withdrawAssets.mulDiv(mainAssetsInFund, totalMainAssetsInFund, Math.Rounding.Ceil);
-                    uint256 distributeWithdrawShares = LedgerUtils._convertToShares(
-                        distributeWithdrawAssets,
-                        strategyFundToken.fundAssetsAfterFee,
-                        strategyFundToken.totalShares,
-                        Math.Rounding.Floor
-                    );
-                    strategyFundToken.pendingState.pendingTotalAssets -= distributeWithdrawAssets;
-                    strategyFundToken.pendingState.pendingMainShares -= distributeWithdrawShares;
-                    strategyFundToken.pendingState.pendingTotalShares -= distributeWithdrawShares;
-                    //event
-                    allocateFundRes[i].totalWithdrawAssets = distributeWithdrawAssets;
-                    allocateFundRes[i].totalWithdrawShares = distributeWithdrawShares;
-                }
-            }
-        }
-
-        isAllocatedToFunds[periodId] = true;
-        emit FundAllocated(periodId, vaultId, strategyProviderIds, allocateFundRes);
+        _delegateCallCore(
+            abi.encodeWithSelector(
+                ILedgerCoreImpl.allocateToFunds.selector,
+                periodId,
+                vaultId,
+                strategyProviderIds,
+                signature
+            )
+        );
     }
 
     /// @notice Operator settle main and strategy fund info after check all operations
@@ -341,38 +149,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32[] calldata strategyProviderIds,
         bytes calldata signature
     ) external onlyOperator {
-        _check(periodId);
-        Signature.verifySettleMainAndStrategyFunds(periodId, vaultId, strategyProviderIds, signature, engine);
-        //settle MAIN
-        mainShares = pendingMainShares;
-        StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
-
-        //settle strategy fund
-        for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
-
-            //hwm must be updated firstly
-            strategyFundToken.hwm = _calculateHWM(strategyProviderIds[i]);
-
-            //update pending state to actual state
-            PendingState storage pendingState = strategyFundToken.pendingState;
-            strategyFundToken.totalShares = pendingState.pendingTotalShares;
-            strategyFundToken.totalAssets = pendingState.pendingTotalAssets;
-            strategyFundToken.mainShares = pendingState.pendingMainShares;
-            strategyFundToken.strategyProviderShares = pendingState.pendingStrategyProviderShares;
-
-            //emit event
-            strategyFundStates[i] = StrategyFundState({
-                strategyProviderId: strategyProviderIds[i],
-                totalShares: strategyFundToken.totalShares,
-                totalAssets: strategyFundToken.totalAssets,
-                mainShares: strategyFundToken.mainShares,
-                strategyProviderShares: strategyFundToken.strategyProviderShares,
-                hwm: strategyFundToken.hwm
-            });
-        }
-
-        emit MainAndStrategyFundsSettled(periodId, vaultId, mainShares, strategyFundStates);
+        _delegateCallCore(
+            abi.encodeWithSelector(
+                ILedgerCoreImpl.settleMainAndStrategyFunds.selector,
+                periodId,
+                vaultId,
+                strategyProviderIds,
+                signature
+            )
+        );
     }
 
     /// @notice Operator settle all LP infos after check all operations
@@ -384,19 +169,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         external
         onlyOperator
     {
-        _check(periodId);
-        Signature.verifySettleAccount(periodId, vaultId, accountIds, signature, engine);
-
-        AccountState[] memory accountStates = new AccountState[](accountIds.length);
-        for (uint256 i = 0; i < accountIds.length; i++) {
-            AccountToken storage accountToken = _getAccountToken(accountIds[i]);
-            accountToken.shares = accountToken.pendingShares;
-
-            //for event
-            accountStates[i] = AccountState({accountId: accountIds[i], shares: accountToken.shares});
-        }
-
-        emit AccountSettled(periodId, vaultId, accountStates);
+        _delegateCallCore(
+            abi.encodeWithSelector(
+                ILedgerCoreImpl.settleAccounts.selector,
+                periodId,
+                vaultId,
+                accountIds,
+                signature
+            )
+        );
     }
 
     /// @notice Operator update period id after last period finish
@@ -404,17 +185,14 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @param vaultId vault id
     /// @param signature signature signature of BE
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external onlyOperator {
-        if (periodId != latestPeriodId) {
-            revert InvalidPeriodId();
-        }
-        Signature.verifyUpdatePeriodId(periodId, vaultId, signature, engine);
-
-        pendingLpDepositAssets = 0;
-        pendingLpWithdrawAssets = 0;
-
-        latestPeriodId++;
-
-        emit PeriodIdUpdated(periodId, vaultId);
+        _delegateCallCore(
+            abi.encodeWithSelector(
+                ILedgerCoreImpl.updatePeriodId.selector,
+                periodId,
+                vaultId,
+                signature
+            )
+        );
     }
 
     /*=========================================================================================
@@ -431,7 +209,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         onlyVaultCrossChainManager
     {
         _delegateCall(
-            abi.encodeWithSelector(ILedgerExtensions.handleOpFromVault.selector, payloadType, chainId, operationData)
+            abi.encodeWithSelector(
+                ILedgerExtension.handleOpFromVault.selector,
+                payloadType,
+                chainId,
+                operationData
+            )
         );
     }
 
@@ -440,10 +223,16 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @param signature Signature for verification
 
     function handleDexRequests(DexRequest[] calldata dexRequests, bytes calldata signature) external onlyOperator {
-        _delegateCall(abi.encodeWithSelector(ILedgerExtensions.handleDexRequests.selector, dexRequests, signature));
+        _delegateCall(
+            abi.encodeWithSelector(
+                ILedgerExtension.handleDexRequests.selector,
+                dexRequests,
+                signature
+            )
+        );
     }
 
-    /// @notice Distribute assets to strategy (delegated to extensions contract)
+    /// @notice Distribute assets to strategy (delegated to core implementation contract)
     /// @param periodId Period ID
     /// @param vaultId Vault ID
     /// @param assetsDistributions Asset distribution info
@@ -454,14 +243,18 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         AssetsDistribution[] memory assetsDistributions,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCall(
+        _delegateCallCore(
             abi.encodeWithSelector(
-                ILedgerExtensions.distributeAssets.selector, periodId, vaultId, assetsDistributions, signature
+                ILedgerCoreImpl.distributeAssets.selector,
+                periodId,
+                vaultId,
+                assetsDistributions,
+                signature
             )
         );
     }
 
-    /// @notice Update unclaimed assets (delegated to extensions contract)
+    /// @notice Update unclaimed assets (delegated to core implementation contract)
     /// @param chainId Chain ID
     /// @param periodId Period ID
     /// @param vaultId Vault ID
@@ -474,9 +267,14 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCall(
+        _delegateCallCore(
             abi.encodeWithSelector(
-                ILedgerExtensions.updateUnclaimed.selector, chainId, periodId, vaultId, requestIds, signature
+                ILedgerCoreImpl.updateUnclaimed.selector,
+                chainId,
+                periodId,
+                vaultId,
+                requestIds,
+                signature
             )
         );
     }
@@ -490,7 +288,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         onlyOperator
     {
         _delegateCall(
-            abi.encodeWithSelector(ILedgerExtensions.removeInvalidFrozenShares.selector, vaultId, params, signature)
+            abi.encodeWithSelector(
+                ILedgerExtension.removeInvalidFrozenShares.selector,
+                vaultId,
+                params,
+                signature
+            )
         );
     }
 
@@ -586,6 +389,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
 
         //emit event
         emit LedgerExtensionsSet(ledgerExtensions);
+    }
+
+    /// @notice Set ledger core implementation contract address
+    /// @param _coreImpl Address of the ledger core implementation contract
+    function setCoreImpl(address _coreImpl) external onlyOwner {
+        ledgerCoreImpl = _coreImpl;
+
+        //emit event
+        emit LedgerCoreImplSet(ledgerCoreImpl);
     }
 
     /*=========================================================================================
@@ -684,6 +496,25 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
             revert LedgerExtensionsNotSet();
         }
         (bool success, bytes memory result) = ledgerExtensions.delegatecall(data);
+        if (!success) {
+            // Forward the revert reason
+            if (result.length > 0) {
+                assembly {
+                    revert(add(32, result), mload(result))
+                }
+            } else {
+                revert DelegatecallFailed();
+            }
+        }
+    }
+
+    /// @notice Delegate call to core implementation contract
+    /// @param data Encoded function call data
+    function _delegateCallCore(bytes memory data) internal {
+        if (ledgerCoreImpl == address(0)) {
+            revert LedgerCoreImplNotSet();
+        }
+        (bool success, bytes memory result) = ledgerCoreImpl.delegatecall(data);
         if (!success) {
             // Forward the revert reason
             if (result.length > 0) {

@@ -28,6 +28,8 @@ abstract contract LedgerBase {
     address public engine;
     /// @dev address of ledger extensions contract for low frequency functions
     address public ledgerExtensions;
+    /// @dev address of ledger core implementation contract for core business flow
+    address public ledgerCoreImpl;
 
     /// @dev Token Hash to token decimal
     mapping(bytes32 => uint256) tokenDecimal;
