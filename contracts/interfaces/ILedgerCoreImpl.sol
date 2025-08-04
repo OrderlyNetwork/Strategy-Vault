@@ -39,6 +39,7 @@ interface ILedgerCoreImpl {
     /// @param vaultId vault id
     /// @param strategyFundAssets strategy fund assets info
     /// @param signature signature of BE
+
     function updateStrategyFundAssets(
         uint256 periodId,
         bytes32 vaultId,
@@ -87,12 +88,8 @@ interface ILedgerCoreImpl {
     /// @param vaultId vault id
     /// @param accountIds each account id
     /// @param signature signature of BE
-    function settleAccounts(
-        uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] calldata accountIds,
-        bytes calldata signature
-    ) external;
+    function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes calldata signature)
+        external;
 
     /// @notice Operator update period id after last period finish
     /// @param periodId latest periodId

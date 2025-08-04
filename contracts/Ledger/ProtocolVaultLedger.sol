@@ -38,6 +38,22 @@ import {FEE_BASE, USDC_DECIMAL} from "../lib/types/Constants.sol";
 contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, LedgerBase, IProtocolVaultLedger {
     using Math for uint256;
 
+    /// @custom:storage-location erc7201:ProtocolVaultLedger.impl
+    struct ImplStorage {
+        address core;
+        address extension;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("ProtocolVaultLedger.impl")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant LEDGER_STORAGE_LOCATION =
+        0xbd28ae05aa0b6f83a93f63dae3aa2984ba2c5f2c4d60c8112719dd560d3efb00;
+
+    function _getLedgerImplStorage() private pure returns (ImplStorage storage $) {
+        assembly {
+            $.slot := LEDGER_STORAGE_LOCATION
+        }
+    }
+
     /// @notice Require only crossChainManager can call
     modifier onlyVaultCrossChainManager() {
         if (msg.sender != crossChainManager) {
@@ -71,7 +87,22 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /*=========================================================================================
     *                                       EXTERNAL 
     *=========================================================================================*/
-    
+
+    //--------------------------------------FROM VAULT-----------------------------------------
+    /// @notice Handles operations from vault
+    /// @param payloadType The type of operation
+    /// @param chainId The source chain ID
+    /// @param operationData The operation data
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
+        external
+        onlyVaultCrossChainManager
+    {
+        _delegateCall(
+            abi.encodeWithSelector(ILedgerExtension.handleOpFromVault.selector, payloadType, chainId, operationData),
+            _getLedgerImplStorage().extension
+        );
+    }
+
     /// @notice Operator upload NAV of each strategy fund and compute performance fee at first of the period
     /// @param periodId period id
     /// @param vaultId vault id
@@ -83,14 +114,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCallCore(
+        _delegateCall(
             abi.encodeWithSelector(
-                ILedgerCoreImpl.updateStrategyFundAssets.selector,
-                periodId,
-                vaultId,
-                strategyFundAssets,
-                signature
-            )
+                ILedgerCoreImpl.updateStrategyFundAssets.selector, periodId, vaultId, strategyFundAssets, signature
+            ),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -105,14 +133,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCallCore(
+        _delegateCall(
             abi.encodeWithSelector(
-                ILedgerCoreImpl.updateLPAndStrategyFund.selector,
-                periodId,
-                vaultId,
-                updateUserLedgerParams,
-                signature
-            )
+                ILedgerCoreImpl.updateLPAndStrategyFund.selector, periodId, vaultId, updateUserLedgerParams, signature
+            ),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -127,14 +152,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32[] calldata strategyProviderIds,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCallCore(
+        _delegateCall(
             abi.encodeWithSelector(
-                ILedgerCoreImpl.allocateToFunds.selector,
-                periodId,
-                vaultId,
-                strategyProviderIds,
-                signature
-            )
+                ILedgerCoreImpl.allocateToFunds.selector, periodId, vaultId, strategyProviderIds, signature
+            ),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -149,14 +171,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32[] calldata strategyProviderIds,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCallCore(
+        _delegateCall(
             abi.encodeWithSelector(
-                ILedgerCoreImpl.settleMainAndStrategyFunds.selector,
-                periodId,
-                vaultId,
-                strategyProviderIds,
-                signature
-            )
+                ILedgerCoreImpl.settleMainAndStrategyFunds.selector, periodId, vaultId, strategyProviderIds, signature
+            ),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -169,14 +188,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         external
         onlyOperator
     {
-        _delegateCallCore(
-            abi.encodeWithSelector(
-                ILedgerCoreImpl.settleAccounts.selector,
-                periodId,
-                vaultId,
-                accountIds,
-                signature
-            )
+        _delegateCall(
+            abi.encodeWithSelector(ILedgerCoreImpl.settleAccounts.selector, periodId, vaultId, accountIds, signature),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -185,36 +199,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @param vaultId vault id
     /// @param signature signature signature of BE
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external onlyOperator {
-        _delegateCallCore(
-            abi.encodeWithSelector(
-                ILedgerCoreImpl.updatePeriodId.selector,
-                periodId,
-                vaultId,
-                signature
-            )
-        );
-    }
-
-    /*=========================================================================================
-    *                                   EXTERNAL
-    *=========================================================================================*/
-
-    //--------------------------------------FROM VAULT-----------------------------------------
-    /// @notice Handles operations from vault
-    /// @param payloadType The type of operation
-    /// @param chainId The source chain ID
-    /// @param operationData The operation data
-    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
-        external
-        onlyVaultCrossChainManager
-    {
         _delegateCall(
-            abi.encodeWithSelector(
-                ILedgerExtension.handleOpFromVault.selector,
-                payloadType,
-                chainId,
-                operationData
-            )
+            abi.encodeWithSelector(ILedgerCoreImpl.updatePeriodId.selector, periodId, vaultId, signature),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -224,11 +211,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
 
     function handleDexRequests(DexRequest[] calldata dexRequests, bytes calldata signature) external onlyOperator {
         _delegateCall(
-            abi.encodeWithSelector(
-                ILedgerExtension.handleDexRequests.selector,
-                dexRequests,
-                signature
-            )
+            abi.encodeWithSelector(ILedgerExtension.handleDexRequests.selector, dexRequests, signature),
+            _getLedgerImplStorage().extension
         );
     }
 
@@ -243,14 +227,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         AssetsDistribution[] memory assetsDistributions,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCallCore(
+        _delegateCall(
             abi.encodeWithSelector(
-                ILedgerCoreImpl.distributeAssets.selector,
-                periodId,
-                vaultId,
-                assetsDistributions,
-                signature
-            )
+                ILedgerCoreImpl.distributeAssets.selector, periodId, vaultId, assetsDistributions, signature
+            ),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -267,15 +248,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external onlyOperator {
-        _delegateCallCore(
+        _delegateCall(
             abi.encodeWithSelector(
-                ILedgerCoreImpl.updateUnclaimed.selector,
-                chainId,
-                periodId,
-                vaultId,
-                requestIds,
-                signature
-            )
+                ILedgerCoreImpl.updateUnclaimed.selector, chainId, periodId, vaultId, requestIds, signature
+            ),
+            _getLedgerImplStorage().core
         );
     }
 
@@ -288,12 +265,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         onlyOperator
     {
         _delegateCall(
-            abi.encodeWithSelector(
-                ILedgerExtension.removeInvalidFrozenShares.selector,
-                vaultId,
-                params,
-                signature
-            )
+            abi.encodeWithSelector(ILedgerExtension.removeInvalidFrozenShares.selector, vaultId, params, signature),
+            _getLedgerImplStorage().extension
         );
     }
 
@@ -382,22 +355,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         emit VaultBrokerSet(_vaultId, _brokerId);
     }
 
-    /// @notice Set ledger extensions contract address
-    /// @param _extensions Address of the ledger extensions contract
-    function setExtension(address _extensions) external onlyOwner {
-        ledgerExtensions = _extensions;
+    function setCore(address _core) external onlyOwner {
+        _getLedgerImplStorage().core = _core;
 
-        //emit event
-        emit LedgerExtensionsSet(ledgerExtensions);
+        emit CoreSet(_core);
     }
 
-    /// @notice Set ledger core implementation contract address
-    /// @param _coreImpl Address of the ledger core implementation contract
-    function setCoreImpl(address _coreImpl) external onlyOwner {
-        ledgerCoreImpl = _coreImpl;
-
-        //emit event
-        emit LedgerCoreImplSet(ledgerCoreImpl);
+    function setExtension(address _extension) external onlyOwner {
+        _getLedgerImplStorage().extension = _extension;
+        emit ExtensionSet(_extension);
     }
 
     /*=========================================================================================
@@ -491,30 +457,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
 
     /// @notice Delegate call to extensions contract
     /// @param data Encoded function call data
-    function _delegateCall(bytes memory data) internal {
-        if (ledgerExtensions == address(0)) {
+    function _delegateCall(bytes memory data, address impl) internal {
+        if (impl == address(0)) {
             revert LedgerExtensionsNotSet();
         }
-        (bool success, bytes memory result) = ledgerExtensions.delegatecall(data);
-        if (!success) {
-            // Forward the revert reason
-            if (result.length > 0) {
-                assembly {
-                    revert(add(32, result), mload(result))
-                }
-            } else {
-                revert DelegatecallFailed();
-            }
-        }
-    }
-
-    /// @notice Delegate call to core implementation contract
-    /// @param data Encoded function call data
-    function _delegateCallCore(bytes memory data) internal {
-        if (ledgerCoreImpl == address(0)) {
-            revert LedgerCoreImplNotSet();
-        }
-        (bool success, bytes memory result) = ledgerCoreImpl.delegatecall(data);
+        (bool success, bytes memory result) = impl.delegatecall(data);
         if (!success) {
             // Forward the revert reason
             if (result.length > 0) {

@@ -46,7 +46,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
     /// @notice Handle DEX requests
     /// @param dexRequests Array of DEX requests
     /// @param signature Signature for verification
-    function handleDexRequests(DexRequest[] calldata dexRequests, bytes calldata signature) external  {
+    function handleDexRequests(DexRequest[] calldata dexRequests, bytes calldata signature) external {
         // Verify engine signature
         Signature.verifyDexRequest(dexRequests, signature, engine);
 

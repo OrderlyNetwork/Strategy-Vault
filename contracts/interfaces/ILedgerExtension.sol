@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-import {
-    UpdateLedgerParams,
-    DexRequest,
-    OperationRes
-} from "../lib/types/LedgerStruct.sol";
+import {UpdateLedgerParams, DexRequest, OperationRes} from "../lib/types/LedgerStruct.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
@@ -19,7 +15,7 @@ interface ILedgerExtension {
     event DexRequestsHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-    
+
     /// @notice Handles operations from vault
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external;

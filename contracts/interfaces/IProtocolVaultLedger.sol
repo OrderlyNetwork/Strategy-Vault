@@ -53,7 +53,7 @@ interface IProtocolVaultLedger {
     event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
     event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
     event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
-    
+
     // Configuration events
     event FeeRateSet(bytes32[] strategyProviderIds, uint256[] feeRates);
     event CrossChainManagerSet(address crossChainManager);
@@ -64,11 +64,11 @@ interface IProtocolVaultLedger {
     event EngineSet(address engine);
     event DecimalSet(bytes32 tokenHash, uint256 decimal);
     event VaultBrokerSet(bytes32 vaultId, bytes32 brokerId);
-    event LedgerExtensionsSet(address ledgerExtensions);
-    event LedgerCoreImplSet(address ledgerCoreImpl);
-
+    event CoreSet(address core);
+    event ExtensionSet(address extension);
     //--------------------------------------HIGH FREQUENCY FUNCTIONS-----------------------------------------
-    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData) external;
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
+        external;
     function updateStrategyFundAssets(
         uint256 periodId,
         bytes32 vaultId,
