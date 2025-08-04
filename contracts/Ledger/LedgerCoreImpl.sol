@@ -47,7 +47,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         _check(periodId);
         //only can be called once in a period
         if (isUpdateStrategyFundAssets[periodId]) {
-            revert IProtocolVaultLedger.AlreadyCalled();
+            revert AlreadyCalled();
         }
         Signature.verifyUpdateFundAssets(periodId, vaultId, strategyFundAssets, signature, engine);
 
@@ -151,7 +151,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
                     //handle SP withdraw
                     amount = _handleSpWithdraw(requestId, id, operationAmount);
                 } else {
-                    revert IProtocolVaultLedger.InvalidType();
+                    revert InvalidType();
                 }
 
                 operationRes[i] =
@@ -172,7 +172,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
     /// @param periodId Period ID to check
     function _check(uint256 periodId) internal view {
         if (periodId != latestPeriodId) {
-            revert IProtocolVaultLedger.InvalidPeriodId();
+            revert InvalidPeriodId();
         }
     }
 
@@ -180,7 +180,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         AccountToken storage accountToken = _getAccountToken(accountId);
 
         if (amount > accountToken.unAllocatedAssets) {
-            revert IProtocolVaultLedger.NotEnoughLPDeposit(amount);
+            revert NotEnoughLPDeposit(amount);
         }
 
         uint256 depositShares =
@@ -221,7 +221,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
         PendingState storage pendingState = strategyFundToken.pendingState;
         if (amount > strategyFundToken.unAllocatedAssets) {
-            revert IProtocolVaultLedger.NotEnoughSPDeposit();
+            revert NotEnoughSPDeposit();
         }
         uint256 depositShares = LedgerUtils._convertToShares(
             amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
@@ -275,7 +275,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         _check(periodId);
         //only can be called once in a period
         if (isAllocatedToFunds[periodId]) {
-            revert IProtocolVaultLedger.AlreadyCalled();
+            revert AlreadyCalled();
         }
         Signature.verifyAllocateToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
 
@@ -389,7 +389,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         emit FundAllocated(periodId, vaultId, strategyProviderIds, allocateFundRes);
     }
 
-    /// @notice Operator settle main and strategy fund info after check all operations
+    /// @notice Operator settle main and strategy fund info after checking all operations
     /// @param periodId period id
     /// @param vaultId vault id
     /// @param strategyProviderIds each strategy provider id
@@ -434,7 +434,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         emit MainAndStrategyFundsSettled(periodId, vaultId, mainShares, strategyFundStates);
     }
 
-    /// @notice Operator settle all LP infos after check all operations
+    /// @notice Operator settle all LP infos after checking all operations
     /// @param periodId period id
     /// @param vaultId vault id
     /// @param accountIds each account id
@@ -460,10 +460,10 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
     /// @notice Operator update period id after last period finish
     /// @param periodId latest periodId
     /// @param vaultId vault id
-    /// @param signature signature signature of BE
+    /// @param signature signature  of BE
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external {
         if (periodId != latestPeriodId) {
-            revert IProtocolVaultLedger.InvalidPeriodId();
+            revert InvalidPeriodId();
         }
         Signature.verifyUpdatePeriodId(periodId, vaultId, signature, engine);
 
@@ -511,7 +511,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
     ) external {
         // Only can be called once in a period
         if (isAssetDistributed[periodId]) {
-            revert IProtocolVaultLedger.AlreadyCalled();
+            revert AlreadyCalled();
         }
 
         Signature.verifyAssetsDistribution(periodId, vaultId, assetsDistributions, signature, engine);

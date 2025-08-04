@@ -56,14 +56,14 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
 
             // Verify if dex request is handled
             if (isDexRequestHandled[requestId]) {
-                revert IProtocolVaultLedger.AlreadyCalled();
+                revert AlreadyCalled();
             }
 
             ChainType chainType = request.chainType;
             if (chainType == ChainType.EVM) {
                 _verifyEVMRequest(request);
             } else {
-                revert IProtocolVaultLedger.InvalidType();
+                revert InvalidType();
             }
 
             // Update record
@@ -111,7 +111,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
                     LedgerUtils.requireEnoughFrozenShares(operationAmount, strategyFundToken.frozenShares);
                     strategyFundToken.frozenShares -= operationAmount;
                 } else {
-                    revert IProtocolVaultLedger.InvalidType();
+                    revert InvalidType();
                 }
 
                 // Event
@@ -171,7 +171,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
                 return false;
             }
         } else {
-            revert IProtocolVaultLedger.InvalidType();
+            revert InvalidType();
         }
         return true;
     }

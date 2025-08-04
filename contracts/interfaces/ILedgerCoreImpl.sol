@@ -16,6 +16,13 @@ import {
 /// @title ILedgerCoreImpl Interface
 /// @notice Interface for core business flow methods in the protocol vault ledger
 interface ILedgerCoreImpl {
+    // Custom errors - LedgerCoreImpl specific
+    error AlreadyCalled();
+    error InvalidType();
+    error InvalidPeriodId();
+    error NotEnoughLPDeposit(uint256 amount);
+    error NotEnoughSPDeposit();
+
     // Events
     event StrategyFundAssetsUpdate(
         uint256 periodId,

@@ -9,6 +9,10 @@ import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 /// @notice Interface for the Ledger Extension contract
 /// @dev Contains request handling and auxiliary functions that are called via delegatecall
 interface ILedgerExtension {
+    // Custom errors - LedgerExtension specific
+    error AlreadyCalled();
+    error InvalidType();
+
     // Events
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);

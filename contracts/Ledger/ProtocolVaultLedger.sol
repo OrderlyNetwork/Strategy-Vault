@@ -21,16 +21,14 @@ import {
     ClaimInfo,
     DexRequest
 } from "../lib/types/LedgerStruct.sol";
-import {Signature} from "../lib/utils/Signature.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
-import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
 import {ILedgerCoreImpl} from "../interfaces/ILedgerCoreImpl.sol";
 import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
-import {FEE_BASE, USDC_DECIMAL} from "../lib/types/Constants.sol";
+import {USDC_DECIMAL} from "../lib/types/Constants.sol";
 
 /// @title protocol vault ledger
 /// @notice This contract is used to record all information of protocol vault
@@ -65,7 +63,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @notice Only operator can call
     modifier onlyOperator() {
         if (msg.sender != operator) {
-            revert IProtocolVaultLedger.InvalidOperator();
+            revert InvalidOperator();
         }
         _;
     }
@@ -103,7 +101,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         );
     }
 
-    /// @notice Operator upload NAV of each strategy fund and compute performance fee at first of the period
+    /// @notice Operator upload NAV of each strategy fund and compute performance fee at the beginning of the period
     /// @param periodId period id
     /// @param vaultId vault id
     /// @param strategyFundAssets strategy fund assets info
@@ -363,6 +361,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
 
     function setExtension(address _extension) external onlyOwner {
         _getLedgerImplStorage().extension = _extension;
+        
         emit ExtensionSet(_extension);
     }
 
@@ -480,90 +479,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         }
     }
 
-    function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
-        AccountToken storage accountToken = _getAccountToken(accountId);
-
-        if (amount > accountToken.unAllocatedAssets) {
-            revert NotEnoughLPDeposit(amount);
-        }
-
-        uint256 depositShares =
-            LedgerUtils._convertToShares(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
-        //effect
-        accountToken.pendingShares += depositShares;
-        accountToken.unAllocatedAssets -= amount;
-
-        pendingMainShares += depositShares;
-        pendingLpDepositAssets += amount;
-
-        return depositShares;
-    }
-
-    function _handleLpWithdraw(bytes32 requestId, bytes32 accountId, uint256 amount) internal returns (uint256) {
-        AccountToken storage accountToken = _getAccountToken(accountId);
-
-        LedgerUtils.requireEnoughFrozenShares(amount, accountToken.frozenShares);
-
-        //effect
-        uint256 withdrawAssets =
-            LedgerUtils._convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
-
-        accountToken.pendingShares -= amount;
-        accountToken.frozenShares -= amount;
-        pendingMainShares -= amount;
-        pendingLpWithdrawAssets += withdrawAssets;
-
-        userClaimInfo[requestId].requestId = requestId;
-        userClaimInfo[requestId].accountId = accountId;
-        userClaimInfo[requestId].assets = withdrawAssets;
-
-        return withdrawAssets;
-    }
-
-    function _handleSPDeposit(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
-        //gas optimization
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
-        PendingState storage pendingState = strategyFundToken.pendingState;
-        if (amount > strategyFundToken.unAllocatedAssets) {
-            revert NotEnoughSPDeposit();
-        }
-        uint256 depositShares = LedgerUtils._convertToShares(
-            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
-        );
-
-        pendingState.pendingTotalShares += depositShares;
-        pendingState.pendingStrategyProviderShares += depositShares;
-        pendingState.pendingTotalAssets += amount;
-        strategyFundToken.unAllocatedAssets -= amount;
-
-        return depositShares;
-    }
-
-    function _handleSpWithdraw(bytes32 requestId, bytes32 strategyProviderId, uint256 amount)
-        internal
-        returns (uint256)
-    {
-        //gas optimization
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
-        PendingState storage pendingState = strategyFundToken.pendingState;
-
-        LedgerUtils.requireEnoughFrozenShares(amount, strategyFundToken.frozenShares);
-        uint256 spWithdrawAssets = LedgerUtils._convertToAssets(
-            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
-        );
-
-        //effect
-        pendingState.pendingTotalShares -= amount;
-        pendingState.pendingStrategyProviderShares -= amount;
-        pendingState.pendingTotalAssets -= spWithdrawAssets;
-        strategyFundToken.frozenShares -= amount;
-
-        userClaimInfo[requestId].requestId = requestId;
-        userClaimInfo[requestId].strategyProviderId = strategyProviderId;
-        userClaimInfo[requestId].assets = spWithdrawAssets;
-
-        return spWithdrawAssets;
-    }
 
     /// @notice Calculate high water mark for strategy fund
     /// @param strategyProviderId Strategy provider ID
