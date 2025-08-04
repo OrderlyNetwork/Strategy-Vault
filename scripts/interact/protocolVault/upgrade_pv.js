@@ -1,6 +1,7 @@
 const { ethers } = require("hardhat")
 const hre = require("hardhat")
 const deployment = require('../../../deployment.json');
+const { verifyContract } = require("../../utils/verifyContract");
 
 async function main() {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
@@ -10,21 +11,8 @@ async function main() {
     const implAddr = ProtocolVaultContract.target;
     console.log("ProtocolVaultContract Impl deployed to:", implAddr);
 
-    // Verify implementation contract
-    try {
-        console.log(`Verifying ProtocolVault implementation contract: ${implAddr}`);
-        await hre.run("verify:verify", {
-            address: implAddr,
-            constructorArguments: []
-        });
-        console.log(`✅ ProtocolVault implementation contract verified successfully: ${implAddr}`);
-    } catch (error) {
-        console.log(`⚠️ ProtocolVault implementation contract verification failed: ${error.message}`);
-        // If already verified, no need to throw exception
-        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
-            console.error("ProtocolVault implementation contract verification error:", error);
-        }
-    }
+    // verify
+    await verifyContract(implAddr, [], "ProtocolVault Implementation");
 
     //upgrade
     //!need to change with your env
