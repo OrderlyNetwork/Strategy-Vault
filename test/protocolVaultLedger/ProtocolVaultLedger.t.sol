@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Base} from "./Base.sol";
+import {Base} from "../Base.sol";
 import {console} from "forge-std/console.sol";
 import {
     AccountToken,
@@ -18,13 +18,13 @@ import {
     ClaimInfo,
     AllocateFundRes,
     StrategyFundState
-} from "../contracts/ProtocolVaultLedger.sol";
-import {UserClaimedInfo, RoleType, ClaimParams} from "../contracts/ProtocolVault.sol";
+} from "../../contracts/ProtocolVaultLedger.sol";
+import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract ProtocolVaultTest is Base {
     error AlreadyCalled();
-    error InvalidWithdrawType();
+    error InvalidType();
     error NotEnoughFrozenShare(uint256 amount);
     error NotEnoughCCFee();
     error InvalidClaimToken(address token);
@@ -914,7 +914,7 @@ contract ProtocolVaultTest is Base {
 
         // Expected to fail due to invalid operation type
         vm.prank(operator);
-        vm.expectRevert(InvalidWithdrawType.selector);
+        vm.expectRevert(InvalidType.selector);
         svLedger.removeInvalidFrozenShares(vaultId, params, signature);
     }
 

@@ -17,4 +17,5 @@ interface IVaultCrossChainManager {
         external
         payable;
     function sendMessage(StrategyVaultCCMessage memory message) external;
+    function vault() external view returns (address);
 }

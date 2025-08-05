@@ -1,6 +1,8 @@
 const { ethers } = require("hardhat")
+const hre = require("hardhat")
 const deployment = require('../../../deployment.json');
 const { checkNetworkEnvRestrictions } = require("../../../tasks/utils");
+const { verifyContract } = require("../../utils/verifyContract");
 
 async function main() {
     //!need to change with your env
@@ -16,6 +18,8 @@ async function main() {
 
     const implAddr = ProtocolVaultLedgerContract.target;
     console.log("ProtocolVaultLedgerContract Impl deployed to:", implAddr);
+
+    await verifyContract(implAddr, [], "ProtocolVaultLedger Implementation");
 
     //updage
     const protocolVaultLedger = await ethers.getContractAt(
