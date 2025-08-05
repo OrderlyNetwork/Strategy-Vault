@@ -15,7 +15,9 @@ import {
     AccountState,
     ClaimInfo,
     AllocateFundRes,
-    StrategyFundState
+    StrategyFundState,
+    DexRequest,
+    ChainType
 } from "../lib/types/LedgerStruct.sol";
 
 import {VaultType, OperationData} from "../lib/types/VaultStruct.sol";
@@ -27,12 +29,13 @@ interface IProtocolVaultLedger {
     error InvalidVaultCrossChainManager();
     error NotEnoughLPDeposit(uint256 amount);
     error NotEnoughSPDeposit();
-    error InvalidOpType(OperationType opType);
+    error InvalidType();
     error NotEnoughFrozenShare(uint256 amount);
     error InvalidInput();
     error AlreadyCalled();
     error NotAllowedTime();
-    error InvalidWithdrawType();
+    error InvalidNonce();
+    error InvalidChainType();
 
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
@@ -50,17 +53,15 @@ interface IProtocolVaultLedger {
     );
     event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
     event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
-    event CrossChainManagerAddressSet(address crossChainManagerAddress);
     event AllowedStrategyProviderSet(
         bytes32 vaultId, address vault, address sp, bytes32 brokerHash, bytes32 spId, bool knob
     );
-    event OperatorManagerSet(address operatorAddress);
     event AssetsDistributed(uint256 periodId, bytes32 vaultId);
     event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
     event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
-    event InvalidPayloadType();
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-
+    event DexRequestHandled(DexRequest dexRequest);
+    event DexWithdrawNotEnough(uint256 dexRequestId);
     //--------------------------------------FROM VAULT-----------------------------------------
 
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData) external;
