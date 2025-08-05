@@ -22,7 +22,9 @@ import {
     DexRequest
 } from "../types/LedgerStruct.sol";
 import {AdapterDeposit} from "../types/VaultStruct.sol";
-import {TYPE_HASH, REQUEST_HASH} from "../types/Constants.sol";
+import {TYPE_HASH, REQUEST_HASH, ED25519} from "../types/Constants.sol";
+import "./Bytes32ToAsciiBytes.sol";
+import {IEd25519} from "../../interfaces/IEd25519.sol";
 
 library Signature {
     error InvalidSigner();
@@ -157,6 +159,41 @@ library Signature {
         if (signer != ECDSA.recover(MessageHashUtils.toTypedDataHash(eip712DomainHash, hashStruct), v, r, s)) {
             revert InvalidUser();
         }
+    }
+
+    function verifySOLSig(DexRequestData memory data, bytes32 r, bytes32 s, uint256 chainId, bytes32 signer)
+        internal
+        pure
+    {
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                data.payloadType,
+                data.dexRequestId,
+                signer,
+                data.amount,
+                data.vaultId,
+                keccak256(abi.encodePacked(data.token)),
+                keccak256(abi.encodePacked(data.dexBrokerId)),
+                chainId
+            )
+        );
+        bytes memory m = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(hashStruct);
+        // the former is the signature of message from eoa, the latter is the signature of tx from ledger
+        if (
+            !(IEd25519(ED25519).verify(signer, r, s, m)
+                || IEd25519(ED25519).verify(signer, r, s, solanaLedgerSignature(signer, hashStruct)))
+        ) {
+            revert InvalidUser();
+        }
+    }
+
+    function solanaLedgerSignature(bytes32 pubkey, bytes32 messageRaw) internal pure returns (bytes memory) {
+        bytes memory message = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(messageRaw);
+        bytes memory m1 = hex"01000203";
+        bytes memory m2 =
+            hex"0306466fe5211732ffecadba72c39be7bc8ce5bbc5f7126b2c439b3a40000000054a535a992921064d24e87160da387c7c35b5ddbc92bb81e41fa8404105448d0000000000000000000000000000000000000000000000000000000000000000030100090300000000000000000100050200000000020040";
+        bytes memory m = abi.encodePacked(m1, abi.encodePacked(pubkey), m2, message);
+        return m;
     }
 
     function verifyDexRequest(DexRequest[] calldata dexRequests, bytes calldata signature, address signer)

@@ -28,7 +28,7 @@ import {ILedgerCoreImpl} from "../interfaces/ILedgerCoreImpl.sol";
 import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
-import {USDC_DECIMAL} from "../lib/types/Constants.sol";
+import {USDC_DECIMAL, LEDGER_STORAGE_LOCATION} from "../lib/types/Constants.sol";
 
 /// @title protocol vault ledger
 /// @notice This contract is used to record all information of protocol vault
@@ -41,10 +41,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         address core;
         address extension;
     }
-
-    // keccak256(abi.encode(uint256(keccak256("ProtocolVaultLedger.impl")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant LEDGER_STORAGE_LOCATION =
-        0xbd28ae05aa0b6f83a93f63dae3aa2984ba2c5f2c4d60c8112719dd560d3efb00;
 
     function _getLedgerImplStorage() private pure returns (ImplStorage storage $) {
         assembly {
@@ -361,7 +357,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
 
     function setExtension(address _extension) external onlyOwner {
         _getLedgerImplStorage().extension = _extension;
-        
+
         emit ExtensionSet(_extension);
     }
 
@@ -478,7 +474,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
             revert InvalidPeriodId();
         }
     }
-
 
     /// @notice Calculate high water mark for strategy fund
     /// @param strategyProviderId Strategy provider ID
