@@ -23,7 +23,6 @@ contract DexIntegrationTest is Base {
     // Events that need to be declared for testing
     event DexRequestsHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 requestId);
-
     // Setup
     address lp;
     uint256 lpPrivateKey;
@@ -65,7 +64,8 @@ contract DexIntegrationTest is Base {
         mockToken.mint(userB, 100000e18);
     }
 
-    function testSolHash() public {
+    //specific sol sig
+    function testSolSig() public {
         bytes memory bytecode = vm.getCode("contracts/lib/Ed25519/Ed25519.sol");
         address deployed;
         assembly {
@@ -987,5 +987,34 @@ contract DexIntegrationTest is Base {
 
         // After handling, request should be marked as handled
         assertTrue(svLedger.isDexRequestHandled(requestId));
+    }
+
+    /// @notice Test SOL chain type with invalid signature - should revert with InvalidUser error
+    function testRevertHandleDexRequestsSOLInvalidSignature() public {
+        uint256 amount = 1000e6;
+        uint256 requestId = 500;
+
+        // Create DexRequestData using helper function
+        DexRequestData memory dexRequestData = _createDexRequestData(PayloadType.LP_DEPOSIT, requestId, lp, amount);
+
+        // Create DexRequest with SOL chain type and invalid signature
+        DexRequest[] memory dexRequests = new DexRequest[](1);
+        dexRequests[0] = DexRequest({
+            chainType: ChainType.SOL,  // Use SOL chain type
+            chainId: block.chainid,
+            id: lpId,
+            dexRequestData: dexRequestData,
+            r: bytes32(0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef), // Invalid signature r component
+            s: bytes32(0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321), // Invalid signature s component
+            v: 0 // v component (not used in SOL verification but included for completeness)
+        });
+
+        // Generate valid engine signature (engine signature verification should pass)
+        bytes memory engineSignature = _generateEngineSignature(dexRequests);
+
+        // Should revert due to invalid SOL signature verification
+        vm.prank(operator);
+        vm.expectRevert(); // This will revert with InvalidUser error from verifySOLSig
+        svLedger.handleDexRequests(dexRequests, engineSignature);
     }
 }

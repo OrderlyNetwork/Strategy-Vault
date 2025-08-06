@@ -62,6 +62,8 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             ChainType chainType = request.chainType;
             if (chainType == ChainType.EVM) {
                 _verifyEVMRequest(request);
+            } else if (chainType == ChainType.SOL) {
+                _verifySolRequest(request);
             } else {
                 revert InvalidType();
             }
@@ -140,6 +142,15 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
 
         // Verify signature
         Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);
+    }
+
+    function _verifySolRequest(DexRequest calldata request) internal view {
+        DexRequestData calldata data = request.dexRequestData;
+
+        //verify id
+        VaultUtils.validateAccountId(data.receiver, vaultBroker[data.vaultId], request.id);
+
+        Signature.verifySOLSig(data, request.r, request.s, request.chainId, data.receiver);
     }
 
     function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount)

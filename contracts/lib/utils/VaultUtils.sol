@@ -54,6 +54,9 @@ library VaultUtils {
         return getAccountId(account, brokerHash) == accountId;
     }
 
+    function validateAccountId(bytes32 account, bytes32 brokerHash, bytes32 accountId) internal pure returns (bool) {
+        return keccak256(abi.encode(account, brokerHash)) == accountId;
+    }
     /**
      * @notice Validate ID (can be either strategy provider ID or account ID)
      * @param vault The address of the vault contract
