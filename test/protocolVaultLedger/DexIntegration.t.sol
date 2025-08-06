@@ -24,6 +24,7 @@ contract DexIntegrationTest is Base {
     event DexRequestsHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 requestId);
     // Setup
+
     address lp;
     uint256 lpPrivateKey;
 
@@ -38,6 +39,7 @@ contract DexIntegrationTest is Base {
     uint256 userAPrivateKey;
     uint256 userBPrivateKey;
     address ed25519;
+
     function setUp() public override {
         super.setUp();
         // Setup
@@ -90,21 +92,23 @@ contract DexIntegrationTest is Base {
         bytes memory m = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(hashStruct);
 
         // sig
-        bytes memory sig = hex"30ace0d6ea0064893633c21ef685edf22ef6ac492d8931a82cc5cc942e82f9585ee57310d8f6caa8b703e64307b0012eadaa6ec109c1811f69c330ba1036aa0e";
+        bytes memory sig =
+            hex"30ace0d6ea0064893633c21ef685edf22ef6ac492d8931a82cc5cc942e82f9585ee57310d8f6caa8b703e64307b0012eadaa6ec109c1811f69c330ba1036aa0e";
         bytes32 r;
         bytes32 s;
         assembly {
-            r := mload(add(sig, 32))  
-            s := mload(add(sig, 64))  
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
         }
-        
+
         // ledger sig
-        bytes memory ledgerSig = hex"60e500dcefeeb7f487d2d6c2a88809a645195b36ad4e7fee96e02484e81146f32630c7e07dae8a2e252d31c7b24855e032663950adb6dfdc20e4fbaefa5ad009";
+        bytes memory ledgerSig =
+            hex"60e500dcefeeb7f487d2d6c2a88809a645195b36ad4e7fee96e02484e81146f32630c7e07dae8a2e252d31c7b24855e032663950adb6dfdc20e4fbaefa5ad009";
         bytes32 ledgerR;
         bytes32 ledgerS;
         assembly {
-            ledgerR := mload(add(ledgerSig, 32))  
-            ledgerS := mload(add(ledgerSig, 64))  
+            ledgerR := mload(add(ledgerSig, 32))
+            ledgerS := mload(add(ledgerSig, 64))
         }
 
         assertTrue(IEd25519(ed25519).verify(signer, r, s, m), "Normal signature verification failed");
@@ -1000,7 +1004,7 @@ contract DexIntegrationTest is Base {
         // Create DexRequest with SOL chain type and invalid signature
         DexRequest[] memory dexRequests = new DexRequest[](1);
         dexRequests[0] = DexRequest({
-            chainType: ChainType.SOL,  // Use SOL chain type
+            chainType: ChainType.SOL, // Use SOL chain type
             chainId: block.chainid,
             id: lpId,
             dexRequestData: dexRequestData,

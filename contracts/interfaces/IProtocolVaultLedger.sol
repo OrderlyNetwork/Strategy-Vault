@@ -20,7 +20,7 @@ import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 /// @notice Interface for the main Protocol Vault Ledger contract
 /// @dev Contains high-frequency functions and configuration methods
 interface IProtocolVaultLedger {
-    // Custom errors - ProtocolVaultLedger specific  
+    // Custom errors - ProtocolVaultLedger specific
     error InvalidPeriodId();
     error InvalidOperator();
     error InvalidVaultCrossChainManager();
@@ -40,7 +40,7 @@ interface IProtocolVaultLedger {
     event VaultBrokerSet(bytes32 vaultId, bytes32 brokerId);
     event CoreSet(address core);
     event ExtensionSet(address extension);
-    
+
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external;
     function updateStrategyFundAssets(

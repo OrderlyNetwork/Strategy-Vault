@@ -65,6 +65,7 @@ library VaultUtils {
      * @param id The ID to validate
      * @return True if the ID is valid as either strategy provider ID or account ID
      */
+
     function validateId(address vault, address receiver, bytes32 brokerHash, bytes32 id) internal pure returns (bool) {
         return validateSPId(vault, receiver, brokerHash, id) || validateAccountId(receiver, brokerHash, id);
     }
