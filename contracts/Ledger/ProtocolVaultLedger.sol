@@ -450,15 +450,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     *                                       INTERNAL
     *=========================================================================================*/
 
-    /// @notice Delegate call to extensions contract
+    /// @notice Delegate call to implementation contracts with enhanced error forwarding
     /// @param data Encoded function call data
+    /// @param impl Implementation contract address
     function _delegateCall(bytes memory data, address impl) internal {
         if (impl == address(0)) {
             revert LedgerExtensionsNotSet();
         }
         (bool success, bytes memory result) = impl.delegatecall(data);
         if (!success) {
-            // Forward the revert reason
             if (result.length > 0) {
                 assembly {
                     revert(add(32, result), mload(result))

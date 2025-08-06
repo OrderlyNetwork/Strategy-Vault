@@ -20,7 +20,6 @@ import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
-import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
 import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 
@@ -147,7 +146,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
     function _verifySolRequest(DexRequest calldata request) internal view {
         DexRequestData calldata data = request.dexRequestData;
 
-        //verify id
+        // Verify id
         VaultUtils.validateAccountId(data.receiver, vaultBroker[data.vaultId], request.id);
 
         Signature.verifySOLSig(data, request.r, request.s, request.chainId, data.receiver);
