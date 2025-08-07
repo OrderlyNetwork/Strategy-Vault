@@ -82,6 +82,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @dev vault id to sv broker hash
     mapping(bytes32 => bytes32) public vaultBroker;
 
+    address public protocolVault;
+
     /// @notice Require only operator can call
     modifier onlyOperator() {
         if (msg.sender != operator) {
@@ -677,6 +679,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         bytes32 strategyProviderId,
         bool knob
     ) external onlyOwner {
+        if (!VaultUtils.validateSPId(vault, strategyProvider, brokerHash, strategyProviderId)) {
+            revert InvalidStrategyProviderId();
+        }
+
         emit AllowedStrategyProviderSet(vaultId, vault, strategyProvider, brokerHash, strategyProviderId, knob);
     }
 
@@ -694,6 +700,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
 
     function setVaultBroker(bytes32 _vaultId, bytes32 _brokerId) external onlyOwner {
         vaultBroker[_vaultId] = _brokerId;
+    }
+
+    function setProtocolVault(address _vault) external onlyOwner {
+        protocolVault = _vault;
+
+        emit ProtocolVaultSet(_vault);
     }
     /*=========================================================================================
     *                                       VIEW
@@ -961,10 +973,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
         DexRequestData calldata data = request.dexRequestData;
 
         address receiver = address(uint160(uint256(data.receiver)));
-        address vault = IVaultCrossChainManager(crossChainManager).vault();
-
         //verify id
-        VaultUtils.validateId(vault, receiver, vaultBroker[data.vaultId], request.id);
+        VaultUtils.validateId(protocolVault, receiver, vaultBroker[data.vaultId], request.id);
 
         // verify signature
         Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);
