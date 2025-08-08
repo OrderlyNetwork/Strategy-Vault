@@ -28,6 +28,7 @@ interface IProtocolVaultLedger {
     error NotAllowedTime();
     error DelegatecallFailed();
     error LedgerExtensionsNotSet();
+    error InvalidStrategyProviderId();
 
     event FeeRateSet(bytes32[] strategyProviderIds, uint256[] feeRates);
     event CrossChainManagerSet(address crossChainManager);
@@ -40,6 +41,7 @@ interface IProtocolVaultLedger {
     event VaultBrokerSet(bytes32 vaultId, bytes32 brokerId);
     event CoreSet(address core);
     event ExtensionSet(address extension);
+    event ProtocolVaultSet(address protocolVault);
 
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external;

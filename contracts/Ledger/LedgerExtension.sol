@@ -134,10 +134,8 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         DexRequestData calldata data = request.dexRequestData;
 
         address receiver = address(uint160(uint256(data.receiver)));
-        address vault = IVaultCrossChainManager(crossChainManager).vault();
-
         // Verify id
-        VaultUtils.validateId(vault, receiver, vaultBroker[data.vaultId], request.id);
+        VaultUtils.validateId(protocolVault, receiver, vaultBroker[data.vaultId], request.id);
 
         // Verify signature
         Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);

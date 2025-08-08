@@ -52,6 +52,8 @@ abstract contract LedgerBase {
     /// @dev vault id to sv broker hash
     mapping(bytes32 => bytes32) public vaultBroker;
 
+    address public protocolVault;
+
     /// @notice Get strategy fund token storage reference (reduces storage access repetition)
     /// @param spId strategy provider ID
     /// @return strategyFundToken storage reference to strategy fund token

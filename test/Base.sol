@@ -283,6 +283,9 @@ contract Base is TestHelperOz5 {
         );
         protocolVault = ProtocolVault(payable(proxy));
         vm.startPrank(owner);
+        // Calculate spId after protocolVault deployment
+        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+
         protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
         protocolVault.setLedgerEid(ledgerEid);
         svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
@@ -291,7 +294,7 @@ contract Base is TestHelperOz5 {
         vm.startPrank(owner);
         aVaultCrossChainManager.setVault(address(protocolVault));
         bVaultCrossChainManager.setLedger(svLedgerProxy);
-        bVaultCrossChainManager.setVault(address(protocolVault));
+        svLedger.setProtocolVault(address(protocolVault));
         vm.stopPrank();
         //mint token
         mockToken.mint(user, 100000e18);

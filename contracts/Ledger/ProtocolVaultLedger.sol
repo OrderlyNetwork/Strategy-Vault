@@ -29,6 +29,7 @@ import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
 import {USDC_DECIMAL, LEDGER_STORAGE_LOCATION} from "../lib/types/Constants.sol";
+import {VaultUtils} from "../lib/utils/VaultUtils.sol";
 
 /// @title protocol vault ledger
 /// @notice This contract is used to record all information of protocol vault
@@ -308,6 +309,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32 strategyProviderId,
         bool knob
     ) external onlyOwner {
+        if (!VaultUtils.validateSPId(vault, strategyProvider, brokerHash, strategyProviderId)) {
+            revert InvalidStrategyProviderId();
+        }
+
         emit AllowedStrategyProviderSet(vaultId, vault, strategyProvider, brokerHash, strategyProviderId, knob);
     }
 
@@ -359,6 +364,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         _getLedgerImplStorage().extension = _extension;
 
         emit ExtensionSet(_extension);
+    }
+
+    function setProtocolVault(address _vault) external onlyOwner {
+        protocolVault = _vault;
+
+        emit ProtocolVaultSet(_vault);
     }
 
     /*=========================================================================================

@@ -22,7 +22,6 @@ async function main() {
         "ProtocolVaultLedger",
         deployment[env].pvLedger
     )
-
     const impl = implAddr;
     tx = await protocolVaultLedger.upgradeToAndCall(impl, "0x")
     await tx.wait();
