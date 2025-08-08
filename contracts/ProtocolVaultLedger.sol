@@ -82,7 +82,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, IProto
     /// @dev vault id to sv broker hash
     mapping(bytes32 => bytes32) public vaultBroker;
 
-    /// @notice Require only operator can call
+    /// @notice Require only operator can 
     modifier onlyOperator() {
         if (msg.sender != operator) {
             revert InvalidOperator();
