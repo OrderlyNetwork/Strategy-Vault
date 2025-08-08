@@ -98,7 +98,7 @@ contract Base is TestHelperOz5 {
         super.setUp();
         (engine, enginePrivateKey) = makeAddrAndKey("engine");
         (sp, spPrivateKey) = makeAddrAndKey("sp");
-        // spId will be calculated after protocolVault deployment
+        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
 
         vm.deal(user, 100 ether);
         vm.deal(sp, 100 ether);
@@ -114,6 +114,7 @@ contract Base is TestHelperOz5 {
         svLedger.setOperatorManager(operator);
         vm.prank(owner);
         svLedger.setEngine(engine);
+
         // Deploy the VaultCrossChainManager contract
         // Initialize 2 endpoints, using UltraLightNode as the library type
 
@@ -178,10 +179,6 @@ contract Base is TestHelperOz5 {
             )
         );
         protocolVault = ProtocolVault(payable(proxy));
-        
-        // Calculate spId after protocolVault deployment
-        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
-        
         vm.startPrank(owner);
         protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
         protocolVault.setLedgerEid(ledgerEid);
@@ -191,8 +188,7 @@ contract Base is TestHelperOz5 {
         vm.startPrank(owner);
         aVaultCrossChainManager.setVault(address(protocolVault));
         bVaultCrossChainManager.setLedger(svLedgerProxy);
-        svLedger.setProtocolVault(address(protocolVault));
-
+        bVaultCrossChainManager.setVault(address(protocolVault));
         vm.stopPrank();
         //mint token
         mockToken.mint(user, 100000e18);

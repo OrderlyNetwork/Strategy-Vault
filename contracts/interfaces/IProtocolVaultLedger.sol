@@ -36,8 +36,7 @@ interface IProtocolVaultLedger {
     error NotAllowedTime();
     error InvalidNonce();
     error InvalidChainType();
-    error InvalidStrategyProviderId();
-    
+
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
     event StrategyFundAssetsUpdate(
         uint256 periodId,
@@ -63,7 +62,6 @@ interface IProtocolVaultLedger {
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
     event DexRequestHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 dexRequestId);
-    event ProtocolVaultSet(address protocolVault);
     //--------------------------------------FROM VAULT-----------------------------------------
 
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData) external;
