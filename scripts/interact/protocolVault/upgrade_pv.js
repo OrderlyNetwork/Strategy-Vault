@@ -1,5 +1,7 @@
 const { ethers } = require("hardhat")
+const hre = require("hardhat")
 const deployment = require('../../../deployment.json');
+const { verifyContract } = require("../../utils/verifyContract");
 
 async function main() {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
@@ -8,6 +10,9 @@ async function main() {
 
     const implAddr = ProtocolVaultContract.target;
     console.log("ProtocolVaultContract Impl deployed to:", implAddr);
+
+    // verify
+    await verifyContract(implAddr, [], "ProtocolVault Implementation");
 
     //upgrade
     //!need to change with your env
