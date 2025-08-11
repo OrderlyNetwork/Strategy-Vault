@@ -185,6 +185,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         } else {
             revert InvalidType();
         }
+        
         return true;
     }
 

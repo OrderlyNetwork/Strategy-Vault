@@ -164,103 +164,6 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         emit LPAndStrategyFundUpdated(periodId, vaultId, operationRes);
     }
 
-    /*=========================================================================================
-    *                                       INTERNAL HELPER FUNCTIONS
-    *=========================================================================================*/
-
-    /// @notice Check if period ID is valid
-    /// @param periodId Period ID to check
-    function _check(uint256 periodId) internal view {
-        if (periodId != latestPeriodId) {
-            revert InvalidPeriodId();
-        }
-    }
-
-    function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
-        AccountToken storage accountToken = _getAccountToken(accountId);
-
-        if (amount > accountToken.unAllocatedAssets) {
-            revert NotEnoughLPDeposit(amount);
-        }
-
-        uint256 depositShares =
-            LedgerUtils._convertToShares(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
-        //effect
-        accountToken.pendingShares += depositShares;
-        accountToken.unAllocatedAssets -= amount;
-
-        pendingMainShares += depositShares;
-        pendingLpDepositAssets += amount;
-
-        return depositShares;
-    }
-
-    function _handleLpWithdraw(bytes32 requestId, bytes32 accountId, uint256 amount) internal returns (uint256) {
-        AccountToken storage accountToken = _getAccountToken(accountId);
-
-        LedgerUtils.requireEnoughFrozenShares(amount, accountToken.frozenShares);
-
-        //effect
-        uint256 withdrawAssets =
-            LedgerUtils._convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
-
-        accountToken.pendingShares -= amount;
-        accountToken.frozenShares -= amount;
-        pendingMainShares -= amount;
-        pendingLpWithdrawAssets += withdrawAssets;
-
-        userClaimInfo[requestId].requestId = requestId;
-        userClaimInfo[requestId].accountId = accountId;
-        userClaimInfo[requestId].assets = withdrawAssets;
-
-        return withdrawAssets;
-    }
-
-    function _handleSPDeposit(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
-        //gas optimization
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
-        PendingState storage pendingState = strategyFundToken.pendingState;
-        if (amount > strategyFundToken.unAllocatedAssets) {
-            revert NotEnoughSPDeposit();
-        }
-        uint256 depositShares = LedgerUtils._convertToShares(
-            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
-        );
-
-        pendingState.pendingTotalShares += depositShares;
-        pendingState.pendingStrategyProviderShares += depositShares;
-        pendingState.pendingTotalAssets += amount;
-        strategyFundToken.unAllocatedAssets -= amount;
-
-        return depositShares;
-    }
-
-    function _handleSpWithdraw(bytes32 requestId, bytes32 strategyProviderId, uint256 amount)
-        internal
-        returns (uint256)
-    {
-        //gas optimization
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
-        PendingState storage pendingState = strategyFundToken.pendingState;
-
-        LedgerUtils.requireEnoughFrozenShares(amount, strategyFundToken.frozenShares);
-        uint256 spWithdrawAssets = LedgerUtils._convertToAssets(
-            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
-        );
-
-        //effect
-        pendingState.pendingTotalShares -= amount;
-        pendingState.pendingStrategyProviderShares -= amount;
-        pendingState.pendingTotalAssets -= spWithdrawAssets;
-        strategyFundToken.frozenShares -= amount;
-
-        userClaimInfo[requestId].requestId = requestId;
-        userClaimInfo[requestId].strategyProviderId = strategyProviderId;
-        userClaimInfo[requestId].assets = spWithdrawAssets;
-
-        return spWithdrawAssets;
-    }
-
     /// @notice Operator allocate all lp deposit and withdraw to strategy funds after handle all lp operation
     /// @param periodId period id
     /// @param vaultId vault id
@@ -475,29 +378,6 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         emit PeriodIdUpdated(periodId, vaultId);
     }
 
-    /// @notice Calculate high water mark for strategy fund
-    /// @param strategyProviderId Strategy provider ID
-    /// @return High water mark value
-    function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
-
-        uint256 hwm = strategyFundToken.hwm;
-        uint256 totalShares = strategyFundToken.totalShares;
-        uint256 decimal = USDC_DECIMAL;
-        if (totalShares == 0) {
-            return 10 ** decimal;
-        }
-
-        uint256 sharePriceAfterFee = strategyFundToken.fundAssetsAfterFee * 10 ** decimal / totalShares;
-        uint256 pendingTotalShares = strategyFundToken.pendingState.pendingTotalShares;
-        uint256 newIssueShares = (pendingTotalShares > totalShares) ? pendingTotalShares - totalShares : 0;
-
-        uint256 numerator = (totalShares * Math.max(hwm, sharePriceAfterFee)) + (newIssueShares * sharePriceAfterFee);
-        uint256 denominator = totalShares + newIssueShares;
-
-        return numerator / denominator;
-    }
-
     /// @notice Distribute assets to strategy
     /// @param periodId Period ID
     /// @param vaultId Vault ID
@@ -596,6 +476,126 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         }
 
         emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
+    }
+    
+    /*=========================================================================================
+    *                                       INTERNAL HELPER FUNCTIONS
+    *=========================================================================================*/
+
+    /// @notice Check if period ID is valid
+    /// @param periodId Period ID to check
+    function _check(uint256 periodId) internal view {
+        if (periodId != latestPeriodId) {
+            revert InvalidPeriodId();
+        }
+    }
+
+    function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
+        AccountToken storage accountToken = _getAccountToken(accountId);
+
+        if (amount > accountToken.unAllocatedAssets) {
+            revert NotEnoughLPDeposit(amount);
+        }
+
+        uint256 depositShares =
+            LedgerUtils._convertToShares(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+        //effect
+        accountToken.pendingShares += depositShares;
+        accountToken.unAllocatedAssets -= amount;
+
+        pendingMainShares += depositShares;
+        pendingLpDepositAssets += amount;
+
+        return depositShares;
+    }
+
+    function _handleLpWithdraw(bytes32 requestId, bytes32 accountId, uint256 amount) internal returns (uint256) {
+        AccountToken storage accountToken = _getAccountToken(accountId);
+
+        LedgerUtils.requireEnoughFrozenShares(amount, accountToken.frozenShares);
+
+        //effect
+        uint256 withdrawAssets =
+            LedgerUtils._convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+
+        accountToken.pendingShares -= amount;
+        accountToken.frozenShares -= amount;
+        pendingMainShares -= amount;
+        pendingLpWithdrawAssets += withdrawAssets;
+
+        userClaimInfo[requestId].requestId = requestId;
+        userClaimInfo[requestId].accountId = accountId;
+        userClaimInfo[requestId].assets = withdrawAssets;
+
+        return withdrawAssets;
+    }
+
+    function _handleSPDeposit(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
+        //gas optimization
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
+        PendingState storage pendingState = strategyFundToken.pendingState;
+        if (amount > strategyFundToken.unAllocatedAssets) {
+            revert NotEnoughSPDeposit();
+        }
+        uint256 depositShares = LedgerUtils._convertToShares(
+            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
+        );
+
+        pendingState.pendingTotalShares += depositShares;
+        pendingState.pendingStrategyProviderShares += depositShares;
+        pendingState.pendingTotalAssets += amount;
+        strategyFundToken.unAllocatedAssets -= amount;
+
+        return depositShares;
+    }
+
+    function _handleSpWithdraw(bytes32 requestId, bytes32 strategyProviderId, uint256 amount)
+        internal
+        returns (uint256)
+    {
+        //gas optimization
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
+        PendingState storage pendingState = strategyFundToken.pendingState;
+
+        LedgerUtils.requireEnoughFrozenShares(amount, strategyFundToken.frozenShares);
+        uint256 spWithdrawAssets = LedgerUtils._convertToAssets(
+            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
+        );
+
+        //effect
+        pendingState.pendingTotalShares -= amount;
+        pendingState.pendingStrategyProviderShares -= amount;
+        pendingState.pendingTotalAssets -= spWithdrawAssets;
+        strategyFundToken.frozenShares -= amount;
+
+        userClaimInfo[requestId].requestId = requestId;
+        userClaimInfo[requestId].strategyProviderId = strategyProviderId;
+        userClaimInfo[requestId].assets = spWithdrawAssets;
+
+        return spWithdrawAssets;
+    }
+
+    /// @notice Calculate high water mark for strategy fund
+    /// @param strategyProviderId Strategy provider ID
+    /// @return High water mark value
+    function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
+
+        uint256 hwm = strategyFundToken.hwm;
+        uint256 totalShares = strategyFundToken.totalShares;
+        uint256 decimal = USDC_DECIMAL;
+        if (totalShares == 0) {
+            return 10 ** decimal;
+        }
+
+        uint256 sharePriceAfterFee = strategyFundToken.fundAssetsAfterFee * 10 ** decimal / totalShares;
+        uint256 pendingTotalShares = strategyFundToken.pendingState.pendingTotalShares;
+        uint256 newIssueShares = (pendingTotalShares > totalShares) ? pendingTotalShares - totalShares : 0;
+
+        uint256 numerator = (totalShares * Math.max(hwm, sharePriceAfterFee)) + (newIssueShares * sharePriceAfterFee);
+        uint256 denominator = totalShares + newIssueShares;
+
+        return numerator / denominator;
     }
 
     function _createCCMessage(PayloadType payloadType, uint256 dstChainId, bytes memory payload)
