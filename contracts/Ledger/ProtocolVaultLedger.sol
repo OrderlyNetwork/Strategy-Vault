@@ -192,7 +192,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @notice Operator update period id after last period finish
     /// @param periodId latest periodId
     /// @param vaultId vault id
-    /// @param signature signature signature of BE
+    /// @param signature signature of BE
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external onlyOperator {
         _delegateCall(
             abi.encodeWithSelector(ILedgerCoreImpl.updatePeriodId.selector, periodId, vaultId, signature),

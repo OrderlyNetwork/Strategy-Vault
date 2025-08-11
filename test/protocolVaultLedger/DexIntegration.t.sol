@@ -1021,4 +1021,23 @@ contract DexIntegrationTest is Base {
         vm.expectRevert(); // This will revert with InvalidUser error from verifySOLSig
         svLedger.handleDexRequests(dexRequests, engineSignature);
     }
+
+    function testRevertInvalidId() public {
+        uint256 amount = 1000e6;
+        uint256 requestId = 1;
+
+        // Create DexRequestData using helper function
+        DexRequestData memory dexRequestData = _createDexRequestData(PayloadType.LP_DEPOSIT, requestId, lp, amount);
+
+        // Create DexRequest array using helper function with invalid id
+        DexRequest[] memory dexRequests = _createDexRequestArray(spId, lp, lpPrivateKey, dexRequestData);
+
+        // Generate engine signature
+        bytes memory engineSignature = _generateEngineSignature(dexRequests);
+
+        // Execute
+        vm.prank(operator);
+        vm.expectRevert(ILedgerExtension.InvalidId.selector);
+        svLedger.handleDexRequests(dexRequests, engineSignature);
+    }
 }

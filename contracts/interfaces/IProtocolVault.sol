@@ -2,14 +2,12 @@
 pragma solidity ^0.8.26;
 
 import {
-    VaultType,
     RoleType,
     VaultState,
     ClaimParams,
     OperationData,
     DepositParams,
-    WithdrawParams,
-    UserClaimedInfo
+    WithdrawParams
 } from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 import {ClaimInfo} from "../lib/types/LedgerStruct.sol";

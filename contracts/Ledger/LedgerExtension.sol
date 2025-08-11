@@ -135,7 +135,9 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
 
         address receiver = address(uint160(uint256(data.receiver)));
         // Verify id
-        VaultUtils.validateId(protocolVault, receiver, vaultBroker[data.vaultId], request.id);
+        if (!VaultUtils.validateId(protocolVault, receiver, vaultBroker[data.vaultId], request.id)) {
+            revert InvalidId();
+        }
 
         // Verify signature
         Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);
@@ -145,7 +147,9 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         DexRequestData calldata data = request.dexRequestData;
 
         // Verify id
-        VaultUtils.validateAccountId(data.receiver, vaultBroker[data.vaultId], request.id);
+        if (!VaultUtils.validateAccountId(data.receiver, vaultBroker[data.vaultId], request.id)) {
+            revert InvalidId();
+        }
 
         Signature.verifySOLSig(data, request.r, request.s, request.chainId, data.receiver);
     }

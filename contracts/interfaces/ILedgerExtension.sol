@@ -12,6 +12,7 @@ interface ILedgerExtension {
     // Custom errors - LedgerExtension specific
     error AlreadyCalled();
     error InvalidType();
+    error InvalidId();
 
     // Events
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
