@@ -46,7 +46,7 @@ contract DexIntegrationTest is Base {
         (lp, lpPrivateKey) = makeAddrAndKey("lp");
         lpId = _getAccountId(lp, ORDERLY_BROKER);
         (sp, spPrivateKey) = makeAddrAndKey("sp");
-        spId = _getAccountId(sp, ORDERLY_BROKER);
+        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
 
         // Generate private keys for userA and userB
         (userA, userAPrivateKey) = makeAddrAndKey("userA");
@@ -59,11 +59,19 @@ contract DexIntegrationTest is Base {
         // Set vaultId
         vaultId = keccak256(abi.encode(protocolVault, ORDERLY_BROKER));
 
+        // Set vault broker mapping for ID validation
+        vm.prank(owner);
+        svLedger.setVaultBroker(vaultId, ORDERLY_BROKER);
+
         // Deal ETH and mint tokens for new addresses
         vm.deal(userA, 100 ether);
         vm.deal(userB, 100 ether);
         mockToken.mint(userA, 100000e18);
-        mockToken.mint(userB, 100000e18);
+        mockToken.mint(userB, 10000e18);
+
+        // Set vault broker mapping for ID validation
+        vm.prank(owner);
+        svLedger.setVaultBroker(vaultId, ORDERLY_BROKER);
     }
 
     //specific sol sig
