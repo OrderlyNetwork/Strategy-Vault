@@ -1,18 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {
-    AccountToken,
-    StrategyFundToken,
-    UpdateStrategyFundAssetsParams,
-    UpdateStrategyFundAssetsRes,
-    UpdateLedgerParams,
-    AccountState,
-    AllocateFundRes,
-    StrategyFundState,
-    OperationRes
-} from "../lib/types/LedgerStruct.sol";
-
+import {UpdateStrategyFundAssetsParams, UpdateLedgerParams} from "../lib/types/LedgerStruct.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
@@ -20,7 +9,7 @@ import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 /// @notice Interface for the main Protocol Vault Ledger contract
 /// @dev Contains high-frequency functions and configuration methods
 interface IProtocolVaultLedger {
-    // Custom errors - ProtocolVaultLedger specific  
+    // Custom errors - ProtocolVaultLedger specific
     error InvalidPeriodId();
     error InvalidOperator();
     error InvalidVaultCrossChainManager();
@@ -28,6 +17,7 @@ interface IProtocolVaultLedger {
     error NotAllowedTime();
     error DelegatecallFailed();
     error LedgerExtensionsNotSet();
+    error InvalidStrategyProviderId();
 
     event FeeRateSet(bytes32[] strategyProviderIds, uint256[] feeRates);
     event CrossChainManagerSet(address crossChainManager);
@@ -40,7 +30,8 @@ interface IProtocolVaultLedger {
     event VaultBrokerSet(bytes32 vaultId, bytes32 brokerId);
     event CoreSet(address core);
     event ExtensionSet(address extension);
-    
+    event ProtocolVaultSet(address protocolVault);
+
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external;
     function updateStrategyFundAssets(

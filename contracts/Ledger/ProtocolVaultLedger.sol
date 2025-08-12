@@ -29,6 +29,7 @@ import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
 import {USDC_DECIMAL, LEDGER_STORAGE_LOCATION} from "../lib/types/Constants.sol";
+import {VaultUtils} from "../lib/utils/VaultUtils.sol";
 
 /// @title protocol vault ledger
 /// @notice This contract is used to record all information of protocol vault
@@ -191,7 +192,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @notice Operator update period id after last period finish
     /// @param periodId latest periodId
     /// @param vaultId vault id
-    /// @param signature signature signature of BE
+    /// @param signature signature of BE
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external onlyOperator {
         _delegateCall(
             abi.encodeWithSelector(ILedgerCoreImpl.updatePeriodId.selector, periodId, vaultId, signature),
@@ -308,6 +309,10 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32 strategyProviderId,
         bool knob
     ) external onlyOwner {
+        if (!VaultUtils.validateSPId(vault, strategyProvider, brokerHash, strategyProviderId)) {
+            revert InvalidStrategyProviderId();
+        }
+
         emit AllowedStrategyProviderSet(vaultId, vault, strategyProvider, brokerHash, strategyProviderId, knob);
     }
 
@@ -359,6 +364,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         _getLedgerImplStorage().extension = _extension;
 
         emit ExtensionSet(_extension);
+    }
+
+    function setProtocolVault(address _vault) external onlyOwner {
+        protocolVault = _vault;
+
+        emit ProtocolVaultSet(_vault);
     }
 
     /*=========================================================================================
@@ -450,15 +461,15 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     *                                       INTERNAL
     *=========================================================================================*/
 
-    /// @notice Delegate call to extensions contract
+    /// @notice Delegate call to implementation contracts with enhanced error forwarding
     /// @param data Encoded function call data
+    /// @param impl Implementation contract address
     function _delegateCall(bytes memory data, address impl) internal {
         if (impl == address(0)) {
             revert LedgerExtensionsNotSet();
         }
         (bool success, bytes memory result) = impl.delegatecall(data);
         if (!success) {
-            // Forward the revert reason
             if (result.length > 0) {
                 assembly {
                     revert(add(32, result), mload(result))

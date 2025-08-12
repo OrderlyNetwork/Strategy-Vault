@@ -180,8 +180,10 @@ library Signature {
         bytes memory m = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(hashStruct);
         // the former is the signature of message from eoa, the latter is the signature of tx from ledger
         if (
-            !(IEd25519(ED25519).verify(signer, r, s, m)
-                || IEd25519(ED25519).verify(signer, r, s, solanaLedgerSignature(signer, hashStruct)))
+            !(
+                IEd25519(ED25519).verify(signer, r, s, m)
+                    || IEd25519(ED25519).verify(signer, r, s, solanaLedgerSignature(signer, hashStruct))
+            )
         ) {
             revert InvalidUser();
         }

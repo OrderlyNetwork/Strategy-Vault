@@ -13,15 +13,18 @@ import {
 } from "../../contracts/lib/types/LedgerStruct.sol";
 import {ILedgerExtension} from "../../contracts/interfaces/ILedgerExtension.sol";
 import {IProtocolVaultLedger} from "../../contracts/interfaces/IProtocolVaultLedger.sol";
+import {IEd25519} from "../../contracts/interfaces/IEd25519.sol";
+import {Ed25519} from "../../contracts/lib/Ed25519/Ed25519.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {VaultUtils} from "../../contracts/lib/utils/VaultUtils.sol";
+import "../../contracts/lib/utils/Bytes32ToAsciiBytes.sol";
 
 contract DexIntegrationTest is Base {
     // Events that need to be declared for testing
     event DexRequestHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 requestId);
-
     // Setup
+
     address lp;
     uint256 lpPrivateKey;
 
@@ -35,6 +38,7 @@ contract DexIntegrationTest is Base {
     // User addresses and private keys for testing
     uint256 userAPrivateKey;
     uint256 userBPrivateKey;
+    address ed25519;
 
     function setUp() public override {
         super.setUp();
@@ -42,7 +46,7 @@ contract DexIntegrationTest is Base {
         (lp, lpPrivateKey) = makeAddrAndKey("lp");
         lpId = _getAccountId(lp, ORDERLY_BROKER);
         (sp, spPrivateKey) = makeAddrAndKey("sp");
-        spId = _getAccountId(sp, ORDERLY_BROKER);
+        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
 
         // Generate private keys for userA and userB
         (userA, userAPrivateKey) = makeAddrAndKey("userA");
@@ -55,11 +59,80 @@ contract DexIntegrationTest is Base {
         // Set vaultId
         vaultId = keccak256(abi.encode(protocolVault, ORDERLY_BROKER));
 
+        // Set vault broker mapping for ID validation
+        vm.prank(owner);
+        svLedger.setVaultBroker(vaultId, ORDERLY_BROKER);
+
         // Deal ETH and mint tokens for new addresses
         vm.deal(userA, 100 ether);
         vm.deal(userB, 100 ether);
         mockToken.mint(userA, 100000e18);
-        mockToken.mint(userB, 100000e18);
+        mockToken.mint(userB, 10000e18);
+
+        // Set vault broker mapping for ID validation
+        vm.prank(owner);
+        svLedger.setVaultBroker(vaultId, ORDERLY_BROKER);
+    }
+
+    //specific sol sig
+    function testSolSig() public {
+        bytes memory bytecode = vm.getCode("contracts/lib/Ed25519/Ed25519.sol");
+        address deployed;
+        assembly {
+            deployed := create(0, add(bytecode, 0x20), mload(bytecode))
+        }
+        require(deployed != address(0), "Failed to deploy Ed25519");
+        ed25519 = deployed;
+
+        bytes32 signer = 0x0fb9ba52b1f09445f1e3a7508d59f0797923acf744fbe2da303fb06da859ee87;
+        bytes32 hashStruct = keccak256(
+            abi.encode(
+                PayloadType.LP_DEPOSIT,
+                1025072908380038,
+                signer,
+                1000000,
+                0x4812cbb88f4025372a3e2acd10d02b5f680d7d1fe78091f6cfde80122c861099,
+                keccak256(abi.encodePacked("USDC")),
+                keccak256(abi.encodePacked("woofi_pro")),
+                1
+            )
+        );
+        bytes memory m = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(hashStruct);
+
+        // sig
+        bytes memory sig =
+            hex"30ace0d6ea0064893633c21ef685edf22ef6ac492d8931a82cc5cc942e82f9585ee57310d8f6caa8b703e64307b0012eadaa6ec109c1811f69c330ba1036aa0e";
+        bytes32 r;
+        bytes32 s;
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+        }
+
+        // ledger sig
+        bytes memory ledgerSig =
+            hex"60e500dcefeeb7f487d2d6c2a88809a645195b36ad4e7fee96e02484e81146f32630c7e07dae8a2e252d31c7b24855e032663950adb6dfdc20e4fbaefa5ad009";
+        bytes32 ledgerR;
+        bytes32 ledgerS;
+        assembly {
+            ledgerR := mload(add(ledgerSig, 32))
+            ledgerS := mload(add(ledgerSig, 64))
+        }
+
+        assertTrue(IEd25519(ed25519).verify(signer, r, s, m), "Normal signature verification failed");
+        assertTrue(
+            IEd25519(ed25519).verify(signer, ledgerR, ledgerS, solanaLedgerSignature(signer, hashStruct)),
+            "Ledger signature verification failed"
+        );
+    }
+
+    function solanaLedgerSignature(bytes32 pubkey, bytes32 messageRaw) internal pure returns (bytes memory) {
+        bytes memory message = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(messageRaw);
+        bytes memory m1 = hex"01000203";
+        bytes memory m2 =
+            hex"0306466fe5211732ffecadba72c39be7bc8ce5bbc5f7126b2c439b3a40000000054a535a992921064d24e87160da387c7c35b5ddbc92bb81e41fa8404105448d0000000000000000000000000000000000000000000000000000000000000000030100090300000000000000000100050200000000020040";
+        bytes memory m = abi.encodePacked(m1, abi.encodePacked(pubkey), m2, message);
+        return m;
     }
 
     function testHandleDexRequestsLPDeposit() public {
@@ -726,9 +799,9 @@ contract DexIntegrationTest is Base {
         DexRequest[] memory dexRequests = _createDexRequestArray(lpId, lp, lpPrivateKey, dexRequestData);
         bytes memory engineSignature = _generateEngineSignature(dexRequests);
 
-        // Expect DexRequestsHandled event
+        // Expect DexRequestHandled event
         vm.expectEmit(true, true, true, true);
-        emit DexRequestsHandled(dexRequests);
+        emit DexRequestHandled(dexRequests[0]);
 
         vm.prank(operator);
         svLedger.handleDexRequests(dexRequests, engineSignature);
@@ -876,5 +949,53 @@ contract DexIntegrationTest is Base {
 
         // After handling, request should be marked as handled
         assertTrue(svLedger.isDexRequestHandled(requestId));
+    }
+
+    /// @notice Test SOL chain type with invalid signature - should revert with InvalidUser error
+    function testRevertHandleDexRequestsSOLInvalidSignature() public {
+        uint256 amount = 1000e6;
+        uint256 requestId = 500;
+
+        // Create DexRequestData using helper function
+        DexRequestData memory dexRequestData = _createDexRequestData(PayloadType.LP_DEPOSIT, requestId, lp, amount);
+
+        // Create DexRequest with SOL chain type and invalid signature
+        DexRequest[] memory dexRequests = new DexRequest[](1);
+        dexRequests[0] = DexRequest({
+            chainType: ChainType.SOL, // Use SOL chain type
+            chainId: block.chainid,
+            id: lpId,
+            dexRequestData: dexRequestData,
+            r: bytes32(0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef), // Invalid signature r component
+            s: bytes32(0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321), // Invalid signature s component
+            v: 0 // v component (not used in SOL verification but included for completeness)
+        });
+
+        // Generate valid engine signature (engine signature verification should pass)
+        bytes memory engineSignature = _generateEngineSignature(dexRequests);
+
+        // Should revert due to invalid SOL signature verification
+        vm.prank(operator);
+        vm.expectRevert(); // This will revert with InvalidUser error from verifySOLSig
+        svLedger.handleDexRequests(dexRequests, engineSignature);
+    }
+
+    function testRevertInvalidId() public {
+        uint256 amount = 1000e6;
+        uint256 requestId = 1;
+
+        // Create DexRequestData using helper function
+        DexRequestData memory dexRequestData = _createDexRequestData(PayloadType.LP_DEPOSIT, requestId, lp, amount);
+
+        // Create DexRequest array using helper function with invalid id
+        DexRequest[] memory dexRequests = _createDexRequestArray(spId, lp, lpPrivateKey, dexRequestData);
+
+        // Generate engine signature
+        bytes memory engineSignature = _generateEngineSignature(dexRequests);
+
+        // Execute
+        vm.prank(operator);
+        vm.expectRevert(ILedgerExtension.InvalidId.selector);
+        svLedger.handleDexRequests(dexRequests, engineSignature);
     }
 }

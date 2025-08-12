@@ -20,7 +20,6 @@ import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
-import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
 import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 
@@ -62,6 +61,8 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             ChainType chainType = request.chainType;
             if (chainType == ChainType.EVM) {
                 _verifyEVMRequest(request);
+            } else if (chainType == ChainType.SOL) {
+                _verifySolRequest(request);
             } else {
                 revert InvalidType();
             }
@@ -73,7 +74,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             if (
                 _handleRequest(request.dexRequestData.payloadType, request.id, tokenHash, request.dexRequestData.amount)
             ) {
-                emit DexRequestsHandled(request);
+                emit DexRequestHandled(request);
             } else {
                 emit DexWithdrawNotEnough(requestId);
             }
@@ -133,13 +134,24 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         DexRequestData calldata data = request.dexRequestData;
 
         address receiver = address(uint160(uint256(data.receiver)));
-        address vault = IVaultCrossChainManager(crossChainManager).vault();
-
         // Verify id
-        VaultUtils.validateId(vault, receiver, vaultBroker[data.vaultId], request.id);
+        if (!VaultUtils.validateId(protocolVault, receiver, vaultBroker[data.vaultId], request.id)) {
+            revert InvalidId();
+        }
 
         // Verify signature
         Signature.verifyEVMSig(data, request.v, request.r, request.s, request.chainId, receiver);
+    }
+
+    function _verifySolRequest(DexRequest calldata request) internal view {
+        DexRequestData calldata data = request.dexRequestData;
+
+        // Verify id
+        if (!VaultUtils.validateAccountId(data.receiver, vaultBroker[data.vaultId], request.id)) {
+            revert InvalidId();
+        }
+
+        Signature.verifySOLSig(data, request.r, request.s, request.chainId, data.receiver);
     }
 
     function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount)
@@ -173,6 +185,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         } else {
             revert InvalidType();
         }
+        
         return true;
     }
 
