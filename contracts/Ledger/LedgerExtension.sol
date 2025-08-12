@@ -74,7 +74,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             if (
                 _handleRequest(request.dexRequestData.payloadType, request.id, tokenHash, request.dexRequestData.amount)
             ) {
-                emit DexRequestsHandled(request);
+                emit DexRequestHandled(request);
             } else {
                 emit DexWithdrawNotEnough(requestId);
             }

@@ -21,7 +21,7 @@ import "../../contracts/lib/utils/Bytes32ToAsciiBytes.sol";
 
 contract DexIntegrationTest is Base {
     // Events that need to be declared for testing
-    event DexRequestsHandled(DexRequest dexRequest);
+    event DexRequestHandled(DexRequest dexRequest);
     event DexWithdrawNotEnough(uint256 requestId);
     // Setup
 
@@ -849,9 +849,9 @@ contract DexIntegrationTest is Base {
         DexRequest[] memory dexRequests = _createDexRequestArray(lpId, lp, lpPrivateKey, dexRequestData);
         bytes memory engineSignature = _generateEngineSignature(dexRequests);
 
-        // Expect DexRequestsHandled event
+        // Expect DexRequestHandled event
         vm.expectEmit(true, true, true, true);
-        emit DexRequestsHandled(dexRequests[0]);
+        emit DexRequestHandled(dexRequests[0]);
 
         vm.prank(operator);
         svLedger.handleDexRequests(dexRequests, engineSignature);
