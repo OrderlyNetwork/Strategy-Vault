@@ -23,6 +23,7 @@ import {
 } from "./lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
 import {ClaimInfo} from "./lib/types/LedgerStruct.sol";
+import {USDC_HASH, ORDERLY_BROKER, LEDGER_CHAIN_ID} from "./lib/types/Constants.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -31,11 +32,7 @@ import {ClaimInfo} from "./lib/types/LedgerStruct.sol";
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
     using Address for address payable;
 
-    /// @dev keccak256(abi.encodePacked(broker string))
-    bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
-    /// @dev keccak256(abi.encodePacked("USDC"))
-    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
-    uint256 constant LEDGER_CHAIN_ID = 291;
+    // Constants moved to Constants library
 
     VaultState public vaultState;
     address public dexVault;
