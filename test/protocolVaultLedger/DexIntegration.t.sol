@@ -260,8 +260,15 @@ contract DexIntegrationTest is Base {
         });
 
         (uint8 v1, bytes32 r1, bytes32 s1) = _generateUserSignatureComponents(userA, userAPrivateKey, depositData);
-        dexRequests[0] =
-            DexRequest({chainType: ChainType.EVM, id: userA_id, dexRequestData: depositData, r: r1, s: s1, v: v1});
+        dexRequests[0] = DexRequest({
+            chainType: ChainType.EVM,
+            chainId: block.chainid,
+            id: userA_id,
+            dexRequestData: depositData,
+            r: r1,
+            s: s1,
+            v: v1
+        });
 
         // Second request: userB LP withdraw
         DexRequestData memory withdrawData = DexRequestData({
@@ -275,8 +282,15 @@ contract DexIntegrationTest is Base {
         });
 
         (uint8 v2, bytes32 r2, bytes32 s2) = _generateUserSignatureComponents(userB, userBPrivateKey, withdrawData);
-        dexRequests[1] =
-            DexRequest({chainType: ChainType.EVM, id: userB_id, dexRequestData: withdrawData, r: r2, s: s2, v: v2});
+        dexRequests[1] = DexRequest({
+            chainType: ChainType.EVM,
+            chainId: block.chainid,
+            id: userB_id,
+            dexRequestData: withdrawData,
+            r: r2,
+            s: s2,
+            v: v2
+        });
 
         // Generate engine signature
         bytes memory signature = _getDexRequestSignature(dexRequests);
@@ -326,8 +340,15 @@ contract DexIntegrationTest is Base {
         });
 
         (uint8 v3, bytes32 r3, bytes32 s3) = _generateUserSignatureComponents(userA, userAPrivateKey, withdrawData1);
-        dexRequests[0] =
-            DexRequest({chainType: ChainType.EVM, id: userA_id, dexRequestData: withdrawData1, r: r3, s: s3, v: v3});
+        dexRequests[0] = DexRequest({
+            chainType: ChainType.EVM,
+            chainId: block.chainid,
+            id: userA_id,
+            dexRequestData: withdrawData1,
+            r: r3,
+            s: s3,
+            v: v3
+        });
 
         // Second request: userB LP withdraw
         DexRequestData memory withdrawData2 = DexRequestData({
@@ -341,8 +362,15 @@ contract DexIntegrationTest is Base {
         });
 
         (uint8 v4, bytes32 r4, bytes32 s4) = _generateUserSignatureComponents(userB, userBPrivateKey, withdrawData2);
-        dexRequests[1] =
-            DexRequest({chainType: ChainType.EVM, id: userB_id, dexRequestData: withdrawData2, r: r4, s: s4, v: v4});
+        dexRequests[1] = DexRequest({
+            chainType: ChainType.EVM,
+            chainId: block.chainid,
+            id: userB_id,
+            dexRequestData: withdrawData2,
+            r: r4,
+            s: s4,
+            v: v4
+        });
 
         // Generate engine signature
         bytes memory signature = _getDexRequestSignature(dexRequests);
@@ -388,8 +416,15 @@ contract DexIntegrationTest is Base {
         });
 
         (uint8 v5, bytes32 r5, bytes32 s5) = _generateUserSignatureComponents(userA, userAPrivateKey, depositData);
-        dexRequests[0] =
-            DexRequest({chainType: ChainType.EVM, id: userA_id, dexRequestData: depositData, r: r5, s: s5, v: v5});
+        dexRequests[0] = DexRequest({
+            chainType: ChainType.EVM,
+            chainId: block.chainid,
+            id: userA_id,
+            dexRequestData: depositData,
+            r: r5,
+            s: s5,
+            v: v5
+        });
 
         // Second request: userB LP withdraw (should fail)
         DexRequestData memory withdrawData = DexRequestData({
@@ -403,8 +438,15 @@ contract DexIntegrationTest is Base {
         });
 
         (uint8 v6, bytes32 r6, bytes32 s6) = _generateUserSignatureComponents(userB, userBPrivateKey, withdrawData);
-        dexRequests[1] =
-            DexRequest({chainType: ChainType.EVM, id: userB_id, dexRequestData: withdrawData, r: r6, s: s6, v: v6});
+        dexRequests[1] = DexRequest({
+            chainType: ChainType.EVM,
+            chainId: block.chainid,
+            id: userB_id,
+            dexRequestData: withdrawData,
+            r: r6,
+            s: s6,
+            v: v6
+        });
 
         // Generate engine signature
         bytes memory signature = _getDexRequestSignature(dexRequests);
@@ -528,7 +570,15 @@ contract DexIntegrationTest is Base {
         returns (DexRequest memory)
     {
         (uint8 v, bytes32 r, bytes32 s) = _generateUserSignatureComponents(receiver, privateKey, dexRequestData);
-        return DexRequest({chainType: ChainType.EVM, id: id, dexRequestData: dexRequestData, r: r, s: s, v: v});
+        return DexRequest({
+            chainType: ChainType.EVM,
+            chainId: block.chainid,
+            id: id,
+            dexRequestData: dexRequestData,
+            r: r,
+            s: s,
+            v: v
+        });
     }
 
     /// @notice Helper function to construct DexRequest array
