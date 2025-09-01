@@ -43,7 +43,6 @@ interface IProtocolVault {
 
     function deposit(DepositParams memory depositParams) external payable;
     function withdraw(WithdrawParams memory withdrawParams) external payable;
-    function claim(ClaimParams memory claimParams) external;
     function claimWithFee(ClaimParams memory claimParams) external payable;
     function depositToStrategy(uint256 periodId, address receiver, uint256 amount) external;
     function updateUnClaimed(uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaimInfos) external;

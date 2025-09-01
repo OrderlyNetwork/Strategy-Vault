@@ -199,38 +199,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit OperationExecuted(payloadType, data);
     }
 
-    function claim(ClaimParams memory claimParams) external whenNotPaused {
-        bytes32 id;
-        bytes32 brokerHash = claimParams.brokerHash;
-
-        if (claimParams.roleType == RoleType.LP) {
-            id = _getAccountId(msg.sender, brokerHash);
-        } else if (claimParams.roleType == RoleType.SP) {
-            id = _getStrategyProviderId(msg.sender, brokerHash);
-        } else {
-            revert InvalidRoleType();
-        }
-
-        //check
-        if (claimParams.token != tokenHashToAddress[USDC_HASH]) {
-            revert InvalidClaimToken(claimParams.token);
-        }
-        uint256 amount = userClaimedById[id][USDC_HASH].unClaimedAssets;
-        if (amount == 0) {
-            revert NotEnoughUnclaimedAssets(amount);
-        }
-
-        //effect
-        userClaimedById[id][USDC_HASH].unClaimedAssets = 0;
-        bytes32[] memory requestIds = userClaimedById[id][USDC_HASH].requestIds;
-        delete userClaimedById[id][USDC_HASH].requestIds;
-
-        //transfer to user
-        SafeTransferLib.safeTransfer(ERC20(claimParams.token), msg.sender, amount);
-
-        emit UserClaimed(claimParams.roleType, id, amount, requestIds);
-    }
-
     function claimWithFee(ClaimParams memory claimParams) external payable whenNotPaused {
         bytes32 id;
         bytes32 brokerHash = claimParams.brokerHash;
