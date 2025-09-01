@@ -14,7 +14,6 @@ interface IProtocolVaultLedger {
     error InvalidOperator();
     error InvalidVaultCrossChainManager();
     error InvalidInput();
-    error NotAllowedTime();
     error DelegatecallFailed();
     error LedgerExtensionsNotSet();
     error InvalidStrategyProviderId();
