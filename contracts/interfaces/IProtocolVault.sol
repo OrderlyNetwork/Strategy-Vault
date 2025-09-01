@@ -2,14 +2,12 @@
 pragma solidity ^0.8.26;
 
 import {
-    VaultType,
     RoleType,
     VaultState,
     ClaimParams,
     OperationData,
     DepositParams,
-    WithdrawParams,
-    UserClaimedInfo
+    WithdrawParams
 } from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 import {ClaimInfo} from "../lib/types/LedgerStruct.sol";
@@ -45,7 +43,6 @@ interface IProtocolVault {
 
     function deposit(DepositParams memory depositParams) external payable;
     function withdraw(WithdrawParams memory withdrawParams) external payable;
-    function claim(ClaimParams memory claimParams) external;
     function claimWithFee(ClaimParams memory claimParams) external payable;
     function depositToStrategy(uint256 periodId, address receiver, uint256 amount) external;
     function updateUnClaimed(uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaimInfos) external;

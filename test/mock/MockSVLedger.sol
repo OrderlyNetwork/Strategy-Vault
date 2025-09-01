@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-import "../../contracts/ProtocolVaultLedger.sol";
+import "../../contracts/Ledger/ProtocolVaultLedger.sol";
+import {USDC_HASH} from "../../contracts/lib/types/Constants.sol";
 
 contract MockSVLedger is ProtocolVaultLedger {
     function initializeStrategyFund(

@@ -10,7 +10,7 @@ async function main() {
   const [sender] = await ethers.getSigners();
 
   const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
-  const value = ethers.parseUnits("0.02", 6);
+  const value = ethers.parseUnits("0.01", 6);
   const protocolVault = await ethers.getContractAt(
     "ProtocolVault",
     deployment[env].protocolVault
