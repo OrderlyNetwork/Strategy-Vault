@@ -21,12 +21,13 @@ async function main() {
 
     await verifyContract(implAddr, [], "ProtocolVaultLedger Implementation");
 
+    await verifyContract(implAddr, [], "ProtocolVaultLedger Implementation");
+
     //updage
     const protocolVaultLedger = await ethers.getContractAt(
         "ProtocolVaultLedger",
         deployment[env].pvLedger
     )
-
     const impl = implAddr;
     tx = await protocolVaultLedger.upgradeToAndCall(impl, "0x")
     await tx.wait();

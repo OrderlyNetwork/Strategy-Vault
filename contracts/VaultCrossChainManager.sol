@@ -10,16 +10,14 @@ import {OAppUpgradeable, MessagingFee, Origin} from "./lib/layerzero-v2/oapp/OAp
 import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
 import {IProtocolVaultLedger} from "./interfaces/IProtocolVaultLedger.sol";
 import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
-
-import {VaultType, OperationData} from "./lib/types/VaultStruct.sol";
+import {OperationData} from "./lib/types/VaultStruct.sol";
 import {AssetsDistribution, ClaimInfo} from "./lib/types/LedgerStruct.sol";
 import {StrategyVaultCCMessage, PayloadType, LzOptions} from "./lib/types/CrossChainStruct.sol";
 import {DecimalConverter} from "./lib/utils/DecimalConverter.sol";
+import {USDC_HASH} from "./lib/types/Constants.sol";
 
 contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     using Address for address payable;
-
-    bytes32 constant USDC_HASH = 0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa;
 
     error InvalidCaller(address caller);
     error InvalidPayloadType();

@@ -5,7 +5,7 @@ const config = require('../../../config.json');
 
 async function main() {
   //!need to change with your env
-  const env = "mainnet";
+  const env = "dev";
   const currentNetwork = hre.network.name;
   const [sender] = await ethers.getSigners();
   const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
@@ -42,9 +42,9 @@ async function main() {
   //deposit
   //const nativeFee = 1190048;
   
-  // tx = await protocolVault.deposit(depositParams, { value: nativeFee.toString() }); // Replace with actual value if needed
-  // await tx.wait()
-  // console.log("Deposit done with tx:", tx.hash)
+  tx = await protocolVault.deposit(depositParams, { value: nativeFee.toString() }); // Replace with actual value if needed
+  await tx.wait()
+  console.log("Deposit done with tx:", tx.hash)
 }
 
 main()
