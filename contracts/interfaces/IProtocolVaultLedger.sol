@@ -1,72 +1,38 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {
-    AccountToken,
-    StrategyFundToken,
-    UpdateStrategyFundAssetsParams,
-    UpdateStrategyFundAssetsRes,
-    PendingState,
-    Operation,
-    OperationType,
-    OperationRes,
-    UpdateLedgerParams,
-    AssetsDistribution,
-    AccountState,
-    ClaimInfo,
-    AllocateFundRes,
-    StrategyFundState,
-    DexRequest,
-    ChainType
-} from "../lib/types/LedgerStruct.sol";
-
-import {VaultType, OperationData} from "../lib/types/VaultStruct.sol";
+import {UpdateStrategyFundAssetsParams, UpdateLedgerParams} from "../lib/types/LedgerStruct.sol";
+import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
+/// @title IProtocolVaultLedger
+/// @notice Interface for the main Protocol Vault Ledger contract
+/// @dev Contains high-frequency functions and configuration methods
 interface IProtocolVaultLedger {
-    error InvalidPeriodId(); //0x13ac34b9
+    // Custom errors - ProtocolVaultLedger specific
+    error InvalidPeriodId();
     error InvalidOperator();
     error InvalidVaultCrossChainManager();
-    error NotEnoughLPDeposit(uint256 amount);
-    error NotEnoughSPDeposit();
-    error InvalidType();
-    error NotEnoughFrozenShare(uint256 amount);
     error InvalidInput();
-    error AlreadyCalled();
-    error NotAllowedTime();
-    error InvalidNonce();
-    error InvalidChainType();
+    error DelegatecallFailed();
+    error LedgerExtensionsNotSet();
+    error InvalidStrategyProviderId();
 
-    event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
-    event StrategyFundAssetsUpdate(
-        uint256 periodId,
-        bytes32 vaultId,
-        uint256 mainAssetsAfterFee,
-        UpdateStrategyFundAssetsRes[] updateStrategyFundAssetsRes
-    );
-    event LPAndStrategyFundUpdated(uint256 periodId, bytes32 vaultId, OperationRes[] operationRes);
-    event FundAllocated(
-        uint256 periodId, bytes32 vaultId, bytes32[] strategyProviderIds, AllocateFundRes[] allocateFundRes
-    );
-    event MainAndStrategyFundsSettled(
-        uint256 periodId, bytes32 vaultId, uint256 mainShares, StrategyFundState[] strategyFundStates
-    );
-    event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
-    event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
+    event FeeRateSet(bytes32[] strategyProviderIds, uint256[] feeRates);
+    event CrossChainManagerSet(address crossChainManager);
     event AllowedStrategyProviderSet(
         bytes32 vaultId, address vault, address sp, bytes32 brokerHash, bytes32 spId, bool knob
     );
-    event AssetsDistributed(uint256 periodId, bytes32 vaultId);
-    event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] claimInfos);
-    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
-    event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-    event DexRequestHandled(DexRequest dexRequest);
-    event DexWithdrawNotEnough(uint256 dexRequestId);
-    //--------------------------------------FROM VAULT-----------------------------------------
+    event OperatorManagerSet(address operator);
+    event EngineSet(address engine);
+    event DecimalSet(bytes32 tokenHash, uint256 decimal);
+    event VaultBrokerSet(bytes32 vaultId, bytes32 brokerId);
+    event CoreSet(address core);
+    event ExtensionSet(address extension);
+    event ProtocolVaultSet(address protocolVault);
 
-    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData memory operationData) external;
-
-    //--------------------------------------FROM BE--------------------------------------------
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
+        external;
     function updateStrategyFundAssets(
         uint256 periodId,
         bytes32 vaultId,
@@ -83,45 +49,6 @@ interface IProtocolVaultLedger {
         uint256 periodId,
         bytes32 vaultId,
         bytes32[] calldata strategyProviderIds,
-        bytes memory signature
-    ) external;
-    function settleMainAndStrategyFunds(
-        uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] calldata strategyProviderIds,
-        bytes memory signature
-    ) external;
-    function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes memory signature)
-        external;
-    function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes memory signature) external;
-
-    function distributeAssets(
-        uint256 periodId,
-        bytes32 vaultId,
-        AssetsDistribution[] memory assetsDistributions,
         bytes calldata signature
     ) external;
-    function updateUnclaimed(
-        uint256 chainId,
-        uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] calldata requestIds,
-        bytes memory signature
-    ) external;
-    function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
-        external;
-
-    /*=========================================================================================
-    *                                       VIEW
-    *=========================================================================================*/
-
-    function checkMainAndStrategyFund(uint256 periodId, bytes32 vaultId, bytes32[] calldata strategyProviderIds)
-        external
-        view
-        returns (uint256, StrategyFundState[] memory);
-
-    function checkLP(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds)
-        external
-        view
-        returns (AccountState[] memory);
 }

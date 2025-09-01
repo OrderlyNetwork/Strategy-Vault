@@ -12,12 +12,10 @@ import {AdapterDeposit, RoleType} from "./lib/types/VaultStruct.sol";
 import {VaultDepositFE, IDexVault} from "./interfaces/IDexVault.sol";
 import {VaultUtils} from "./lib/utils/VaultUtils.sol";
 import {IVaultAdapter} from "./interfaces/IVaultAdapter.sol";
+import {ORDERLY_BROKER} from "./lib/types/Constants.sol";
 
 contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable {
     using Address for address payable;
-
-    /// @dev keccak256(abi.encodePacked(broker string))
-    bytes32 constant ORDERLY_BROKER = 0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b;
 
     address public operator;
     address public dexVault;
@@ -162,7 +160,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
             accountId: id,
             brokerHash: brokerHash,
             tokenHash: adapterDeposit.tokenHash,
-            tokenAmount: uint128(adapterDeposit.amount)
+            tokenAmount: adapterDeposit.amount
         });
 
         // Effect before interaction

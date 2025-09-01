@@ -15,7 +15,7 @@ import {
     OperationData,
     UserClaimedInfo
 } from "../contracts/lib/types/VaultStruct.sol";
-import {ClaimInfo} from "../contracts/ProtocolVaultLedger.sol";
+import {ClaimInfo} from "../contracts/Ledger/ProtocolVaultLedger.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 import {AccountToken, StrategyFundToken} from "../contracts/lib/types/LedgerStruct.sol";
 
