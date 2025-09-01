@@ -274,9 +274,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         if (strategyProviderIds.length != feeRates.length) {
             revert InvalidInput();
         }
-        if (latestPeriodId != 0 && !isUpdateStrategyFundAssets[latestPeriodId - 1]) {
-            revert NotAllowedTime();
-        }
 
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
             feeRateOfFund[strategyProviderIds[i]] = feeRates[i];
