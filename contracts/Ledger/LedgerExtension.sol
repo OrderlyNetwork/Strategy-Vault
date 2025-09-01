@@ -159,20 +159,24 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         virtual
         returns (bool)
     {
-        AccountToken storage accountToken = accountTokenInfo[id][tokenHash];
-        StrategyFundToken storage strategyFundToken = strategyFundTokenInfo[id][tokenHash];
+        AccountToken storage accountToken;
+        StrategyFundToken storage strategyFundToken;
 
         if (payloadType == PayloadType.LP_DEPOSIT) {
+            accountToken = accountTokenInfo[id][tokenHash];
             accountToken.unAllocatedAssets += amount;
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
+            accountToken = accountTokenInfo[id][tokenHash];
             if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
                 accountToken.frozenShares += amount;
             } else {
                 return false;
             }
         } else if (payloadType == PayloadType.SP_DEPOSIT) {
+            strategyFundToken = strategyFundTokenInfo[id][tokenHash];
             strategyFundToken.unAllocatedAssets += amount;
         } else if (payloadType == PayloadType.SP_WITHDRAW) {
+            strategyFundToken = strategyFundTokenInfo[id][tokenHash];
             if (
                 _checkWithdraw(
                     amount, strategyFundToken.frozenShares, strategyFundToken.pendingState.pendingStrategyProviderShares
@@ -185,7 +189,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         } else {
             revert InvalidType();
         }
-        
+
         return true;
     }
 

@@ -160,7 +160,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
             accountId: id,
             brokerHash: brokerHash,
             tokenHash: adapterDeposit.tokenHash,
-            tokenAmount: uint128(adapterDeposit.amount)
+            tokenAmount: adapterDeposit.amount
         });
 
         // Effect before interaction

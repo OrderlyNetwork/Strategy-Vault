@@ -116,9 +116,12 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             //Decode the payload
             OperationData memory operationData = abi.decode(payload, (OperationData));
 
-            //Convert the amount
+            //Convert the amount (only for deposits; withdrawals use shares and must NOT be converted)
             uint256 srcChainId = strategyVaultCCmessage.srcChainId;
-            if (isSpecialDecimal[operationData.tokenHash][srcChainId]) {
+            if (
+                (payloadType == PayloadType.LP_DEPOSIT || payloadType == PayloadType.SP_DEPOSIT)
+                    && isSpecialDecimal[operationData.tokenHash][srcChainId]
+            ) {
                 operationData.amount = _convertAmount(
                     operationData.amount, tokenDecimals[operationData.tokenHash][srcChainId], ledgerDecimal
                 );

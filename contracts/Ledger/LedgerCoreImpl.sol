@@ -468,7 +468,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
 
             // Set gas
             message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / len, userClaimInfos)
+                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, userClaimInfos)
             );
 
             // Cross-chain
@@ -477,7 +477,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
 
         emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }
-    
+
     /*=========================================================================================
     *                                       INTERNAL HELPER FUNCTIONS
     *=========================================================================================*/
