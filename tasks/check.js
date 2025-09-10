@@ -177,7 +177,7 @@ async function checkLedger(env) {
 
     //check engine
     const engine = await pvLedgerContract.engine();
-    assert.equal(engine.toLowerCase(), deployment[env].adapter_engineengine.toLowerCase(), ` ${env} engine config error`);
+    assert.equal(engine.toLowerCase(), deployment[env].engine.toLowerCase(), ` ${env} engine config error`);
 }
 
 async function checkVaultAdapter(env) {
