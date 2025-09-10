@@ -109,6 +109,8 @@ module.exports = {
     apiKey: {
       orderly_sepolia: '123',//not needed
       orderly: '123',//not needed
+      sei_dev: '123',//not needed
+      sei: '123',//not needed
       sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
       arbitrumSepolia: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
       arbitrumOne: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
@@ -144,7 +146,14 @@ module.exports = {
           browserURL: "https://sepolia-optimism.etherscan.io/",
         }
       },
-
+      {
+        network: "sei_dev",
+        chainId: 713715,
+        urls: {
+          apiURL: "https://seitrace.com/arctic-1/api",
+          browserURL: "https://seitrace.com",
+        }
+      },
     ]
   }
 };

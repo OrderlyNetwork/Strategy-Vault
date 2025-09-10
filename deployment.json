@@ -35,8 +35,11 @@
       "arb_sepolia": "0xB15a3a4D451311e03e34d9331C695078Ad5Cf5F1",
       "base_sepolia": "0xEcb4abe96113c9caA3204e96C63C5377D02cb636",
       "op_sepolia": "0xd5164A5a83c64E59F842bC091E06614b84D95fF5",
-      "bsc_test": "0xc93fA36a46bF544537dE3BF1Dec27A1074d71099"
+      "bsc_test": "0xc93fA36a46bF544537dE3BF1Dec27A1074d71099",
+      "sei_dev": "0x3ac2Ba11Ca2f9f109d50fb1a46d4C23fCadbbef6"
     },
+    "minDepositForLp": 10000,
+    "minDepositForSp": 10000,
     "operator": "0x0d7ad657625D46E0DC13A6de1007c22cd8F7f409",
     "dex_operator": "0x963c6dF1477a2C8153DF0636Be95f506A4A1B06C",
     "owner": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",

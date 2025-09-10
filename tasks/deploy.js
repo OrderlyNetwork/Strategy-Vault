@@ -5,7 +5,7 @@ const config = require('../config.json');
 const { task } = require('hardhat/config');
 const { checkNetworkEnvRestrictions } = require('./utils');
 
-const ERC1967ProxyPath = path.join(__dirname, '../out/ERC1967Proxy.sol/ERC1967Proxy.json');
+const ERC1967ProxyPath = path.join(__dirname, 'ERC1967ProxyBytecode_oz_v5.json');
 const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
 
 task("deploy-evm", "Deploy strategy vault contracts on EVM")
@@ -92,17 +92,17 @@ async function deployCrossChainManager(env) {
     //deploy impl
     const VaultCrossChainManager = await ethers.getContractFactory("VaultCrossChainManager");
     const implAddr = await deployCrossChainManagerImpl(VaultCrossChainManager);
-    //const implAddr = "0xF6094Fa8192e9B7D899B391F90Ab0Ae8bA479aC2";
+    // const implAddr = "0xff73B2E36491A8C0d1540B4621A7fF05b0F1692A";
 
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
     const bytecode = getCrossChainManagerBytecode(VaultCrossChainManager, implAddr, owner.address);
     const salt = deployment[env].cc_salt;
-
+    console.log(deployment[env].factory)
     const VaultFactory = await ethers.getContractAt(
         "VaultFactory",
-        deployment.factory
+        deployment[env].factory
     )
     const tx = await VaultFactory.deploy(salt, bytecode)
     await tx.wait()
@@ -127,7 +127,7 @@ async function deployProtocolVault(env) {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
-    //const implAddr = "0x83F367998EC5C78C107F32666B053D6A8991D773";
+    //const implAddr = "0xD06F68C87061789EdFf61bB953817A9cF2d594c0";
 
     const [owner] = await ethers.getSigners();
 
@@ -138,7 +138,7 @@ async function deployProtocolVault(env) {
 
     const VaultFactory = await ethers.getContractAt(
         "VaultFactory",
-        deployment.factory
+        deployment[env].factory
     )
     const tx = await VaultFactory.deploy(salt, bytecode)
     await tx.wait()
@@ -215,7 +215,7 @@ function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env) {
 
     //final bytecode
     const bytecode = ethers.concat([
-        ERC1967ProxyArtifact.bytecode.object,
+        ERC1967ProxyArtifact.bytecode,
         constructorArgs
     ]);
     return bytecode;
@@ -236,7 +236,7 @@ function getCrossChainManagerBytecode(VaultCrossChainManager, implAddr, ownerAdd
 
     //final bytecode
     const bytecode = ethers.concat([
-        ERC1967ProxyArtifact.bytecode.object,
+        ERC1967ProxyArtifact.bytecode,
         constructorArgs
     ]);
     return bytecode;
@@ -382,7 +382,7 @@ function getVaultAdapterBytecode(VaultAdapter, implAddr, operator, dexVault, eng
 
     //final bytecode
     const bytecode = ethers.concat([
-        ERC1967ProxyArtifact.bytecode.object,
+        ERC1967ProxyArtifact.bytecode,
         constructorArgs
     ]);
     return bytecode;
@@ -401,7 +401,7 @@ function getVaultAdapterBytecode(VaultAdapter, implAddr, operator, dexVault, eng
  */
 async function verifyVaultAdapterProxy(VaultAdapter, implAddr, proxyAddr, operator, dexVault, engine, usdc, owner) {
     console.log("Starting VaultAdapter proxy contract verification...");
-    
+
     try {
         // Prepare constructor arguments for ERC1967Proxy
         const initializeData = VaultAdapter.interface.encodeFunctionData(
@@ -447,7 +447,7 @@ async function verifyVaultAdapterProxy(VaultAdapter, implAddr, proxyAddr, operat
  */
 async function verifyProtocolVaultProxy(ProtocolVault, implAddr, proxyAddr, dexVault, owner, usdc, minDepositForLp, minDepositForSp) {
     console.log("Starting ProtocolVault proxy contract verification...");
-    
+
     try {
         // Prepare constructor arguments for ERC1967Proxy
         const initializeData = ProtocolVault.interface.encodeFunctionData(
@@ -490,7 +490,7 @@ async function verifyProtocolVaultProxy(ProtocolVault, implAddr, proxyAddr, dexV
  */
 async function verifyCrossChainManagerProxy(VaultCrossChainManager, implAddr, proxyAddr, endpoint, owner) {
     console.log("Starting CrossChainManager proxy contract verification...");
-    
+
     try {
         // Prepare constructor arguments for ERC1967Proxy
         const initializeData = VaultCrossChainManager.interface.encodeFunctionData(
@@ -529,22 +529,22 @@ async function getImplementationFromProxy(proxyAddr) {
     // ERC1967 implementation storage slot
     // keccak256("eip1967.proxy.implementation") - 1
     const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
-    
+
     try {
         // Read storage slot from proxy contract
         // In ethers v6, use getStorage instead of getStorageAt
         const implementationBytes = await hre.ethers.provider.getStorage(proxyAddr, IMPLEMENTATION_SLOT);
-        
+
         // Convert 32-byte storage value to address
         // Storage returns 32 bytes (64 hex chars + 0x), address is the last 20 bytes (40 hex chars)
         const hexWithoutPrefix = implementationBytes.slice(2); // Remove '0x' prefix
         const addressHex = hexWithoutPrefix.slice(-40); // Take last 40 hex chars (20 bytes)
         const implementationAddr = hre.ethers.getAddress("0x" + addressHex);
-        
+
         if (implementationAddr === hre.ethers.ZeroAddress) {
             throw new Error(`No implementation found in proxy contract ${proxyAddr}`);
         }
-        
+
         return implementationAddr;
     } catch (error) {
         throw new Error(`Failed to read implementation from proxy ${proxyAddr}: ${error.message}`);
