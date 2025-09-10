@@ -95,6 +95,14 @@ module.exports = {
     bsc_test: {
       url: "https://data-seed-prebsc-1-s2.bnbchain.org:8545",
       accounts: [PRIVATE_KEY],
+    },
+    sei_dev: {
+      url: "https://evm-rpc.arctic-1.seinetwork.io",
+      accounts: [PRIVATE_KEY],
+    },
+    sei: {
+      url: "https://sei.rpc.grove.city/v1/01fdb492",
+      accounts: [PRIVATE_KEY],
     }
   },
   etherscan: {
