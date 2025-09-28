@@ -26,6 +26,7 @@ import {IProtocolVaultLedger} from "../../contracts/interfaces/IProtocolVaultLed
 import {LedgerUtils} from "../../contracts/lib/utils/LedgerUtils.sol";
 import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {StrategyVaultCCMessage, PayloadType} from "../../contracts/lib/types/CrossChainStruct.sol";
 
 contract ProtocolVaultTest is Base {
     // Contract-specific errors (not related to ledger implementation)
@@ -50,6 +51,26 @@ contract ProtocolVaultTest is Base {
     function testSetOperator() public {
         vm.prank(owner);
         svLedger.setOperatorManager(operator);
+    }
+
+    function testGetCCFee() public {
+        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](1);
+        //fill userClaimInfos[0]
+        userClaimInfos[0] = ClaimInfo({
+            requestId: keccak256(abi.encode(0)),
+            accountId: userA_id,
+            strategyProviderId: spA_id,
+            assets: 1000 * assetDecimal
+        });
+        bytes memory payload = abi.encode(1, 100, userClaimInfos);
+        console.logBytes(payload);
+
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: PayloadType.ASSETS_DISTRIBUTION,
+            srcChainId: 291,
+            dstChainId: 42161,
+            payload: "0x0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e56308ebb1554556e92cdfbd346e3a4f5bc7898eaa8e3f0151919b4df433e900df707c3c3a62e6b14b3017c0c347bf113e6fa9c4bbfc118b66bf02c9366b2ba12e97000000000000000000000000000000000000000000000000000000003b9aca00"
+        });
     }
 
     function testWithdrawETHFromCCManager() public {
