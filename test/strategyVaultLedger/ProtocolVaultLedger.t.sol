@@ -178,6 +178,36 @@ contract ProtocolVaultLedgerTest is Base {
         assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
     }
 
+    function testUpdateUnclaimedWithCCFee() public {
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+        uint256 ccFee = 100;
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, ccFee, vaultId, requestIds);
+
+        //deal eth to cc contract on ledger
+        uint256 asset = 1000 * assetDecimal;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[1], userB_id, asset);
+
+        vm.startPrank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
+
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
+        assertEq(ccFeePerUser, ccFee);
+        assertEq(userClaimedInfo_A.unClaimedAssets, asset);
+        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(0)));
+
+        UserClaimedInfo memory userClaimedInfo_B = protocolVault.getUserClaimedInfo(userB_id);
+        assertEq(userClaimedInfo_B.unClaimedAssets, asset);
+        assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
+    }
+
     function testEstimateUpdateUnclaimed() public {
         bytes32[] memory requestIds = new bytes32[](3);
         for (uint256 i = 0; i < requestIds.length; i++) {
@@ -718,25 +748,24 @@ contract ProtocolVaultLedgerTest is Base {
         bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
         vm.startPrank(operator);
         svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
-        
+
         assertEq(svLedger.getVaultMainAssetsAfterFee(vaultId), 0);
 
         //update
-         UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](2);
+        UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](2);
 
-         Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: lpDeposit});
-         Operation memory newOperation_2 =
-             Operation({id: spA_id, requestId: keccak256(abi.encode(1)), amount: spDeposit});
+        Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: lpDeposit});
+        Operation memory newOperation_2 =
+            Operation({id: spA_id, requestId: keccak256(abi.encode(1)), amount: spDeposit});
 
-         updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
-         updateLedgerParams[1] = UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_2});
+        updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+        updateLedgerParams[1] = UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_2});
 
-         signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
-         svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
+        signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
+        svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
-
-         // Get pendingMainShares directly from vault state
-         assertEq(svLedger.getVaultPendingMainShares(vaultId), lpDeposit);
+        // Get pendingMainShares directly from vault state
+        assertEq(svLedger.getVaultPendingMainShares(vaultId), lpDeposit);
 
         //allocate funds
 

@@ -432,12 +432,6 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }
 
-    /// @notice Update unclaimed assets after funds transfer to protocol vault
-    /// @param chainId Chain ID that unclaimed assets will be updated
-    /// @param periodId Period ID
-    /// @param vaultId Vault ID
-    /// @param requestIds Request ID array
-    /// @param signature Signature for verification
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
@@ -446,7 +440,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external {
-        Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, requestIds, signature, engine);
+        Signature.verifyUpdateUnclaimed(chainId, periodId, ccFee,vaultId, requestIds, signature, engine);
 
         // Length that unhandled requestId
         uint256 len;
@@ -467,25 +461,31 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             for (uint256 i = 0; i < requestIds.length; i++) {
                 // Ignore if handled
                 if (_isValidRequestId(vaultId, requestIds[i])) {
-                    userClaimInfos[index] = userClaimInfo[requestIds[i]];
-                    isUserClaimHandled[requestIds[i]] = true;
+                    VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+                    userClaimInfos[index] = vaultState.userClaimInfo[requestIds[i]];
+                    vaultState.isUserClaimHandled[requestIds[i]] = true;
                     index++;
-                    delete userClaimInfo[requestIds[i]];
+                    delete vaultState.userClaimInfo[requestIds[i]];
                 }
             }
 
+            address vault = idToVault[vaultId];
             StrategyVaultCCMessage memory message;
             if (ccFee == 0) {
                 message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos)
+                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, userClaimInfos)
                 );
 
                 (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
+                message = _createCCMessage(
+                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, vault, userClaimInfos)
+                );
             }
-            // Cross chain message
-            message =
-                _createCCMessage(PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos));
-`
+
+            message = _createCCMessage(
+                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, userClaimInfos)
+            );
+
             // Cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
         }
