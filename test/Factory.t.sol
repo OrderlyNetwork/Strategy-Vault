@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "forge-std/Test.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
-import {ProtocolVault} from "../contracts/ProtocolVault.sol";
+import {ProtocolVault} from "../contracts/Vault/ProtocolVault.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol) {}

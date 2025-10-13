@@ -16,7 +16,7 @@ interface ILedgerExtension {
 
     // Events
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
-    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce);
+    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce,bytes32 vaultId);
     event DexRequestHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);

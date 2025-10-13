@@ -22,6 +22,7 @@ import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
 import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
+import {USDC_HASH} from "../lib/types/Constants.sol";
 
 /// @title Ledger Extension
 /// @notice Contains request handling and other auxiliary functions for the protocol vault ledger
@@ -35,10 +36,10 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
     {
         bytes32 id = operationData.accountId == bytes32(0) ? operationData.strategyProviderId : operationData.accountId;
 
-        if (_handleRequest(payloadType, id, operationData.tokenHash, operationData.amount)) {
+        if (_handleRequest(payloadType, id, operationData.tokenHash, operationData.amount, operationData.vaultId)) {
             emit OperationHandled(payloadType, chainId, operationData);
         } else {
-            emit NotEnoughWithdrawShare(payloadType, chainId, operationData.chainNonce);
+            emit NotEnoughWithdrawShare(payloadType, chainId, operationData.chainNonce, operationData.vaultId);
         }
     }
 
@@ -54,7 +55,8 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             uint256 requestId = request.dexRequestData.dexRequestId;
 
             // Verify if dex request is handled
-            if (isDexRequestHandled[requestId]) {
+            VaultStateStorage storage vaultState = _getVaultStorage(request.dexRequestData.vaultId);
+            if (vaultState.isDexRequestHandled[requestId]) {
                 revert AlreadyCalled();
             }
 
@@ -69,10 +71,16 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
 
             // Update record
             bytes32 tokenHash = keccak256(abi.encodePacked(request.dexRequestData.token));
-            isDexRequestHandled[requestId] = true;
+            vaultState.isDexRequestHandled[requestId] = true;
 
             if (
-                _handleRequest(request.dexRequestData.payloadType, request.id, tokenHash, request.dexRequestData.amount)
+                _handleRequest(
+                    request.dexRequestData.payloadType,
+                    request.id,
+                    tokenHash,
+                    request.dexRequestData.amount,
+                    request.dexRequestData.vaultId
+                )
             ) {
                 emit DexRequestHandled(request);
             } else {
@@ -95,7 +103,8 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         for (uint256 i = 0; i < params.length; i++) {
             bytes32 requestId = params[i].operation.requestId;
 
-            if (!isOpHandled[requestId]) {
+            VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+            if (!vaultState.isOpHandled[requestId]) {
                 Operation memory operation = params[i].operation;
                 bytes32 id = operation.id;
                 uint256 operationAmount = operation.amount;
@@ -103,12 +112,12 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
 
                 if (operationType == OperationType.LP_WITHDRAW) {
                     // Handle LP frozen shares removal
-                    AccountToken storage accountToken = _getAccountToken(id);
+                    AccountToken storage accountToken = _getAccountToken(vaultId, id, USDC_HASH);
                     LedgerUtils.requireEnoughFrozenShares(operationAmount, accountToken.frozenShares);
                     accountToken.frozenShares -= operationAmount;
                 } else if (operationType == OperationType.SP_WITHDRAW) {
                     // Handle SP frozen shares removal
-                    StrategyFundToken storage strategyFundToken = _getStrategyFundToken(id);
+                    StrategyFundToken storage strategyFundToken = _getStrategyFundToken(vaultId, id, USDC_HASH);
                     LedgerUtils.requireEnoughFrozenShares(operationAmount, strategyFundToken.frozenShares);
                     strategyFundToken.frozenShares -= operationAmount;
                 } else {
@@ -119,7 +128,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
                 operationRes[i] =
                     OperationRes({id: id, requestId: requestId, amount: operationAmount, operationType: operationType});
 
-                isOpHandled[requestId] = true;
+                vaultState.isOpHandled[requestId] = true;
             }
         }
 
@@ -135,7 +144,8 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
 
         address receiver = address(uint160(uint256(data.receiver)));
         // Verify id
-        if (!VaultUtils.validateId(protocolVault, receiver, vaultBroker[data.vaultId], request.id)) {
+        address vault = idToVault[data.vaultId];
+        if (!VaultUtils.validateId(vault, receiver, vaultBroker[data.vaultId], request.id)) {
             revert InvalidId();
         }
 
@@ -154,7 +164,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         Signature.verifySOLSig(data, request.r, request.s, request.chainId, data.receiver);
     }
 
-    function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount)
+    function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount, bytes32 vaultId)
         internal
         virtual
         returns (bool)
@@ -163,20 +173,20 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         StrategyFundToken storage strategyFundToken;
 
         if (payloadType == PayloadType.LP_DEPOSIT) {
-            accountToken = accountTokenInfo[id][tokenHash];
+            accountToken = _getAccountToken(vaultId, id, tokenHash);
             accountToken.unAllocatedAssets += amount;
         } else if (payloadType == PayloadType.LP_WITHDRAW) {
-            accountToken = accountTokenInfo[id][tokenHash];
+            accountToken = _getAccountToken(vaultId, id, tokenHash);
             if (_checkWithdraw(amount, accountToken.frozenShares, accountToken.pendingShares)) {
                 accountToken.frozenShares += amount;
             } else {
                 return false;
             }
         } else if (payloadType == PayloadType.SP_DEPOSIT) {
-            strategyFundToken = strategyFundTokenInfo[id][tokenHash];
+            strategyFundToken = _getStrategyFundToken(vaultId, id, tokenHash);
             strategyFundToken.unAllocatedAssets += amount;
         } else if (payloadType == PayloadType.SP_WITHDRAW) {
-            strategyFundToken = strategyFundTokenInfo[id][tokenHash];
+            strategyFundToken = _getStrategyFundToken(vaultId, id, tokenHash);
             if (
                 _checkWithdraw(
                     amount, strategyFundToken.frozenShares, strategyFundToken.pendingState.pendingStrategyProviderShares

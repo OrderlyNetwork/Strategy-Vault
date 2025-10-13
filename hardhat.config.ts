@@ -105,18 +105,18 @@ module.exports = {
       accounts: [PRIVATE_KEY],
     }
   },
-  etherscan: {
+  etherscan: { //https://api.etherscan.io/v2/chainlist
     apiKey: {
       orderly_sepolia: '123',//not needed
       orderly: '123',//not needed
       sei_dev: '123',//not needed
       sei: '123',//not needed
       sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
-      arbitrumSepolia: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
-      arbitrumOne: 'PB64D51YKMIMAJNFP95R8BEXG8R6JB7R19',
+      arb_sepolia: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
+      arbitrumOne: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
       op_sepolia: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
-      baseSepolia: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
-      base: 'UGMXZBZXQHJQP1B5H6382Z7C8G9X7FDR6C',
+      baseSepolia: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
+      base: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
       optimisticEthereum: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
       bscTestnet: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE',
       bsc: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE'
@@ -147,11 +147,19 @@ module.exports = {
         }
       },
       {
-        network: "sei_dev",
-        chainId: 713715,
+        network: "arb_sepolia",
+        chainId: 421614,
         urls: {
-          apiURL: "https://seitrace.com/arctic-1/api",
-          browserURL: "https://seitrace.com",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=421614",
+          browserURL: "https://sepolia.arbiscan.io/",
+        }
+      },
+      {
+        network: "baseSepolia",
+        chainId: 84532,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=84532",
+          browserURL: "https://sepolia.basescan.org/",
         }
       },
     ]

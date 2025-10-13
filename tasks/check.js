@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const deployment = require('../deployment.json');
+const deployment = require('../deployment/deployment.json');
+const cvDeployment = require('../deployment/community.json');
 const config = require('../config.json');
 const { keccak256, AbiCoder } = require("ethers");
 const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/utils/getId');

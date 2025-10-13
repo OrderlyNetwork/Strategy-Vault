@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Base} from "../Base.sol";
-import {ProtocolVault} from "../../contracts/ProtocolVault.sol";
+import {ProtocolVault} from "../../contracts/Vault/ProtocolVault.sol";
 import {
     VaultType,
     VaultState,
@@ -13,6 +13,7 @@ import {
     OperationData,
     UserClaimedInfo
 } from "../../contracts/lib/types/VaultStruct.sol";
+import {AccountToken} from "../../contracts/lib/types/LedgerStruct.sol";
 import {PayloadType} from "../../contracts/lib/types/CrossChainStruct.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
@@ -66,13 +67,8 @@ contract ProtocolVaultFuzzTest is Base {
 
         // Check ledger state
         bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
-        (
-            , // shares
-            uint256 unAllocatedAssets,
-            , // frozenShares
-                // pendingShares
-        ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
-        assertEq(unAllocatedAssets, amount);
+        AccountToken memory accountToken = svLedger.getAccountToken(vaultId, accountId);
+        assertEq(accountToken.unAllocatedAssets, amount);
 
         vm.stopPrank();
     }
@@ -156,7 +152,7 @@ contract ProtocolVaultFuzzTest is Base {
         bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = accountId;
-        svLedger.setAccountPendingShares(accountIds, depositAmount);
+        svLedger.setAccountPendingShares(vaultId, accountIds, withdrawAmount);
 
         // Now perform a withdrawal
         uint256 withdrawFee = getEstimateFee(PayloadType.LP_WITHDRAW);
@@ -173,13 +169,8 @@ contract ProtocolVaultFuzzTest is Base {
         verifyPackets(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
 
         // Check ledger state for frozen shares
-        (
-            , // shares
-            ,
-            uint256 frozenShares, // frozenShares
-                // pendingShares
-        ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
-        assertEq(frozenShares, withdrawAmount);
+        AccountToken memory accountToken = svLedger.getAccountToken(vaultId, accountId);
+        assertEq(accountToken.frozenShares, withdrawAmount);
 
         vm.stopPrank();
     }
@@ -216,7 +207,7 @@ contract ProtocolVaultFuzzTest is Base {
         // Setup shares on the ledger for the SP
         bytes32[] memory spIds = new bytes32[](1);
         spIds[0] = spId;
-        svLedger.setSpPendingShares(spIds, depositAmount);
+        svLedger.setSpPendingShares(vaultId, spIds, withdrawAmount);
 
         // Now perform a withdrawal
         uint256 withdrawFee = getEstimateFee(PayloadType.SP_WITHDRAW);
@@ -452,15 +443,8 @@ contract ProtocolVaultFuzzTest is Base {
         // Check ledger state for each LP's deposit
         for (uint256 i = 0; i < 5; i++) {
             bytes32 accountId = _getAccountId(lpUsers[i], ORDERLY_BROKER);
-            (
-                , // shares
-                uint256 unAllocatedAssets,
-                , // frozenShares
-                    // pendingShares
-            ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
-
-            // Verify unallocated assets match the deposit amount
-            assertEq(unAllocatedAssets, amounts[i], "Unallocated assets don't match deposit amount");
+            AccountToken memory accountToken = svLedger.getAccountToken(vaultId, accountId);
+            assertEq(accountToken.unAllocatedAssets, amounts[i]);
         }
     }
 }

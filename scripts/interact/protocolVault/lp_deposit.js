@@ -1,18 +1,22 @@
 const { ethers } = require("hardhat")
-const deployment = require('../../../deployment.json');
+const deployment = require('../../../deployment/deployment.json');
+const cvdeployment = require('../../../deployment/community.json');
 const config = require('../../../config.json');
 
 
 async function main() {
   //!need to change with your env
   const env = "qa";
+  const cv = "woo";
+  const vaultAddress = cvdeployment[cv].address;
+
   const currentNetwork = hre.network.name;
   const [sender] = await ethers.getSigners();
   const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
   const value = ethers.parseUnits("1", 6);
   const protocolVault = await ethers.getContractAt(
     "ProtocolVault",
-    deployment[env].protocolVault
+    vaultAddress
   )
   // Define the parameters
   const type = 0; //0 for LP Deposit; 2 for SP_DEPOSIT
@@ -21,17 +25,16 @@ async function main() {
     receiver: sender.address,
     token: config[currentNetwork].USDC,
     amount: value,
-    brokerHash: orderlyHash
+    brokerHash: cvdeployment[cv].broker,
   };
 
   console.log("Deposit Params: ", depositParams)
 
   //approve
   const token = await ethers.getContractAt("IERC20", config[currentNetwork].USDC);
-  const protocolVaultAddress = deployment[env].protocolVault;
-  const allowance = await token.allowance(sender.address, protocolVaultAddress);
+  const allowance = await token.allowance(sender.address, vaultAddress);
   if (allowance == 0) {
-    tx = await token.approve(protocolVaultAddress, ethers.MaxUint256);
+    tx = await token.approve(vaultAddress, ethers.MaxUint256);
     await tx.wait()
     console.log("Approve done")
   }

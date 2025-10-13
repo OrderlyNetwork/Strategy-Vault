@@ -1,5 +1,6 @@
 const { ethers } = require("hardhat")
-const deployment = require('../../../deployment.json');
+const deployment = require('../../../deployment/deployment.json');
+const { verifyContract } = require('../../utils/verifyContract');
 
 async function main() {
 
@@ -10,9 +11,13 @@ async function main() {
     const implAddr = VaultAdapterContract.target;
     console.log("- VaultAdapter Implementation Address:", implAddr);
 
+    // Verify the implementation contract
+    console.log("🔍 Verifying VaultAdapter implementation contract...");
+    await verifyContract(implAddr, [], "VaultAdapter Implementation");
+
     //upgrade
     //!need to change with your env
-    const env = "dev";
+    const env = "qa";
 
     const vaultAdapter = await ethers.getContractAt(
         "VaultAdapter",
@@ -23,6 +28,7 @@ async function main() {
     tx = await vaultAdapter.upgradeToAndCall(impl, "0x")
     await tx.wait();
     console.log("✅ VaultAdapter upgrade completed successfully!");
+    
 }
 
 main().catch(error => {

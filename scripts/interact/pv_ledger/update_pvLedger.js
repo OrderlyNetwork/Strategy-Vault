@@ -1,12 +1,12 @@
 const { ethers } = require("hardhat")
 const hre = require("hardhat")
-const deployment = require('../../../deployment.json');
+const deployment = require('../../../deployment/deployment.json');
 const { checkNetworkEnvRestrictions } = require("../../../tasks/utils");
 const { verifyContract } = require("../../utils/verifyContract");
 
 async function main() {
     //!need to change with your env
-    const env = "dev";
+    const env = "qa";
     const currentNetwork = hre.network.name;
 
     checkNetworkEnvRestrictions(currentNetwork, env);
@@ -29,7 +29,7 @@ async function main() {
     const impl = implAddr;
     tx = await protocolVaultLedger.upgradeToAndCall(impl, "0x")
     await tx.wait();
-    console.log(` ${env} ledger upgraded successfully`);
+    console.log(`✅ ${env} ledger upgraded successfully`);
 }
 
 

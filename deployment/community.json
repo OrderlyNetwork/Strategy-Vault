@@ -1,0 +1,47 @@
+{
+  "dev": {
+    "sp": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",
+    "nonce": 1,
+    "vaultId": "",
+    "address": ""
+  },
+  "qa": {
+    "sp": "0x8211b71Ea278d6Dbe85bb1E5ec8D4350C3564182",
+    "nonce": 0,
+    "vaultId": "0xffc65d80fe65eefe2f3b216e3ffa8b78fcf5fcfe0f78dd351a981ca61dc361d5",
+    "address": "0x43182E2E41AD61eD5Cb79DbCc641F59717A39302",
+    "spId": "0x352bf49f5387b02b14c822bf1bb8dbbef0b63274f8087ff545dc3290c92f19bc"
+  },
+  "woo": {
+    "sp": "0x8211b71Ea278d6Dbe85bb1E5ec8D4350C3564182",
+    "nonce": 2,
+    "vaultId": "0xd59caf5df64a3564dd5fea62451099922394f97073d63a953ed2aa9a34fda843",
+    "address": "0xaEBc84930b3fFB48A393717342078F1c69cb5f0C",
+    "feeRate": 10,
+    "broker": "0x6ca2f644ef7bd6d75953318c7f2580014941e753b3c6d54da56b3bf75dd14dfc",
+    "spId": "0x7cc8992892b432d79b35b36f9e284eac1e343cc6dce1df9b8bc9b889b59cb1e2",
+    "minDepositForLp": 0,
+    "minDepositForSp": 0
+  },
+  "kronos": {
+    "sp": "0xbddfd22eF902A4898147A1ca5B985D03C62a8C41",
+    "nonce": 0,
+    "vaultId": "0x8ba6ac87ed40c14d4d5952a8afb772e0d53d3d8e7898c6fc7b87579e1fda686d",
+    "address": "0x3EFC5DD58feBB65B20a3E0C62262c20bAFA2Fb13",
+    "feeRate": 0,
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "spId": "0x0cd0bb4301741da45879be87758add22b9d052f7dde724710d81e3a409d2823d",
+    "minDepositForLp": 0,
+    "minDepositForSp": 0
+  },
+  "staging": {
+    "sp": "",
+    "nonce": 0,
+    "address": ""
+  },
+  "mainnet": {
+    "sp": "",
+    "nonce": 0,
+    "address": ""
+  }
+}

@@ -24,11 +24,11 @@ import {ILedgerCoreImpl} from "../../contracts/interfaces/ILedgerCoreImpl.sol";
 import {ILedgerExtension} from "../../contracts/interfaces/ILedgerExtension.sol";
 import {IProtocolVaultLedger} from "../../contracts/interfaces/IProtocolVaultLedger.sol";
 import {LedgerUtils} from "../../contracts/lib/utils/LedgerUtils.sol";
-import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/ProtocolVault.sol";
+import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/Vault/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {StrategyVaultCCMessage, PayloadType} from "../../contracts/lib/types/CrossChainStruct.sol";
 
-contract ProtocolVaultTest is Base {
+contract ProtocolVaultLedgerTest is Base {
     // Contract-specific errors (not related to ledger implementation)
     error NotEnoughCCFee();
     error InvalidClaimToken(address token);
@@ -38,7 +38,6 @@ contract ProtocolVaultTest is Base {
     uint256 assetDecimal = 1e6;
     uint256 priceDecimal = 1e6;
     uint256 periodId;
-    bytes32 vaultId;
 
     bytes32[] public spIds;
 
@@ -161,8 +160,8 @@ contract ProtocolVaultTest is Base {
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
-        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[1], userB_id, asset);
 
         vm.startPrank(operator);
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
@@ -191,7 +190,7 @@ contract ProtocolVaultTest is Base {
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
         for (uint256 i = 0; i < requestIds.length; i++) {
-            svLedger.setLpClaimInfo(requestIds[i], userA_id, asset);
+            svLedger.setLpClaimInfo(vaultId, requestIds[i], userA_id, asset);
         }
 
         vm.startPrank(operator);
@@ -214,8 +213,8 @@ contract ProtocolVaultTest is Base {
         // Set up the claim info on the ledger
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
-        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[1], userB_id, asset);
 
         // Process the unclaimed assets update
         vm.prank(operator);
@@ -263,8 +262,8 @@ contract ProtocolVaultTest is Base {
         // Set up the claim info on the ledger
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
-        svLedger.setLpClaimInfo(requestIds[1], userA_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[1], userA_id, asset);
 
         // Process the unclaimed assets update
         vm.prank(operator);
@@ -292,8 +291,8 @@ contract ProtocolVaultTest is Base {
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
-        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[1], userB_id, asset);
 
         vm.startPrank(operator);
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
@@ -320,7 +319,7 @@ contract ProtocolVaultTest is Base {
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, asset);
 
         vm.startPrank(operator);
         svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
@@ -330,7 +329,7 @@ contract ProtocolVaultTest is Base {
         bytes32[] memory newRequestIds = new bytes32[](2);
         newRequestIds[0] = keccak256(abi.encode(0));
         newRequestIds[1] = keccak256(abi.encode(1));
-        svLedger.setLpClaimInfo(newRequestIds[1], userB_id, asset);
+        svLedger.setLpClaimInfo(vaultId, newRequestIds[1], userB_id, asset);
 
         bytes memory new_signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, newRequestIds);
 
@@ -344,7 +343,7 @@ contract ProtocolVaultTest is Base {
         bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
-        svLedger.setLpClaimInfo(requestIds[0], userA_id, 0);
+        svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, 0);
 
         vm.startPrank(operator);
         //will not happen cc
@@ -397,7 +396,7 @@ contract ProtocolVaultTest is Base {
         uint256 lpDeposit = 1000 * assetDecimal;
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = userA_id;
-        svLedger.setAccountUnAllocatedAssets(accountIds, lpDeposit);
+        svLedger.setAccountUnAllocatedAssets(vaultId, accountIds, lpDeposit);
 
         UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](1000);
         uint256 depositAmount = 1 * assetDecimal;
@@ -425,7 +424,7 @@ contract ProtocolVaultTest is Base {
             accountIds[i] = userA_id;
         }
 
-        svLedger.setAccountPendingShares(accountIds, 10 * shareDecimal);
+        svLedger.setAccountPendingShares(vaultId, accountIds, 10 * shareDecimal);
 
         bytes memory signature = _getSettleAccountSig(periodId, vaultId, accountIds);
         uint256 gasBefore = gasleft();
@@ -446,9 +445,9 @@ contract ProtocolVaultTest is Base {
         strategyProviderIds[1] = spB_id;
 
         uint256 initVault = 1000000 * assetDecimal;
-        svLedger.setAccountState(userA_id, initVault, initVault, initVault);
-        svLedger.setSPUnallocatedAssets(strategyProviderIds, initVault);
-        svLedger.setSPUnallocatedShares(strategyProviderIds, initVault);
+        svLedger.setAccountState(vaultId, userA_id, initVault, initVault, initVault);
+        svLedger.setSPUnallocatedAssets(vaultId, strategyProviderIds, initVault);
+        svLedger.setSPUnallocatedShares(vaultId, strategyProviderIds, initVault);
         consolePendingState();
 
         //Period 1
@@ -705,11 +704,11 @@ contract ProtocolVaultTest is Base {
         uint256 spDeposit = 1000 * assetDecimal;
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = userA_id;
-        svLedger.setAccountUnAllocatedAssets(accountIds, lpDeposit);
+        svLedger.setAccountUnAllocatedAssets(vaultId, accountIds, lpDeposit);
 
         bytes32[] memory strategyProviderIds = new bytes32[](1);
         strategyProviderIds[0] = spA_id;
-        svLedger.setSPUnallocatedAssets(strategyProviderIds, spDeposit);
+        svLedger.setSPUnallocatedAssets(vaultId, strategyProviderIds, spDeposit);
 
         //update fund assets
         UpdateStrategyFundAssetsParams[] memory strategyFundAssets = new UpdateStrategyFundAssetsParams[](1);
@@ -719,42 +718,43 @@ contract ProtocolVaultTest is Base {
         bytes memory signature = _getUploadFundAssetsSignature(periodId, vaultId, strategyFundAssets);
         vm.startPrank(operator);
         svLedger.updateStrategyFundAssets(periodId, vaultId, strategyFundAssets, signature);
-
-        assertEq(svLedger.mainAssetsAfterFee(), 0);
+        
+        assertEq(svLedger.getVaultMainAssetsAfterFee(vaultId), 0);
 
         //update
-        UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](2);
+         UpdateLedgerParams[] memory updateLedgerParams = new UpdateLedgerParams[](2);
 
-        Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: lpDeposit});
-        Operation memory newOperation_2 =
-            Operation({id: spA_id, requestId: keccak256(abi.encode(1)), amount: spDeposit});
+         Operation memory newOperation_1 = Operation({id: userA_id, requestId: 0, amount: lpDeposit});
+         Operation memory newOperation_2 =
+             Operation({id: spA_id, requestId: keccak256(abi.encode(1)), amount: spDeposit});
 
-        updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
-        updateLedgerParams[1] = UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_2});
+         updateLedgerParams[0] = UpdateLedgerParams({operationType: OperationType.LP_DEPOSIT, operation: newOperation_1});
+         updateLedgerParams[1] = UpdateLedgerParams({operationType: OperationType.SP_DEPOSIT, operation: newOperation_2});
 
-        signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
-        svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
+         signature = _getUpdateLPAndStrategyFundSig(periodId, vaultId, updateLedgerParams);
+         svLedger.updateLPAndStrategyFund(periodId, vaultId, updateLedgerParams, signature);
 
-        assertEq(svLedger.pendingMainShares(), lpDeposit);
+
+         // Get pendingMainShares directly from vault state
+         assertEq(svLedger.getVaultPendingMainShares(vaultId), lpDeposit);
 
         //allocate funds
 
         signature = _getALlocateFundsSig(periodId, vaultId, strategyProviderIds);
         svLedger.allocateToFunds(periodId, vaultId, strategyProviderIds, signature);
 
-        StrategyFundToken memory strategyFund = svLedger.getStrategyFund(spA_id);
+        StrategyFundToken memory strategyFund = svLedger.getStrategyFund(vaultId, spA_id);
         assertEq(strategyFund.pendingState.pendingTotalAssets, spDeposit + lpDeposit);
         assertEq(strategyFund.pendingState.pendingMainShares, lpDeposit);
 
         //settle
-
         signature = _getSettleMainAndFundSig(periodId, vaultId, strategyProviderIds);
         svLedger.settleMainAndStrategyFunds(periodId, vaultId, strategyProviderIds, signature);
 
-        strategyFund = svLedger.getStrategyFund(spA_id);
-        assertEq(svLedger.mainShares(), lpDeposit);
+        strategyFund = svLedger.getStrategyFund(vaultId, spA_id);
+        // Get mainShares directly from vault state
+        assertEq(svLedger.getVaultMainShares(vaultId), lpDeposit);
         assertEq(strategyFund.totalAssets, spDeposit + lpDeposit);
-        assertEq(strategyFund.mainShares, lpDeposit);
         assertEq(strategyFund.strategyProviderShares, spDeposit);
         assertEq(strategyFund.totalShares, spDeposit + lpDeposit);
         assertEq(strategyFund.hwm, 1 * assetDecimal);
@@ -776,18 +776,18 @@ contract ProtocolVaultTest is Base {
         spSharesInFund[1] = 1 * shareDecimal;
         //initialize
         svLedger.initializeStrategyFund(
-            mainshares, spIds, mainSharesInFund, spSharesInFund, StrategyFundsAssets, 1000 * priceDecimal
+            vaultId, mainshares, spIds, mainSharesInFund, spSharesInFund, StrategyFundsAssets, 1000 * priceDecimal
         );
     }
 
     function consolePendingState() public view {
-        StrategyFundToken memory strategyFundA = svLedger.getStrategyFund(spA_id);
-        StrategyFundToken memory strategyFundB = svLedger.getStrategyFund(spB_id);
+        StrategyFundToken memory strategyFundA = svLedger.getStrategyFund(vaultId, spA_id);
+        StrategyFundToken memory strategyFundB = svLedger.getStrategyFund(vaultId, spB_id);
 
         console.log("Total Assets A: %d", strategyFundA.pendingState.pendingTotalAssets);
         console.log("Total Assets B: %d", strategyFundB.pendingState.pendingTotalAssets);
 
-        console.log("Total Main Shares: %d", svLedger.pendingMainShares());
+        console.log("Total Main Shares: %d", svLedger.getVaultPendingMainShares(vaultId));
         console.log("Main Share in Fund A: %d", strategyFundA.pendingState.pendingMainShares);
         console.log("Main Share in Fund B: %d", strategyFundB.pendingState.pendingMainShares);
 
@@ -799,20 +799,20 @@ contract ProtocolVaultTest is Base {
 
         uint256[] memory hwms = new uint256[](spIds.length);
 
-        hwms = svLedger.getFundHWM(spIds);
+        hwms = svLedger.getFundHWM(vaultId, spIds);
 
         console.log("HWM A: %d", hwms[0]);
         console.log("HWM B: %d", hwms[1]);
     }
 
     function consoleState() public view {
-        StrategyFundToken memory strategyFundA = svLedger.getStrategyFund(spA_id);
-        StrategyFundToken memory strategyFundB = svLedger.getStrategyFund(spB_id);
+        StrategyFundToken memory strategyFundA = svLedger.getStrategyFund(vaultId, spA_id);
+        StrategyFundToken memory strategyFundB = svLedger.getStrategyFund(vaultId, spB_id);
 
         console.log("Total Assets A: %d", strategyFundA.totalAssets);
         console.log("Total Assets B: %d", strategyFundB.totalAssets);
 
-        console.log("Total Main Shares: %d", svLedger.mainShares());
+        console.log("Total Main Shares: %d", svLedger.getVaultMainShares(vaultId));
         console.log("Main Share in Fund A: %d", strategyFundA.mainShares);
         console.log("Main Share in Fund B: %d", strategyFundB.mainShares);
 
@@ -831,12 +831,12 @@ contract ProtocolVaultTest is Base {
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = userA_id;
         uint256 lpFrozenShares = 5 * shareDecimal;
-        svLedger.setAccountFrozenShares(accountIds, lpFrozenShares);
+        svLedger.setAccountFrozenShares(vaultId, accountIds, lpFrozenShares);
 
         bytes32[] memory strategyProviderIds = new bytes32[](1);
         strategyProviderIds[0] = spA_id;
         uint256 spFrozenShares = 10 * shareDecimal;
-        svLedger.setSPFrozenShares(strategyProviderIds, spFrozenShares);
+        svLedger.setSPFrozenShares(vaultId, strategyProviderIds, spFrozenShares);
 
         // Create parameters for removing frozen shares
         UpdateLedgerParams[] memory params = new UpdateLedgerParams[](2);
@@ -859,10 +859,10 @@ contract ProtocolVaultTest is Base {
         svLedger.removeInvalidFrozenShares(vaultId, params, signature);
 
         // Verify LP frozen shares decreased
-        assertEq(svLedger.getAccountFrozenShares(userA_id), lpFrozenShares - 2 * shareDecimal);
+        assertEq(svLedger.getAccountFrozenShares(vaultId, userA_id), lpFrozenShares - 2 * shareDecimal);
 
         // Verify SP frozen shares decreased
-        assertEq(svLedger.getSPFrozenShares(spA_id), spFrozenShares - 3 * shareDecimal);
+        assertEq(svLedger.getSPFrozenShares(vaultId, spA_id), spFrozenShares - 3 * shareDecimal);
     }
 
     function testRemoveInvalidFrozenSharesIdempotency() public {
@@ -870,7 +870,7 @@ contract ProtocolVaultTest is Base {
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = userA_id;
         uint256 lpFrozenShares = 5 * shareDecimal;
-        svLedger.setAccountFrozenShares(accountIds, lpFrozenShares);
+        svLedger.setAccountFrozenShares(vaultId, accountIds, lpFrozenShares);
 
         // Create operation parameters
         UpdateLedgerParams[] memory params = new UpdateLedgerParams[](1);
@@ -885,14 +885,14 @@ contract ProtocolVaultTest is Base {
         svLedger.removeInvalidFrozenShares(vaultId, params, signature);
 
         // Verify shares decreased
-        assertEq(svLedger.getAccountFrozenShares(userA_id), lpFrozenShares - 2 * shareDecimal);
+        assertEq(svLedger.getAccountFrozenShares(vaultId, userA_id), lpFrozenShares - 2 * shareDecimal);
 
         // Second call with the same request, should not decrease shares again
         vm.prank(operator);
         svLedger.removeInvalidFrozenShares(vaultId, params, signature);
 
         // Verify shares did not decrease further
-        assertEq(svLedger.getAccountFrozenShares(userA_id), lpFrozenShares - 2 * shareDecimal);
+        assertEq(svLedger.getAccountFrozenShares(vaultId, userA_id), lpFrozenShares - 2 * shareDecimal);
     }
 
     function testRevertRemoveInvalidFrozenSharesNotEnoughShares() public {
@@ -900,7 +900,7 @@ contract ProtocolVaultTest is Base {
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = userA_id;
         uint256 lpFrozenShares = 1 * shareDecimal;
-        svLedger.setAccountFrozenShares(accountIds, lpFrozenShares);
+        svLedger.setAccountFrozenShares(vaultId, accountIds, lpFrozenShares);
 
         // Create operation parameters, attempting to remove more than actual frozen amount
         UpdateLedgerParams[] memory params = new UpdateLedgerParams[](1);
@@ -923,7 +923,7 @@ contract ProtocolVaultTest is Base {
         // Initialize
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = userA_id;
-        svLedger.setAccountFrozenShares(accountIds, 5 * shareDecimal);
+        svLedger.setAccountFrozenShares(vaultId, accountIds, 5 * shareDecimal);
 
         // Create invalid operation type
         UpdateLedgerParams[] memory params = new UpdateLedgerParams[](1);

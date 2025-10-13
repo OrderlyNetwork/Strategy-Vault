@@ -424,14 +424,15 @@ contract VaultAdapterTest is Base {
         bytes32 brokerHash,
         bytes32 _tokenHash,
         uint256 _recordId
-    ) internal pure returns (AdapterDeposit memory) {
+    ) internal view returns (AdapterDeposit memory) {
         return AdapterDeposit({
             roleType: roleType,
             receiver: _receiver,
             amount: amount,
             brokerHash: brokerHash,
             tokenHash: _tokenHash,
-            recordId: _recordId
+            recordId: _recordId,
+            vault: address(protocolVault)
         });
     }
 
