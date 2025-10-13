@@ -353,6 +353,8 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
 
         Signature.verifyAssetsDistribution(periodId, vaultId, assetsDistributions, signature, engine);
         address vault = idToVault[vaultId];
+        bytes32 broker = vaultBroker[vaultId];
+
         // Change state
         vaultState.isAssetDistributed[periodId] = true;
 
@@ -365,7 +367,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             StrategyVaultCCMessage memory message = _createCCMessage(
                 PayloadType.ASSETS_DISTRIBUTION,
                 assetsDistributions[i].chainId,
-                abi.encode(periodId, vault, assetsDistribution)
+                abi.encode(periodId, vault, broker, assetsDistribution)
             );
 
             // Cross-chain
@@ -413,16 +415,19 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
 
             uint256 ccFee;
             address vault = idToVault[vaultId];
+            bytes32 broker = vaultBroker[vaultId];
 
             // Cross chain message
             StrategyVaultCCMessage memory message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, userClaimInfos)
+                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
             );
             (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
 
             // Set gas
             message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, vault, userClaimInfos)
+                PayloadType.UPDATE_USER_CLAIM,
+                chainId,
+                abi.encode(periodId, ccFee / index, vault, broker, userClaimInfos)
             );
 
             // Cross-chain
@@ -440,7 +445,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external {
-        Signature.verifyUpdateUnclaimed(chainId, periodId, ccFee,vaultId, requestIds, signature, engine);
+        Signature.verifyUpdateUnclaimed(chainId, periodId, ccFee, vaultId, requestIds, signature, engine);
 
         // Length that unhandled requestId
         uint256 len;
@@ -470,20 +475,24 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             }
 
             address vault = idToVault[vaultId];
+            bytes32 broker = vaultBroker[vaultId];
+
             StrategyVaultCCMessage memory message;
             if (ccFee == 0) {
                 message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, userClaimInfos)
+                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
                 );
 
                 (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
                 message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, vault, userClaimInfos)
+                    PayloadType.UPDATE_USER_CLAIM,
+                    chainId,
+                    abi.encode(periodId, ccFee / index, vault, broker, userClaimInfos)
                 );
             }
 
             message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, userClaimInfos)
+                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
             );
 
             // Cross-chain

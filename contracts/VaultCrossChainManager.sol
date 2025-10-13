@@ -132,8 +132,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             IProtocolVaultLedger(ledger).handleOpFromVault(payloadType, srcChainId, operationData);
         } else if (payloadType == PayloadType.ASSETS_DISTRIBUTION) {
             //Decode the payload
-            (uint256 periodId, address svVault, AssetsDistribution memory assetsDistribution) =
-                abi.decode(payload, (uint256, address, AssetsDistribution));
+            (uint256 periodId, address svVault, bytes32 broker, AssetsDistribution memory assetsDistribution) =
+                abi.decode(payload, (uint256, address, bytes32, AssetsDistribution));
 
             //Convert the amount
             uint256 dstChainId = strategyVaultCCmessage.dstChainId;
@@ -142,11 +142,11 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
                     _convertAmount(assetsDistribution.assets, ledgerDecimal, tokenDecimals[USDC_HASH][dstChainId]);
             }
             //Call Protocol Vault
-            IProtocolVault(svVault).depositToStrategy(periodId, svVault, assetsDistribution.assets);
+            IProtocolVault(svVault).depositToStrategy(periodId, svVault, broker, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            (uint256 periodId, uint256 ccFee, address svVault, ClaimInfo[] memory userClaims) =
-                abi.decode(payload, (uint256, uint256, address, ClaimInfo[]));
+            (uint256 periodId, uint256 ccFee, address svVault, bytes32 broker, ClaimInfo[] memory userClaims) =
+                abi.decode(payload, (uint256, uint256, address, bytes32, ClaimInfo[]));
 
             //Convert the amount
             uint256 dstChainId = strategyVaultCCmessage.dstChainId;
@@ -157,7 +157,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
                 }
             }
             //Call Protocol Vault
-            IProtocolVault(svVault).updateUnClaimed(periodId, ccFee, userClaims);
+            IProtocolVault(svVault).updateUnClaimed(periodId, ccFee, broker, userClaims);
         } else {
             revert InvalidPayloadType();
         }

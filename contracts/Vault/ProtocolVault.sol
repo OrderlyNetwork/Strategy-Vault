@@ -231,8 +231,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     }
 
     //--------------------------------------FROM Strategy-----------------------------------------
-    function depositFromStrategy(uint256 periodId, address token, uint256 amount) external allowedStrategy {
-        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
+    function depositFromStrategy(uint256 periodId, bytes32 broker, address token, uint256 amount)
+        external
+        allowedStrategy
+    {
+        bytes32 vaultId = _getVaultId(broker);
 
         //transfer token to this contract
         SafeTransferLib.safeTransferFrom(ERC20(token), msg.sender, address(this), amount);
@@ -241,17 +244,13 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     }
 
     //--------------------------------------FROM LEDGER-----------------------------------------
-    function depositToStrategy(uint256 periodId, address receiver, uint256 amount)
+    function depositToStrategy(uint256 periodId, address receiver, bytes32 broker, uint256 amount)
         external
         onlyVaultCrossChainManager
     {
-        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
-        VaultDepositFE memory depositData = VaultDepositFE({
-            accountId: vaultId,
-            brokerHash: ORDERLY_BROKER,
-            tokenHash: USDC_HASH,
-            tokenAmount: uint128(amount)
-        });
+        bytes32 vaultId = _getVaultId(broker);
+        VaultDepositFE memory depositData =
+            VaultDepositFE({accountId: vaultId, brokerHash: broker, tokenHash: USDC_HASH, tokenAmount: uint128(amount)});
 
         //call dex
         address token = tokenHashToAddress[USDC_HASH];
@@ -265,7 +264,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit DepositToStrategy(periodId, vaultId, receiver, amount, dexNonce);
     }
 
-    function updateUnClaimed(uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaimInfos)
+    function updateUnClaimed(uint256 periodId, uint256 ccFee, bytes32 broker, ClaimInfo[] memory userClaimInfos)
         external
         onlyVaultCrossChainManager
     {
@@ -278,7 +277,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             crossChainFee[userId] += ccFee;
         }
 
-        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
+        bytes32 vaultId = _getVaultId(broker);
         emit UnClaimedUpdated(periodId, vaultId, userClaimInfos);
     }
 
