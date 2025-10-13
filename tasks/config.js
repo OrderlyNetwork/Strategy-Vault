@@ -204,7 +204,7 @@ async function configCommunityVault(env, cv) {
     //transfer native for cc fee 
     const [sender] = await ethers.getSigners();
     tx = await sender.sendTransaction({
-        to: deployment[env].protocolVault,
+        to: cvDeployment[cv].address,
         value: ethers.parseEther('0.1'),
     });
     await tx.wait()
