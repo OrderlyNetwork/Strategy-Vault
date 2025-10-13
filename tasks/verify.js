@@ -1,5 +1,5 @@
 const { task } = require('hardhat/config');
-const deployment = require('../deployment.json');
+const deployment = require('../deployment/deployment.json');
 
 task("verify-adapter", "Verify VaultAdapter contracts on block explorer")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")

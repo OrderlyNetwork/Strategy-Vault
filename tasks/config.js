@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const deployment = require('../deployment.json');
+const deployment = require('../deployment/deployment.json');
+const cvDeployment = require('../deployment/community.json');
 const config = require('../config.json');
 const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/utils/getId');
 const { checkNetworkEnvRestrictions, getEndpointV2 } = require('./utils');
@@ -63,7 +64,6 @@ task("config-protocol-vault", "Config ProtocolVault")
         }
         await configProtocolVault(taskArgs.env);
     });
-
 task("config-protocol-vault-ledger", "Config ProtocolVaultLedger")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
@@ -136,7 +136,128 @@ task("config-adapter", "Config VaultAdapter allowed brokers")
         }
         await configVaultAdapter(taskArgs.env);
     });
+task("config-cv", "Config ProtocolVault")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .addParam("cv", "Community Vault name)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
 
+        //check if cvname exists in cvDeployment
+        if (!cvDeployment[taskArgs.cv]) {
+            throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
+        }
+        await configCommunityVault(taskArgs.env, taskArgs.cv);
+        await configEVMCCForCommunityVault(taskArgs.env, taskArgs.cv);
+    });
+task("ledger-add-cv", "Add CommunityVault to ledger")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .addParam("cv", "Community Vault name)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        const currentNetwork = hre.network.name;
+        checkNetworkEnvRestrictions(currentNetwork, taskArgs.env);
+
+        await addCommunityVaultToLedger(taskArgs.env, taskArgs.cv);
+    });
+async function configCommunityVault(env, cv) {
+    //get the contract instance
+    const pvContract = await ethers.getContractAt(
+        "ProtocolVault",
+        cvDeployment[cv].address
+    )
+
+    //set crossChainManager
+    tx = await pvContract.setCrossChainManager(deployment[env].crossChainManager);
+    await tx.wait()
+    console.log("CrossChainManager set successfully")
+
+    //set sp 
+    const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+    tx = await pvContract.setAllowedStrategyProvider(spId, true);
+    await tx.wait()
+    console.log("Allowed SP set successfully")
+
+    //set ledger eid
+    let ledgerEid;
+    const currentNetwork = hre.network.name;
+
+    if (env == 'dev' || env == 'qa' || env == 'staging') {
+        ledgerEid = config['orderly_sepolia'].eid;
+    } else if (env == 'mainnet') {
+        ledgerEid = config['orderly'].eid;
+    }
+    tx = await pvContract.setLedgerEid(ledgerEid);
+    await tx.wait()
+    console.log(`set ledger eid ${ledgerEid} successfully for ${currentNetwork}`)
+
+    //set broker 
+    tx = await pvContract.setAllowedBroker(cvDeployment[cv].broker, true);
+    await tx.wait();
+    console.log("Allowed broker set successfully");
+
+    //transfer native for cc fee 
+    const [sender] = await ethers.getSigners();
+    tx = await sender.sendTransaction({
+        to: deployment[env].protocolVault,
+        value: ethers.parseEther('0.1'),
+    });
+    await tx.wait()
+    console.log("transfer native to community vault successfully");
+}
+async function configEVMCCForCommunityVault(env, cv) {
+    //get the contract instance
+    const ccManagerContract = await ethers.getContractAt(
+        "VaultCrossChainManager",
+        deployment[env].crossChainManager
+    )
+
+    tx = await ccManagerContract.setValidVault(deployment[env].protocolVault, true);
+    await tx.wait()
+    console.log("Set valid vault for ProtocolVault successfully")
+
+    tx = await ccManagerContract.setValidVault(cvDeployment[cv].address, true);
+    await tx.wait()
+    console.log("Set valid vault for ProtocolVault and CommunityVault successfully")
+}
+async function addCommunityVaultToLedger(env, cv) {
+    //get the contract instance
+    const pvLedgerContract = await ethers.getContractAt(
+        "ProtocolVaultLedger",
+        deployment[env].pvLedger
+    )
+    //set cv
+    tx = await pvLedgerContract.setVault(cvDeployment[cv].vaultId, cvDeployment[cv].address);
+    await tx.wait()
+    console.log(`Set CommunityVault ${cv} to ledger successfully`)
+
+    //set pv
+    vaultId = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+            ["address", "bytes32"],
+            [deployment[env].protocolVault, cvDeployment[cv].broker]
+        )
+    );
+    tx = await pvLedgerContract.setVault(vaultId, deployment[env].protocolVault);
+    await tx.wait()
+    console.log(`Set ProtocolVault ${cv} to ledger successfully`)
+
+    //set fee
+    const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+    tx = await pvLedgerContract.setFeeRate([spId], [cvDeployment[cv].feeRate]); //0.1%
+    await tx.wait()
+    console.log(`Set CommunityVault fee to ledger successfully`)
+
+    //set broker
+    tx = await pvLedgerContract.setVaultBroker(cvDeployment[cv].vaultId, cvDeployment[cv].broker);
+    await tx.wait()
+    console.log(`Set CommunityVault ${cv} broker to ledger successfully`)
+}
 async function configProtocolVaultLedger(env) {
     //get the contract instance
     const pvLedgerContract = await ethers.getContractAt(

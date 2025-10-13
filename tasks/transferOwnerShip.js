@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const deployment = require('../deployment.json');
+const deployment = require('../deployment/deployment.json');
+const cvDeployment = require('../deployment/community.json');
 const { task } = require('hardhat/config');
 const { checkNetworkEnvRestrictions } = require('./utils');
 

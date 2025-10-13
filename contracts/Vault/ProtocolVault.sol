@@ -8,9 +8,9 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
-import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
-import {VaultDepositFE, IDexVault} from "./interfaces/IDexVault.sol";
+import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol";
+import {IProtocolVault} from "../interfaces/IProtocolVault.sol";
+import {VaultDepositFE, IDexVault} from "../interfaces/IDexVault.sol";
 import {
     VaultType,
     VaultState,
@@ -20,10 +20,10 @@ import {
     WithdrawParams,
     OperationData,
     UserClaimedInfo
-} from "./lib/types/VaultStruct.sol";
-import {PayloadType, StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
-import {ClaimInfo} from "./lib/types/LedgerStruct.sol";
-import {USDC_HASH, ORDERLY_BROKER, LEDGER_CHAIN_ID} from "./lib/types/Constants.sol";
+} from "../lib/types/VaultStruct.sol";
+import {PayloadType, StrategyVaultCCMessage} from "../lib/types/CrossChainStruct.sol";
+import {ClaimInfo} from "../lib/types/LedgerStruct.sol";
+import {USDC_HASH, ORDERLY_BROKER, LEDGER_CHAIN_ID} from "../lib/types/Constants.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -31,8 +31,6 @@ import {USDC_HASH, ORDERLY_BROKER, LEDGER_CHAIN_ID} from "./lib/types/Constants.
 /// @title ProtocolVault for user to deposit and withdraw assets
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
     using Address for address payable;
-
-    // Constants moved to Constants library
 
     VaultState public vaultState;
     address public dexVault;
@@ -118,7 +116,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
         dexVault = _dexVault;
 
-        isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
         isAllowedStrategy[_dexVault] = true;
         tokenHashToAddress[USDC_HASH] = token;
@@ -127,9 +124,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         minDepositForLp = _minDepositForLp;
         minDepositForSp = _minDepositForSp;
     }
-    /*=========================================================================================
-    *                                       EXTERNAL
-    *=========================================================================================*/
 
     //--------------------------------------FROM USER-----------------------------------------
     /**

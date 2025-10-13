@@ -1,13 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-const deployment = require('../deployment.json');
+const deployment = require('../deployment/deployment.json');
+const cvDeployment = require('../deployment/community.json');
 const config = require('../config.json');
 const { task } = require('hardhat/config');
 const { checkNetworkEnvRestrictions } = require('./utils');
+const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/utils/getId');
 
 const ERC1967ProxyPath = path.join(__dirname, 'ERC1967ProxyBytecode_oz_v5.json');
 const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
-
+const ORDER_HASH = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
 task("deploy-evm", "Deploy strategy vault contracts on EVM")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
@@ -43,7 +45,21 @@ task("deploy-protocolvault", "Deploy ProtocolVault contract")
         }
         await deployProtocolVault(taskArgs.env);
     });
+task("deploy-cv", "Deploy CommunityVault contract")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .addParam("cv", "Community Vault name")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
 
+        //check if cvname exists in cvDeployment
+        if (!cvDeployment[taskArgs.cv]) {
+            throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
+        }
+        await deployCommunityVault(taskArgs.env, taskArgs.cv);
+    });
 task("deploy-pvledger", "Deploy ProtocolVaultLedger contract")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
@@ -122,6 +138,67 @@ async function deployCrossChainManager(env) {
     }
 
 }
+async function deployCommunityVault(env, cv) {
+    //deploy impl
+    const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
+
+    const implAddr = await deployProtocolVaultImpl(ProtocolVault);
+    //const implAddr = "0xac0977234D85C7cf3D315eE13D2cbBA7580Ce346";
+
+    const [owner] = await ethers.getSigners();
+
+    //Deploy contract by factory
+    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address, env, false, cv);
+
+    // compute CREATE2 salt = keccak256(abi.encode(sp, nonce)) using ethers v6
+    const salt = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+            ["address", "uint256"],
+            [cvDeployment[cv].sp, cvDeployment[cv].nonce]
+        )
+    );
+    console.log("Deploying CommunityVault with salt:", salt);
+
+    const VaultFactory = await ethers.getContractAt(
+        "VaultFactory",
+        deployment[env].factory
+    )
+    const tx = await VaultFactory.deploy(salt, bytecode)
+    await tx.wait()
+    console.log("Community Vault deployed Done");
+
+    const CommunityVaultAddr = await VaultFactory.getDeployed(salt);
+    console.log("✅Community Vault deployed at: ", CommunityVaultAddr);
+
+    const vaultId = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode([
+            "address",
+            "bytes32"
+        ], [CommunityVaultAddr, cvDeployment[cv].broker])
+    );
+    console.log("Vault Id is: ", vaultId);
+
+    // Update all community vault info at once
+    updateCommunityVaultAddress(cv, CommunityVaultAddr);
+    const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+    updateCommunityVaultInfo(cv, {
+        vaultId: vaultId,
+        spId: spId
+    });
+
+    // Verify proxy contract
+    try {
+        const currentNetwork = hre.network.name;
+        const dexVault = deployment[env].dex[currentNetwork];
+        const usdc = config[currentNetwork].USDC;
+        const minDepositForLp = cvDeployment[cv].minDepositForLp;
+        const minDepositForSp = cvDeployment[cv].minDepositForSp;
+
+        await verifyProtocolVaultProxy(ProtocolVault, implAddr, CommunityVaultAddr, dexVault, owner.address, usdc, minDepositForLp, minDepositForSp);
+    } catch (error) {
+        console.log(`⚠️ ProtocolVault proxy verification failed: ${error.message}`);
+    }
+}
 async function deployProtocolVault(env) {
     //deploy impl
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
@@ -132,7 +209,7 @@ async function deployProtocolVault(env) {
     const [owner] = await ethers.getSigners();
 
     //Deploy contract by factory
-    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address, env);
+    const bytecode = getProlcolVaultBytecode(ProtocolVault, implAddr, owner.address, env, true, "");
     const salt = deployment[env].pv_salt;
     console.log("Deploying ProtocolVault with salt:", salt);
 
@@ -187,7 +264,7 @@ async function deployCrossChainManagerImpl(VaultCrossChainManager) {
 
     return implAddr;
 }
-function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env) {
+function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env, isPV, cv) {
     //get usdc address 
     const currentNetwork = hre.network.name;
     const tokenAddress = config[currentNetwork].USDC
@@ -195,8 +272,15 @@ function getProlcolVaultBytecode(ProtocolVault, implAddr, ownerAddr, env) {
         throw new Error(`No USDC address found for network: ${currentNetwork}`);
     }
     console.log(`USDC Address for ${currentNetwork}: ${tokenAddress}`);
-    const minDepositForLp = deployment[env].minDepositForLp;
-    const minDepositForSp = deployment[env].minDepositForSp;
+    let minDepositForLp = 0;
+    let minDepositForSp = 0;
+    if (isPV) {
+        minDepositForLp = deployment[env].minDepositForLp;
+        minDepositForSp = deployment[env].minDepositForSp;
+    } else {
+        minDepositForLp = cvDeployment[cv].minDepositForLp;
+        minDepositForSp = cvDeployment[cv].minDepositForSp;
+    }
 
     const initializeData = ProtocolVault.interface.encodeFunctionData(
         "initialize",
@@ -242,7 +326,7 @@ function getCrossChainManagerBytecode(VaultCrossChainManager, implAddr, ownerAdd
     return bytecode;
 }
 function updateAddressConfig(env, contractName, address) {
-    const configPath = path.join(process.cwd(), 'deployment.json');
+    const configPath = path.join(process.cwd(), 'deployment/deployment.json');
 
     try {
         const configContent = fs.readFileSync(configPath, 'utf8');
@@ -518,6 +602,163 @@ async function verifyCrossChainManagerProxy(VaultCrossChainManager, implAddr, pr
     }
 
     console.log("CrossChainManager proxy contract verification completed!");
+}
+
+/**
+ * Update vaultId in community.json for specific community vault
+ * @param {string} cv - Community vault name
+ * @param {string} vaultId - Vault ID to update
+ */
+function updateCommunityVaultId(cv, vaultId) {
+    const configPath = path.join(process.cwd(), 'deployment/community.json');
+
+    try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        let config = JSON.parse(configContent);
+
+        if (!config[cv]) {
+            throw new Error(`Community vault ${cv} not found in community.json`);
+        }
+
+        if (config[cv].vaultId && config[cv].vaultId === vaultId) {
+            console.log(`✅ VaultId for ${cv} already exists and matches. Skipping update.`);
+            return;
+        } else if (config[cv].vaultId && config[cv].vaultId !== vaultId) {
+            console.log(`⚠️ VaultId for ${cv} already exists but does not match. New vaultId: ${vaultId}`);
+        }
+
+        config[cv].vaultId = vaultId;
+
+        fs.writeFileSync(
+            configPath,
+            JSON.stringify(config, null, 2)
+        );
+
+        console.log(`✅ VaultId: ${vaultId} written for ${cv} in community.json`);
+    } catch (error) {
+        console.error(`Error updating community vault ID: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Update address in community.json for specific community vault
+ * @param {string} cv - Community vault name
+ * @param {string} address - Vault address to update
+ */
+function updateCommunityVaultAddress(cv, address) {
+    const configPath = path.join(process.cwd(), 'deployment/community.json');
+
+    try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        let config = JSON.parse(configContent);
+
+        if (!config[cv]) {
+            throw new Error(`Community vault ${cv} not found in community.json`);
+        }
+
+        if (config[cv].address && config[cv].address === address) {
+            console.log(`✅ Address for ${cv} already exists and matches. Skipping update.`);
+            return;
+        } else if (config[cv].address && config[cv].address !== address) {
+            console.log(`⚠️ Address for ${cv} already exists but does not match. New address: ${address}`);
+        }
+
+        config[cv].address = address;
+
+        fs.writeFileSync(
+            configPath,
+            JSON.stringify(config, null, 2)
+        );
+
+        console.log(`✅ Address: ${address} written for ${cv} in community.json`);
+    } catch (error) {
+        console.error(`Error updating community vault address: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Update spId in community.json for specific community vault
+ * @param {string} cv - Community vault name
+ * @param {string} spId - Strategy Provider ID to update
+ */
+function updateCommunityVaultSpId(cv, spId) {
+    const configPath = path.join(process.cwd(), 'deployment/community.json');
+
+    try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        let config = JSON.parse(configContent);
+
+        if (!config[cv]) {
+            throw new Error(`Community vault ${cv} not found in community.json`);
+        }
+
+        if (config[cv].spId && config[cv].spId === spId) {
+            console.log(`✅ SpId for ${cv} already exists and matches. Skipping update.`);
+            return;
+        } else if (config[cv].spId && config[cv].spId !== spId) {
+            console.log(`⚠️ SpId for ${cv} already exists but does not match. New spId: ${spId}`);
+        }
+
+        config[cv].spId = spId;
+
+        fs.writeFileSync(
+            configPath,
+            JSON.stringify(config, null, 2)
+        );
+
+        console.log(`✅ SpId: ${spId} written for ${cv} in community.json`);
+    } catch (error) {
+        console.error(`Error updating community vault spId: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Update multiple fields in community.json for specific community vault
+ * @param {string} cv - Community vault name
+ * @param {Object} updates - Object containing fields to update (vaultId, spId)
+ */
+function updateCommunityVaultInfo(cv, updates) {
+    const configPath = path.join(process.cwd(), 'deployment/community.json');
+
+    try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        let config = JSON.parse(configContent);
+
+        if (!config[cv]) {
+            throw new Error(`Community vault ${cv} not found in community.json`);
+        }
+
+        let hasChanges = false;
+        const fieldsToUpdate = ['vaultId', 'spId'];
+
+        fieldsToUpdate.forEach(field => {
+            if (updates[field] !== undefined) {
+                if (config[cv][field] && config[cv][field] === updates[field]) {
+                    console.log(`✅ ${field} for ${cv} already exists and matches. Skipping update.`);
+                } else {
+                    if (config[cv][field] && config[cv][field] !== updates[field]) {
+                        console.log(`⚠️ ${field} for ${cv} already exists but does not match. New ${field}: ${updates[field]}`);
+                    }
+                    config[cv][field] = updates[field];
+                    hasChanges = true;
+                    console.log(`✅ ${field}: ${updates[field]} written for ${cv} in community.json`);
+                }
+            }
+        });
+
+        if (hasChanges) {
+            fs.writeFileSync(
+                configPath,
+                JSON.stringify(config, null, 2)
+            );
+        }
+    } catch (error) {
+        console.error(`Error updating community vault info: ${error.message}`);
+        throw error;
+    }
 }
 
 /**

@@ -36,6 +36,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     mapping(bytes32 => mapping(uint256 => uint256)) public tokenDecimals;
     mapping(bytes32 => mapping(uint256 => bool)) public isSpecialDecimal;
 
+    mapping(address vault => bool) public isValidVault;
+
     receive() external payable {}
 
     /**
@@ -46,8 +48,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     }
 
     /// @notice Require only protocol vault can call
-    modifier onlyVault() {
-        if (msg.sender != vault) {
+    modifier onlyValidVault() {
+        if (!isValidVault[msg.sender]) {
             revert InvalidCaller(msg.sender);
         }
         _;
@@ -70,7 +72,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     function sendMessageWithValueAndRefund(StrategyVaultCCMessage memory message, address refundAddress)
         external
         payable
-        onlyVault
+        onlyValidVault
     {
         bytes memory lzMessage = abi.encode(message);
         bytes memory options = _getOptions(message.payloadType);
@@ -130,8 +132,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
             IProtocolVaultLedger(ledger).handleOpFromVault(payloadType, srcChainId, operationData);
         } else if (payloadType == PayloadType.ASSETS_DISTRIBUTION) {
             //Decode the payload
-            (uint256 periodId, AssetsDistribution memory assetsDistribution) =
-                abi.decode(payload, (uint256, AssetsDistribution));
+            (uint256 periodId, address svVault, AssetsDistribution memory assetsDistribution) =
+                abi.decode(payload, (uint256, address, AssetsDistribution));
 
             //Convert the amount
             uint256 dstChainId = strategyVaultCCmessage.dstChainId;
@@ -140,11 +142,11 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
                     _convertAmount(assetsDistribution.assets, ledgerDecimal, tokenDecimals[USDC_HASH][dstChainId]);
             }
             //Call Protocol Vault
-            IProtocolVault(vault).depositToStrategy(periodId, vault, assetsDistribution.assets);
+            IProtocolVault(svVault).depositToStrategy(periodId, svVault, assetsDistribution.assets);
         } else if (payloadType == PayloadType.UPDATE_USER_CLAIM) {
             //Decode the payload
-            (uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaims) =
-                abi.decode(payload, (uint256, uint256, ClaimInfo[]));
+            (uint256 periodId, uint256 ccFee, address svVault, ClaimInfo[] memory userClaims) =
+                abi.decode(payload, (uint256, uint256, address, ClaimInfo[]));
 
             //Convert the amount
             uint256 dstChainId = strategyVaultCCmessage.dstChainId;
@@ -155,7 +157,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
                 }
             }
             //Call Protocol Vault
-            IProtocolVault(vault).updateUnClaimed(periodId, ccFee, userClaims);
+            IProtocolVault(svVault).updateUnClaimed(periodId, ccFee, userClaims);
         } else {
             revert InvalidPayloadType();
         }
@@ -186,6 +188,10 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
 
     function setLedgerDecimal(uint256 decimal) external onlyOwner {
         ledgerDecimal = decimal;
+    }
+
+    function setValidVault(address _vault, bool isValid) external onlyOwner {
+        isValidVault[_vault] = isValid;
     }
     /*=========================================================================================
     *                                       VIEW
