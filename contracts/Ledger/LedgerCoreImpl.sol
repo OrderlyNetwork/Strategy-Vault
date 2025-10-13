@@ -485,7 +485,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             // Cross chain message
             message =
                 _createCCMessage(PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos));
-
+`
             // Cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
         }
