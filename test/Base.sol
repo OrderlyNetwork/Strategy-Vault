@@ -222,7 +222,7 @@ contract Base is TestHelperOz5 {
         svLedger.setVault(vaultId, address(protocolVault));
         svLedger.setVault(cvVaultId, address(communityVault));
         vm.stopPrank();
-        
+
         //approve
         vm.prank(user);
         mockToken.approve(address(communityVault), 100e6);
@@ -392,6 +392,20 @@ contract Base is TestHelperOz5 {
 
     function _getVaultId(bytes32 brokerHash) internal view returns (bytes32) {
         return keccak256(abi.encode(address(protocolVault), brokerHash));
+    }
+
+    function _getUpdateUnclaimedSignature(
+        uint32 chainId,
+        uint256 _periodId,
+        uint256 _ccFee,
+        bytes32 _vaultId,
+        bytes32[] memory requestIds
+    ) internal view returns (bytes memory) {
+        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _ccFee, _vaultId, requestIds));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
     }
 
     function _getUpdateUnclaimedSignature(
