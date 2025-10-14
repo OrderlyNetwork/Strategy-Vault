@@ -48,7 +48,7 @@ task("verify-protocolvault", "Verify ProtocolVault contracts on block explorer")
         
         // Get addresses from deployment.json
         const proxyAddr = deployment[taskArgs.env].protocolVault;
-        
+
         if (!proxyAddr) {
             throw new Error(`Missing contract addresses for ${taskArgs.env} environment. Please deploy first.`);
         }

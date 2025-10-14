@@ -162,6 +162,14 @@ module.exports = {
           browserURL: "https://sepolia.basescan.org/",
         }
       },
+      {
+        network: "seidev",
+        chainId: 713715,
+        urls: {
+          apiURL: "https://seitrace.com/atlantic-1/api",
+          browserURL: "https://devnet.seitrace.com/",
+        }
+      }
     ]
   }
 };
