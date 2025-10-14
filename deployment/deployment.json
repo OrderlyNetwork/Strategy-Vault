@@ -60,6 +60,10 @@
       "op_sepolia",
       "sei_dev"
     ],
+    "allowedBrokersForAdapter": [
+      "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+      "0x6ca2f644ef7bd6d75953318c7f2580014941e753b3c6d54da56b3bf75dd14dfc"
+    ],
     "factory": "0x2b1E9a839a873E05eeE8D90c6AfF7aA3E724E6cF"
   },
   "staging": {

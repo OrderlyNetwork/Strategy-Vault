@@ -146,6 +146,7 @@
     },
     "sepolia": {
         "USDC": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+        "USDT": "0x01a6810727db185bbf7f30ec158c3ac8b8112627",
         "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
         "chainId": 11155111,
         "eid": 40161,
