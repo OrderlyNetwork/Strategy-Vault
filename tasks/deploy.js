@@ -143,7 +143,7 @@ async function deployCommunityVault(env, cv) {
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
 
     const implAddr = await deployProtocolVaultImpl(ProtocolVault);
-    //const implAddr = "0xac0977234D85C7cf3D315eE13D2cbBA7580Ce346";
+    //const implAddr = "0x7Cd8d36AA726255531653A4d643B04627011e5e2";
 
     const [owner] = await ethers.getSigners();
 
@@ -374,7 +374,7 @@ async function deployVaultAdapter(env) {
     //deploy impl
     const VaultAdapter = await ethers.getContractFactory("VaultAdapter");
     const implAddr = await deployVaultAdapterImpl(VaultAdapter);
-    //const implAddr = "0xA692B03F4215377280C1043572cf87199CCA95E4";
+    //const implAddr = "0x192140dEd1945CE309Eb7647BDb3C67B5eaA2b5C";
     //Deploy contract by factory
     const bytecode = getVaultAdapterBytecode(VaultAdapter, implAddr, operator, dexVault, engine, usdc, owner);
     const salt = deployment[env].adapter_salt;
@@ -396,15 +396,6 @@ async function deployVaultAdapter(env) {
     } catch (error) {
         console.log(`⚠️ VaultAdapter proxy verification failed: ${error.message}`);
     }
-}
-
-async function deployVaultAdapterImpl(VaultAdapter) {
-    const VaultAdapterContract = await VaultAdapter.deploy();
-    const implAddr = VaultAdapterContract.target;
-    await VaultAdapterContract.waitForDeployment();
-
-    console.log("VaultAdapter Impl deployed to:", implAddr);
-
     // Verify VaultAdapter implementation contract
     try {
         console.log(`Verifying VaultAdapter implementation contract: ${implAddr}`);
@@ -420,8 +411,14 @@ async function deployVaultAdapterImpl(VaultAdapter) {
             console.error("VaultAdapter implementation contract verification error:", error);
         }
     }
+}
 
-    return implAddr;
+async function deployVaultAdapterImpl(VaultAdapter) {
+    const VaultAdapterContract = await VaultAdapter.deploy();
+    const implAddr = VaultAdapterContract.target;
+    await VaultAdapterContract.waitForDeployment();
+
+    console.log("VaultAdapter Impl deployed to:", implAddr);
 }
 async function deployProtocolVaultImpl(ProtocolVault) {
     const ProtocolVaultContract = await ProtocolVault.deploy();

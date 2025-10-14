@@ -190,7 +190,6 @@ async function checkVaultAdapter(env) {
         deployment[env].vaultAdapter
     )
 
-    // 检查合约代码是否存在
     const code = await ethers.provider.getCode(deployment[env].vaultAdapter);
     if (code === "0x") {
         throw new Error(`No contract code found at address ${deployment[env].vaultAdapter}`);
