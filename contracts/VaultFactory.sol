@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {CREATE3} from "solady/src/utils/CREATE3.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title Factory for deploying contracts to deterministic addresses via CREATE3
 /// @notice Enables deploying contracts using CREATE3. Each deployer (msg.sender) has
