@@ -245,12 +245,38 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     ) external onlyOperator {
         _delegateCall(
             abi.encodeWithSelector(
-                ILedgerCoreImpl.updateUnclaimed.selector, chainId, periodId, vaultId, requestIds, signature
+                bytes4(keccak256("updateUnclaimed(uint256,uint256,bytes32,bytes32[],bytes)")),
+                chainId,
+                periodId,
+                vaultId,
+                requestIds,
+                signature
             ),
             _getLedgerImplStorage().core
         );
     }
 
+    function updateUnclaimed(
+        uint256 chainId,
+        uint256 periodId,
+        uint256 ccFee,
+        bytes32 vaultId,
+        bytes32[] memory requestIds,
+        bytes calldata signature
+    ) external {
+        _delegateCall(
+            abi.encodeWithSelector(
+                bytes4(keccak256("updateUnclaimed(uint256,uint256,uint256,bytes32,bytes32[],bytes)")),
+                chainId,
+                periodId,
+                ccFee,
+                vaultId,
+                requestIds,
+                signature
+            ),
+            _getLedgerImplStorage().core
+        );
+    }
     /// @notice Remove invalid frozen shares (delegated to extensions contract)
     /// @param vaultId The vault ID
     /// @param params The parameters containing the invalid frozen shares to remove
