@@ -104,7 +104,7 @@ task("config-new-evm", "Config new chain for Orderly CrossChainManager")
         await configNewChainForOrderly(taskArgs.env, taskArgs.chain);
         console.log("✅ ----------------------Config New Chain CC Manager Done----------------------")
 
-        //await lz_orderly_config(taskArgs.env, taskArgs.chain);
+        await lz_orderly_config(taskArgs.env, taskArgs.chain);
         console.log("✅ ----------------------Lz Orderly Config Done----------------------")
     });
 task("lz-evm-config", "Config Lz on evm")
