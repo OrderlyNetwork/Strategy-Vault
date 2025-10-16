@@ -95,7 +95,8 @@
     "deployedNetwork": [
       "arb_sepolia",
       "base_sepolia",
-      "op_sepolia"
+      "op_sepolia",
+      "sei_dev"
     ],
     "factory": "0x2b1E9a839a873E05eeE8D90c6AfF7aA3E724E6cF"
   },

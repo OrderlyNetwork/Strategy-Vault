@@ -486,7 +486,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external {
-        Signature.verifyUpdateUnclaimed(chainId, periodId, ccFee,vaultId, requestIds, signature, engine);
+        Signature.verifyUpdateUnclaimed(chainId, periodId, ccFee, vaultId, requestIds, signature, engine);
 
         // Length that unhandled requestId
         uint256 len;
@@ -524,10 +524,11 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
                 message = _createCCMessage(
                     PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, userClaimInfos)
                 );
+            } else {
+                message = _createCCMessage(
+                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos)
+                );
             }
-            // Cross chain message
-            message =
-                _createCCMessage(PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos));
 
             // Cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
