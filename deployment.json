@@ -19,6 +19,8 @@
     "crossChainManager": "0x7568ACC147Af12b02713143C3177D7e89C28A9A6",
     "pvLedger": "0x2a5909498d85650744dD5CF964F2136962e5AE6E",
     "vaultAdapter": "0x4f9E2d2A0eC5f633a7c58d87616B7485DCECAC0d",
+    "minDepositForLp": 0,
+    "minDepositForSp": 0,
     "deployedNetwork": [
       "sepolia",
       "adapter: arb_sepolia",
@@ -29,13 +31,14 @@
   "qa": {
     "pv_salt": "0x0000000000000000000000000000000000000000000000000000000000000007",
     "cc_salt": "0x0000000000000000000000000000000000000000000000000000000000000008",
-    "adapter_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",
+    "adapter_salt": "0x000000000000000000000000000000000000000000000000000000000000001c",
     "dex": {
       "sepolia": "0xd5164A5a83c64E59F842bC091E06614b84D95fF5",
       "arb_sepolia": "0xB15a3a4D451311e03e34d9331C695078Ad5Cf5F1",
       "base_sepolia": "0xEcb4abe96113c9caA3204e96C63C5377D02cb636",
       "op_sepolia": "0xd5164A5a83c64E59F842bC091E06614b84D95fF5",
-      "bsc_test": "0xc93fA36a46bF544537dE3BF1Dec27A1074d71099"
+      "bsc_test": "0xc93fA36a46bF544537dE3BF1Dec27A1074d71099",
+      "sei_dev": "0x3ac2Ba11Ca2f9f109d50fb1a46d4C23fCadbbef6"
     },
     "operator": "0x0d7ad657625D46E0DC13A6de1007c22cd8F7f409",
     "dex_operator": "0x963c6dF1477a2C8153DF0636Be95f506A4A1B06C",
@@ -48,11 +51,19 @@
     "crossChainManager": "0xB8a3245407571804b4db5219cBe8D9F2EA1828DE",
     "pvLedger": "0x15c9B5705CaCB4eb140dfd7a8c651E18027e5146",
     "vaultAdapter": "0x6f0AAd939f2696a7d469a57B167A2CC1cEF03E93",
+    "sepolia_adapter": "0x96543411Fce92BE684bD146014AEB63c49E60c2f",
+    "minDepositForLp": 0,
+    "minDepositForSp": 0,
     "deployedNetwork": [
       "sepolia",
       "arb_sepolia",
       "base_sepolia",
-      "op_sepolia"
+      "op_sepolia",
+      "sei_dev"
+    ],
+    "allowedBrokersForAdapter": [
+      "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+      "0x6ca2f644ef7bd6d75953318c7f2580014941e753b3c6d54da56b3bf75dd14dfc"
     ],
     "factory": "0x2b1E9a839a873E05eeE8D90c6AfF7aA3E724E6cF"
   },
@@ -64,8 +75,10 @@
       "sepolia": "0x0EaC556c0C2321BA25b9DC01e4e3c95aD5CDCd2f",
       "arb_sepolia": "0x0EaC556c0C2321BA25b9DC01e4e3c95aD5CDCd2f",
       "base_sepolia": "0xdc7348975aE9334DbdcB944DDa9163Ba8406a0ec",
-      "op_sepolia": "0xEfF2896077B6ff95379EfA89Ff903598190805EC"
+      "op_sepolia": "0xEfF2896077B6ff95379EfA89Ff903598190805EC",
+      "sei_dev": "0xA603f6e124259d37e43dd5008cB7613164D6a6e3"
     },
+    "dexLedger": "0x1826B75e2ef249173FC735149AE4B8e9ea10abff",
     "operator": "0xDeDCe9F202AF4Fa5902b8163C5019cbB051d9653",
     "dex_operator": "0x2d4e9C592b9f42557DAE7B103F3fCA47448DC0BD",
     "owner": "0x7D1e7BeAd9fBb72e35Dc8E6d1966c2e57DbDA3F0",
@@ -82,7 +95,8 @@
     "deployedNetwork": [
       "arb_sepolia",
       "base_sepolia",
-      "op_sepolia"
+      "op_sepolia",
+      "sei_dev"
     ],
     "factory": "0x2b1E9a839a873E05eeE8D90c6AfF7aA3E724E6cF"
   },
@@ -96,6 +110,7 @@
       "base": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9",
       "bsc": "0x816f722424B49Cf1275cc86DA9840Fbd5a6167e9"
     },
+    "dexLedger": "0x6F7a338F2aA472838dEFD3283eB360d4Dff5D203",
     "operator": "0x14d2F7c5b77DA96f138B655aA6a94fa644795838",
     "dex_operator": "0x81698d4bE3C2CDE0Fbd2cc457bA1Aa0d5df11DDD",
     "owner": "0x4e834Ca9310d7710a409638A7aa70CB22F141Df3",
@@ -121,5 +136,6 @@
     "0x6ca2f644ef7bd6d75953318c7f2580014941e753b3c6d54da56b3bf75dd14dfc"
   ],
   "ed25519lib_test": "0x9A7Fa019B2848E075768966caFe42b203B23b4F1",
-  "factory": "0x63b5af2724018347a1747a504e45f4e4c5ad0d04"
+  "factory": "0x63b5af2724018347a1747a504e45f4e4c5ad0d04",
+  "vaultId": "0xa3426a1cef4052c056fced18099be899d93f1427d13b9a1df1806b91fad3d0c2"
 }
