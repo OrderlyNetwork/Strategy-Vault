@@ -163,10 +163,10 @@ module.exports = {
         }
       },
       {
-        network: "seidev",
+        network: "sei_dev",
         chainId: 713715,
         urls: {
-          apiURL: "https://seitrace.com/atlantic-1/api",
+          apiURL: "https://seitrace.com/arctic-1/api",
           browserURL: "https://devnet.seitrace.com/",
         }
       }
