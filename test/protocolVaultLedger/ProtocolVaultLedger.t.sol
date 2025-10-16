@@ -158,6 +158,36 @@ contract ProtocolVaultTest is Base {
         assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
     }
 
+    function testUpdateUnclaimedWithCCFee() public {
+        bytes32[] memory requestIds = new bytes32[](2);
+        requestIds[0] = keccak256(abi.encode(0));
+        requestIds[1] = keccak256(abi.encode(1));
+        uint256 ccFee = 100;
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, ccFee, vaultId, requestIds);
+
+        //deal eth to cc contract on ledger
+        uint256 asset = 1000 * assetDecimal;
+        vm.deal(address(bVaultCrossChainManager), 10 ether);
+        svLedger.setLpClaimInfo(requestIds[0], userA_id, asset);
+        svLedger.setLpClaimInfo(requestIds[1], userB_id, asset);
+
+        vm.startPrank(operator);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
+
+        verifyPackets(srcEid, address(aVaultCrossChainManager));
+
+        //check
+        UserClaimedInfo memory userClaimedInfo_A = protocolVault.getUserClaimedInfo(userA_id);
+        uint256 ccFeePerUser = protocolVault.crossChainFee(userA_id);
+        assertEq(ccFeePerUser, ccFee);
+        assertEq(userClaimedInfo_A.unClaimedAssets, asset);
+        assertEq(userClaimedInfo_A.requestIds[0], keccak256(abi.encode(0)));
+
+        UserClaimedInfo memory userClaimedInfo_B = protocolVault.getUserClaimedInfo(userB_id);
+        assertEq(userClaimedInfo_B.unClaimedAssets, asset);
+        assertEq(userClaimedInfo_B.requestIds[0], keccak256(abi.encode(1)));
+    }
+
     function testEstimateUpdateUnclaimed() public {
         bytes32[] memory requestIds = new bytes32[](3);
         for (uint256 i = 0; i < requestIds.length; i++) {
