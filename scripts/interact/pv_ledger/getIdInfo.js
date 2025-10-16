@@ -20,7 +20,7 @@ async function main() {
         deployment[env].pvLedger
     )
     console.log("vault id:", getVaultId(cvVault, cvDeployment[cv].broker)); //0x
-    console.log("accountId: ", getAccountId("0x4e9FeE6661422BBD72e8133121E9387bf238C2e1", "0x6ca2f644ef7bd6d75953318c7f2580014941e753b3c6d54da56b3bf75dd14dfc")); //0xf9fdd8648d22ef32e665f03249fe52804bc181cca3a98e3a16d18b41e34bc8d1
+    console.log("accountId: ", getAccountId("0x4e9FeE6661422BBD72e8133121E9387bf238C2e1", broker)); //0xf9fdd8648d22ef32e665f03249fe52804bc181cca3a98e3a16d18b41e34bc8d1
     console.log("spId: ", getStrategyProviderId(cvVault, cvDeployment[cv].sp, cvDeployment[cv].broker));//0x652385add0dfdff0e87bee89a7a5e4818145a3e4844c300c7b82baa926d1f0f9
 }
 
