@@ -102,7 +102,7 @@ module.exports = {
     },
     sei: {
       url: "https://sei.rpc.grove.city/v1/01fdb492",
-      accounts: [PRIVATE_KEY],
+      accounts: [DEPLOY_KEY],
     }
   },
   etherscan: { //https://api.etherscan.io/v2/chainlist
@@ -168,6 +168,14 @@ module.exports = {
         urls: {
           apiURL: "https://seitrace.com/arctic-1/api",
           browserURL: "https://devnet.seitrace.com/",
+        }
+      },
+      {
+        network: "sei",
+        chainId: 1329,
+        urls: {
+          apiURL: "https://seitrace.com/pacific-1/api",
+          browserURL: "https://seiscan.io/",
         }
       }
     ]

@@ -15,7 +15,7 @@ task("deploy-evm", "Deploy strategy vault contracts on EVM")
         if (!validEnvs.includes(taskArgs.env)) {
             throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
         }
-        //await deployCrossChainManager(taskArgs.env);
+        await deployCrossChainManager(taskArgs.env);
         await deployProtocolVault(taskArgs.env);
     });
 

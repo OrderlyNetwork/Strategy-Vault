@@ -486,8 +486,8 @@
     },
     "sei": {
         "USDC": "0xe15fC38F6D8c56aF07bbCBe3BAf5708A2Bf42392",
-        "USDT": "0x78398524Ab8500736B56eaAb1a590733c2B04144",
-        "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+        "USDT": "0x9151434b16b9763660705744891fA906F660EcC5",
+        "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
         "chainId": 1329,
         "eid": 30280,
         "sendLibConfig": {
@@ -502,7 +502,7 @@
                 "optionalDVNCount": 0,
                 "optionalDVNThreshold": 0,
                 "requiredDVNs": [
-                    "0xf772581dcf3300914D6222C4e6FcF0ed5EF93142"
+                    "0x6788f52439aca6bff597d3eec2dc9a44b8fee842"
                 ],
                 "optionalDVNs": []
             }
@@ -515,7 +515,7 @@
                 "optionalDVNCount": 0,
                 "optionalDVNThreshold": 0,
                 "requiredDVNs": [
-                    "0xe1a12515F9AB2764b887bF60B923Ca494EBbB2d6"
+                    "0x6788f52439aca6bff597d3eec2dc9a44b8fee842"
                 ],
                 "optionalDVNs": []
             }

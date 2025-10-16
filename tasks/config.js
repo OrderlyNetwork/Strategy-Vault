@@ -224,6 +224,8 @@ async function configNewChainForOrderly(env, network) {
         "VaultCrossChainManager",
         deployment[env].crossChainManager
     )
+    console.log(config[network].chainId, config[network].eid)
+    console.log(config[network].eid, ethers.zeroPadValue(deployment[env].crossChainManager, 32))
     //set eid
     tx = await ccManagerContract.setEid(config[network].chainId, config[network].eid);
     await tx.wait()
