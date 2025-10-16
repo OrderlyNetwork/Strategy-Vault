@@ -489,11 +489,11 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
                     chainId,
                     abi.encode(periodId, ccFee / index, vault, broker, userClaimInfos)
                 );
+            } else {
+                message = _createCCMessage(
+                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
+                );
             }
-
-            message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
-            );
 
             // Cross-chain
             IVaultCrossChainManager(crossChainManager).sendMessage(message);
