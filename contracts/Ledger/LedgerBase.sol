@@ -29,7 +29,7 @@ abstract contract LedgerBase {
 
     /// @dev Token Hash to token decimal
     mapping(bytes32 => uint256) tokenDecimal;
-    /// @dev fee rate of each strategy fund by vault id
+    /// @dev fee rate of each strategy fund by sp id
     mapping(bytes32 => uint256) public feeRateOfFund;
     /// @dev strategy fund token information by strategy provider id and token hash
     mapping(bytes32 spId => mapping(bytes32 tokenHash => StrategyFundToken)) public strategyFundTokenInfo;
