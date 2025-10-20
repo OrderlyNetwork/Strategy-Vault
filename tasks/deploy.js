@@ -139,6 +139,14 @@ async function deployCrossChainManager(env) {
 
 }
 async function deployCommunityVault(env, cv) {
+    // Validate required fields in community.json
+    const requiredFields = ['sp', 'nonce', 'broker', 'minDepositForLp', 'minDepositForSp'];
+    for (const field of requiredFields) {
+        if (cvDeployment[cv][field] === undefined) {
+            throw new Error(`Missing required field '${field}' in community.json for ${cv}`);
+        }
+    }
+
     //deploy impl
     const ProtocolVault = await ethers.getContractFactory("ProtocolVault");
 
@@ -180,7 +188,7 @@ async function deployCommunityVault(env, cv) {
 
     // Update all community vault info at once
     updateCommunityVaultAddress(cv, CommunityVaultAddr);
-    const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+    const spId = getStrategyProviderId(CommunityVaultAddr, cvDeployment[cv].sp, cvDeployment[cv].broker);
     updateCommunityVaultInfo(cv, {
         vaultId: vaultId,
         spId: spId

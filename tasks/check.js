@@ -72,6 +72,44 @@ task("check-adapter", "Check VaultAdapter contract configuration")
         }
     });
 
+task("check-cv", "Check CommunityVault contract configuration")
+    .addParam("env", "environment (dev/qa/staging/mainnet)")
+    .addParam("cv", "Community Vault name")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+
+        const cv = taskArgs.cv;
+        const env = taskArgs.env;
+
+        if (!cvDeployment[cv]) {
+            throw new Error(`CommunityVault ${cv} not found in community.json`);
+        }
+
+        if (!cvDeployment[cv].address) {
+            throw new Error(`CommunityVault address not found for ${cv}`);
+        }
+
+        const currentNetwork = hre.network.name;
+        console.log(`Checking CommunityVault: ${cv} on network: ${currentNetwork}`);
+        console.log(`CommunityVault address: ${cvDeployment[cv].address}`);
+
+        try {
+            await checkCommunityVault(env, cv);
+            console.log("✅ ----------------------Community Vault Config Done----------------------")
+        } catch (error) {
+            console.error("❌ Error checking CommunityVault configuration:");
+            console.error(`Network: ${currentNetwork}`);
+            console.error(`Environment: ${env}`);
+            console.error(`Community Vault: ${cv}`);
+            console.error(`Contract Address: ${cvDeployment[cv].address}`);
+            console.error(`Error: ${error.message}`);
+            throw error;
+        }
+    });
+
 async function checkProtocolVault(env) {
     //get the contract instance
     const pvContract = await ethers.getContractAt(
@@ -179,6 +217,77 @@ async function checkLedger(env) {
     //check engine
     const engine = await pvLedgerContract.engine();
     assert.equal(engine.toLowerCase(), deployment[env].engine.toLowerCase(), ` ${env} engine config error`);
+}
+
+async function checkCommunityVault(env, cv) {
+    const currentNetwork = hre.network.name;
+
+    //get the contract instance
+    const cvContract = await ethers.getContractAt(
+        "ProtocolVault",
+        cvDeployment[cv].address
+    )
+
+    //check contract code exists
+    const code = await ethers.provider.getCode(cvDeployment[cv].address);
+    if (code === "0x") {
+        throw new Error(`No contract code found at address ${cvDeployment[cv].address}`);
+    }
+    console.log("Contract code verified ✓");
+
+    //check dexVault
+    const dexVault = await cvContract.dexVault();
+    assert.equal(dexVault.toLowerCase(), deployment[env].dex[currentNetwork].toLowerCase(), `${cv} dex on ${currentNetwork} config error`);
+    console.log("DexVault verified ✓");
+
+    //check isAllowedStrategy
+    assert.equal(await cvContract.isAllowedStrategy(deployment[env].dex[currentNetwork]), true, `${cv} strategy config error`);
+    console.log("AllowedStrategy verified ✓");
+
+    //check crossChainManager
+    const crossChainManager = await cvContract.crossChainManager();
+    assert.equal(crossChainManager.toLowerCase(), deployment[env].crossChainManager.toLowerCase(), `${cv} crossChainManager config error`);
+    console.log("CrossChainManager verified ✓");
+
+    //check ledgerEid
+    const ledgerEid = await cvContract.ledgerEid();
+    if (env == 'dev' || env == 'qa' || env == 'staging') {
+        assert.equal(ledgerEid.toString(), '40200', `${cv} ledgerEid config error`);
+    } else {
+        assert.equal(ledgerEid.toString(), '30213', `${cv} ledgerEid config error`);
+    }
+    console.log("LedgerEid verified ✓");
+
+    //check allowed sp - calculate spId using cv address, sp address and broker
+    const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+    assert.equal(await cvContract.isAllowedStrategyProvider(spId), true, `${cv} isAllowedStrategyProvider config error`);
+    console.log("AllowedStrategyProvider verified ✓");
+
+    //check allowed token
+    assert.equal(await cvContract.isAllowedToken(config[currentNetwork].USDC), true, `${cv} token config error`);
+    console.log("AllowedToken verified ✓");
+
+    //check isAllowedBroker
+    assert.equal(await cvContract.isAllowedBroker(cvDeployment[cv].broker), true, `${cv} broker config error`);
+    console.log("AllowedBroker verified ✓");
+
+    //check minDepositForLP
+    assert.equal((await cvContract.minDepositForLp()).toString(), cvDeployment[cv].minDepositForLp.toString(), `${cv} minDepositForLP config error`);
+    console.log("MinDepositForLp verified ✓");
+
+    //check minDepositForSP
+    assert.equal((await cvContract.minDepositForSp()).toString(), cvDeployment[cv].minDepositForSp.toString(), `${cv} minDepositForSP config error`);
+    console.log("MinDepositForSp verified ✓");
+
+    //check vaultId matches calculated value
+    const calculatedVaultId = getVaultId(cvDeployment[cv].address, cvDeployment[cv].broker);
+    assert.equal(cvDeployment[cv].vaultId, calculatedVaultId, `${cv} vaultId mismatch in community.json`);
+    console.log("VaultId verified ✓");
+
+    //check spId matches calculated value
+    const calculatedSpId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+    assert.equal(cvDeployment[cv].spId, calculatedSpId, `${cv} spId mismatch in community.json`);
+    console.log("SpId verified ✓");
 }
 
 async function checkVaultAdapter(env) {
