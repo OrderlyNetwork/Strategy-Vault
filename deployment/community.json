@@ -35,9 +35,15 @@
     "minDepositForSp": 0
   },
   "staging": {
-    "sp": "",
+    "sp": "0xbddfd22eF902A4898147A1ca5B985D03C62a8C41",
     "nonce": 0,
-    "address": ""
+    "vaultId": "0x8ba6ac87ed40c14d4d5952a8afb772e0d53d3d8e7898c6fc7b87579e1fda686d",
+    "address": "0x3EFC5DD58feBB65B20a3E0C62262c20bAFA2Fb13",
+    "feeRate": 10,
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "spId": "0x0cd0bb4301741da45879be87758add22b9d052f7dde724710d81e3a409d2823d",
+    "minDepositForLp": 10000000,
+    "minDepositForSp": 10000000
   },
   "mainnet": {
     "sp": "",

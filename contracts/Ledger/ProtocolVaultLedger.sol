@@ -239,26 +239,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] memory requestIds,
-        bytes calldata signature
-    ) external onlyOperator {
-        _delegateCall(
-            abi.encodeWithSelector(
-                bytes4(keccak256("updateUnclaimed(uint256,uint256,bytes32,bytes32[],bytes)")),
-                chainId,
-                periodId,
-                vaultId,
-                requestIds,
-                signature
-            ),
-            _getLedgerImplStorage().core
-        );
-    }
-
-    function updateUnclaimed(
-        uint256 chainId,
-        uint256 periodId,
         uint256 ccFee,
         bytes32 vaultId,
         bytes32[] memory requestIds,
@@ -266,13 +246,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     ) external {
         _delegateCall(
             abi.encodeWithSelector(
-                bytes4(keccak256("updateUnclaimed(uint256,uint256,uint256,bytes32,bytes32[],bytes)")),
-                chainId,
-                periodId,
-                ccFee,
-                vaultId,
-                requestIds,
-                signature
+                ILedgerCoreImpl.updateUnclaimed.selector, chainId, periodId, ccFee, vaultId, requestIds, signature
             ),
             _getLedgerImplStorage().core
         );
@@ -297,10 +271,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @notice Set fee rate for strategy providers
     /// @param strategyProviderIds Array of strategy provider IDs
     /// @param feeRates Array of fee rates
-    function setFeeRate(bytes32[] calldata strategyProviderIds, uint256[] calldata feeRates)
-        external
-        onlyOwner
-    {
+    function setFeeRate(bytes32[] calldata strategyProviderIds, uint256[] calldata feeRates) external onlyOwner {
         if (strategyProviderIds.length != feeRates.length) {
             revert InvalidInput();
         }
@@ -499,7 +470,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     function getAccountToken(bytes32 vaultId, bytes32 accountId) external view virtual returns (AccountToken memory) {
         return _getAccountToken(vaultId, accountId, USDC_HASH);
     }
-    
+
     function getImpl() external view returns (address core, address extension) {
         ImplStorage storage implStorage = _getLedgerImplStorage();
         return (implStorage.core, implStorage.extension);

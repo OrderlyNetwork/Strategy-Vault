@@ -130,12 +130,4 @@ interface ILedgerCoreImpl {
         bytes32[] memory requestIds,
         bytes calldata signature
     ) external;
-
-    function updateUnclaimed(
-        uint256 chainId,
-        uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] memory requestIds,
-        bytes calldata signature
-    ) external;
 }
