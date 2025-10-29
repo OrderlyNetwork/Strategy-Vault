@@ -214,7 +214,7 @@ contract TestProtocolVault is Base {
         requestIds[0] = keccak256(abi.encode(0));
         requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, vaultId, requestIds);
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
 
@@ -223,7 +223,7 @@ contract TestProtocolVault is Base {
         svLedger.setLpClaimInfo(vaultId, requestIds[1], userB_id, amount);
 
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
@@ -257,12 +257,12 @@ contract TestProtocolVault is Base {
         //update user claim info
         uint256 periodId;
         uint256 amount = 100e6;
-
+        uint256 ccFee = 100;
         bytes32[] memory requestIds = new bytes32[](2);
         requestIds[0] = keccak256(abi.encode(0));
         requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, ccFee, vaultId, requestIds);
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
 
@@ -271,7 +271,7 @@ contract TestProtocolVault is Base {
         svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, amount);
         svLedger.setSpClaimInfo(vaultId, requestIds[1], spId, amount);
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, ccFee, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
@@ -288,7 +288,7 @@ contract TestProtocolVault is Base {
 
         //SP claim
         uint256 ccFeePerUser = protocolVault.crossChainFee(spId);
-
+        assertEq(ccFeePerUser, ccFee);
         mockToken.mint(address(protocolVault), amount);
 
         ClaimParams memory claimParams =

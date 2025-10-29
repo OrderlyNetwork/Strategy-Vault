@@ -408,19 +408,6 @@ contract Base is TestHelperOz5 {
         return signature;
     }
 
-    function _getUpdateUnclaimedSignature(
-        uint32 chainId,
-        uint256 _periodId,
-        bytes32 _vaultId,
-        bytes32[] memory requestIds
-    ) internal view returns (bytes memory) {
-        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _vaultId, requestIds));
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
-        bytes memory signature = abi.encodePacked(r, s, v);
-        return signature;
-    }
-
     function _getStrategyProviderId(address vault, address strategyProvider, bytes32 brokerHash)
         internal
         pure

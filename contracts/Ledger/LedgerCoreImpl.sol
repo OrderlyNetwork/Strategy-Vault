@@ -380,66 +380,6 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] memory requestIds,
-        bytes calldata signature
-    ) external {
-        Signature.verifyUpdateUnclaimed(chainId, periodId, vaultId, requestIds, signature, engine);
-
-        // Length that unhandled requestId
-        uint256 len;
-        for (uint256 i = 0; i < requestIds.length; i++) {
-            if (_isValidRequestId(vaultId, requestIds[i])) {
-                len++;
-            }
-        }
-
-        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](len);
-
-        // Cross chain message
-        if (len != 0) {
-            // New index to avoid out of range
-            uint256 index;
-
-            // Handle requestid claim
-            for (uint256 i = 0; i < requestIds.length; i++) {
-                // Ignore if handled
-                if (_isValidRequestId(vaultId, requestIds[i])) {
-                    VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
-                    userClaimInfos[index] = vaultState.userClaimInfo[requestIds[i]];
-                    vaultState.isUserClaimHandled[requestIds[i]] = true;
-                    index++;
-                    delete vaultState.userClaimInfo[requestIds[i]];
-                }
-            }
-
-            uint256 ccFee;
-            address vault = idToVault[vaultId];
-            bytes32 broker = vaultBroker[vaultId];
-
-            // Cross chain message
-            StrategyVaultCCMessage memory message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
-            );
-            (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
-
-            // Set gas
-            message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM,
-                chainId,
-                abi.encode(periodId, ccFee / index, vault, broker, userClaimInfos)
-            );
-
-            // Cross-chain
-            IVaultCrossChainManager(crossChainManager).sendMessage(message);
-        }
-
-        emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
-    }
-
-    function updateUnclaimed(
-        uint256 chainId,
-        uint256 periodId,
         uint256 ccFee,
         bytes32 vaultId,
         bytes32[] memory requestIds,
