@@ -270,7 +270,7 @@ contract CommunityVaultTest is Base {
         requestIds[0] = keccak256(abi.encode(0));
         requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, cvVaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, cvVaultId, requestIds);
 
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
@@ -279,7 +279,7 @@ contract CommunityVaultTest is Base {
         svLedger.setLpClaimInfo(cvVaultId, requestIds[1], userB_id, asset);
 
         vm.startPrank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId, cvVaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, cvVaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 

@@ -118,18 +118,6 @@ library Signature {
         verifySignature(signer, messageHash, signature);
     }
 
-    function verifyUpdateUnclaimed(
-        uint256 chainId,
-        uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] memory requestIds,
-        bytes memory signature,
-        address signer
-    ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(chainId, periodId, vaultId, requestIds));
-        verifySignature(signer, messageHash, signature);
-    }
-
     function verifyRemoveInvalidFrozenShares(
         bytes32 vaultId,
         UpdateLedgerParams[] calldata params,
