@@ -1,6 +1,7 @@
 const { ethers } = require("hardhat")
 const hre = require("hardhat")
 const deployment = require('../../../deployment/deployment.json');
+const cvDeployment = require('../../../deployment/community.json');
 const { verifyContract } = require("../../utils/verifyContract");
 
 async function main() {
@@ -16,11 +17,11 @@ async function main() {
 
     //upgrade
     //!need to change with your env
-    const env = "qa";
+    const cv = "woo"
 
     const protocolVault = await ethers.getContractAt(
         "ProtocolVault",
-        deployment[env].protocolVault
+        cvDeployment[cv].address
     )
 
     const impl = implAddr;

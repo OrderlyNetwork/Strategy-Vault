@@ -1,5 +1,5 @@
 const { task } = require('hardhat/config');
-const deployment = require('../deployment.json');
+const deployment = require('../deployment/deployment.json');
 
 task("verify-adapter", "Verify VaultAdapter contracts on block explorer")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -48,7 +48,7 @@ task("verify-protocolvault", "Verify ProtocolVault contracts on block explorer")
         
         // Get addresses from deployment.json
         const proxyAddr = deployment[taskArgs.env].protocolVault;
-        
+
         if (!proxyAddr) {
             throw new Error(`Missing contract addresses for ${taskArgs.env} environment. Please deploy first.`);
         }

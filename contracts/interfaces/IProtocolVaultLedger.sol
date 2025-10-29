@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {UpdateStrategyFundAssetsParams, UpdateLedgerParams} from "../lib/types/LedgerStruct.sol";
+import {
+    UpdateStrategyFundAssetsParams,
+    UpdateLedgerParams,
+    UpdateStrategyFundAssetsRes,
+    OperationRes,
+    AllocateFundRes,
+    StrategyFundState,
+    AccountState,
+    ClaimInfo,
+    DexRequest
+} from "../lib/types/LedgerStruct.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
@@ -30,6 +40,32 @@ interface IProtocolVaultLedger {
     event CoreSet(address core);
     event ExtensionSet(address extension);
     event ProtocolVaultSet(address protocolVault);
+    event VaultSet(bytes32 vaultId, address vault);
+
+    //Core Event
+    event StrategyFundAssetsUpdate(
+        uint256 periodId,
+        bytes32 vaultId,
+        uint256 mainAssetsAfterFee,
+        UpdateStrategyFundAssetsRes[] updateStrategyFundAssetsRes
+    );
+    event LPAndStrategyFundUpdated(uint256 periodId, bytes32 vaultId, OperationRes[] operationRes);
+    event FundAllocated(
+        uint256 periodId, bytes32 vaultId, bytes32[] strategyProviderIds, AllocateFundRes[] allocateFundRes
+    );
+    event MainAndStrategyFundsSettled(
+        uint256 periodId, bytes32 vaultId, uint256 mainShares, StrategyFundState[] strategyFundStates
+    );
+    event AccountSettled(uint256 periodId, bytes32 vaultId, AccountState[] accountStates);
+    event PeriodIdUpdated(uint256 latestPeriodId, bytes32 vaultId);
+    event AssetsDistributed(uint256 periodId, bytes32 vaultId);
+    event UnclaimedAssetsUpdated(uint256 periodId, bytes32 vaultId, ClaimInfo[] userClaimInfos);
+    //Extension Event
+    event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
+    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce, bytes32 vaultId);
+    event DexRequestHandled(DexRequest request);
+    event DexWithdrawNotEnough(uint256 requestId);
+    event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
 
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external;

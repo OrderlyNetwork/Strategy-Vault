@@ -1,6 +1,7 @@
 const { ethers, network } = require("hardhat");
 const { checkNetworkEnvRestrictions } = require("../../../tasks/utils");
-const deployment = require('../../../deployment.json');
+const deployment = require('../../../deployment/deployment.json');
+const { verifyContractWithRetry } = require("../../utils/verifyContract");
 
 async function main() {
 
@@ -12,9 +13,17 @@ async function main() {
     const extension = LedgerExtensionContract.target;
     console.log("LedgerExtensionContract Impl deployed to:", extension);
 
+    // Verify LedgerExtension contract
+    await verifyContractWithRetry(
+        extension,
+        [], // No constructor arguments
+        "LedgerExtension"
+    );
+
+    console.log("✅ Contract verification completed!");
     //config
     //!need to change with your env
-    const env = "dev";
+    const env = "qa";
     const currentNetwork = hre.network.name;
 
     checkNetworkEnvRestrictions(currentNetwork, env);

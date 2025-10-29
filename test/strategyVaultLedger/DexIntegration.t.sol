@@ -33,7 +33,6 @@ contract DexIntegrationTest is Base {
     // Add missing constants and variables
     uint256 constant assetDecimal = 1e6;
     uint256 constant shareDecimal = 1e6;
-    bytes32 vaultId;
 
     // User addresses and private keys for testing
     uint256 userAPrivateKey;
@@ -164,7 +163,7 @@ contract DexIntegrationTest is Base {
         // First, set up account with some pending shares
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = lpId;
-        svLedger.setAccountPendingShares(accountIds, initialShares);
+        svLedger.setAccountPendingShares(vaultId, accountIds, initialShares);
 
         // Create DexRequestData using helper function
         DexRequestData memory dexRequestData = _createDexRequestData(PayloadType.LP_WITHDRAW, requestId, lp, amount);
@@ -191,7 +190,7 @@ contract DexIntegrationTest is Base {
         // Set up account with insufficient pending shares
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = lpId;
-        svLedger.setAccountPendingShares(accountIds, availableShares);
+        svLedger.setAccountPendingShares(vaultId, accountIds, availableShares);
 
         // Create DexRequestData using helper function
         DexRequestData memory dexRequestData =
@@ -243,7 +242,7 @@ contract DexIntegrationTest is Base {
             // Set sufficient pending shares for userB for withdrawal
             bytes32[] memory accountIds = new bytes32[](1);
             accountIds[0] = userB_id;
-            svLedger.setAccountPendingShares(accountIds, initialShares);
+            svLedger.setAccountPendingShares(vaultId, accountIds, initialShares);
         }
         // Create two DexRequests
         DexRequest[] memory dexRequests = new DexRequest[](2);
@@ -301,16 +300,14 @@ contract DexIntegrationTest is Base {
 
         // Verify results
         // UserA should have deposit assets
-        (, uint256 userAUnAllocatedAssets,,) = svLedger.accountTokenInfo(userA_id, USDC_HASH);
-        assertEq(userAUnAllocatedAssets, depositAmount);
+        _assertLPDepositResult(userA_id, 1, depositAmount);
 
         // UserB should have frozen shares
-        (,, uint256 userBFrozenShares,) = svLedger.accountTokenInfo(userB_id, USDC_HASH);
-        assertEq(userBFrozenShares, withdrawAmount);
+        _assertLPWithdrawResult(userB_id, 2, withdrawAmount, initialShares);
 
         // Both requests should be marked as handled
-        assertTrue(svLedger.isDexRequestHandled(1));
-        assertTrue(svLedger.isDexRequestHandled(2));
+        _assertRequestHandled(1);
+        _assertRequestHandled(2);
     }
 
     /// @notice Test handleDexRequests - both requests fail due to insufficient shares
@@ -323,7 +320,7 @@ contract DexIntegrationTest is Base {
         bytes32[] memory accountIds = new bytes32[](2);
         accountIds[0] = userA_id;
         accountIds[1] = userB_id;
-        svLedger.setAccountPendingShares(accountIds, insufficientShares);
+        svLedger.setAccountPendingShares(vaultId, accountIds, insufficientShares);
 
         // Create two DexRequests, both LP withdrawals
         DexRequest[] memory dexRequests = new DexRequest[](2);
@@ -380,14 +377,9 @@ contract DexIntegrationTest is Base {
         svLedger.handleDexRequests(dexRequests, signature);
 
         // Verify results - both should fail, shares unchanged
-        (,, uint256 userAFrozenShares,) = svLedger.accountTokenInfo(userA_id, USDC_HASH);
-        (,, uint256 userBFrozenShares,) = svLedger.accountTokenInfo(userB_id, USDC_HASH);
-        assertEq(userAFrozenShares, 0); // No frozen shares because withdrawal failed
-        assertEq(userBFrozenShares, 0); // No frozen shares because withdrawal failed
-
-        // Both requests should be marked as handled
-        assertTrue(svLedger.isDexRequestHandled(3));
-        assertTrue(svLedger.isDexRequestHandled(4));
+        // When withdrawal fails, pendingShares should remain unchanged (200000000), frozenShares should remain 0
+        _assertLPWithdrawResult(userA_id, 3, 0, insufficientShares);
+        _assertLPWithdrawResult(userB_id, 4, 0, insufficientShares);
     }
 
     /// @notice Test handleDexRequests - one succeeds, one fails
@@ -399,7 +391,7 @@ contract DexIntegrationTest is Base {
             // Set insufficient shares for userB for withdrawal failure
             bytes32[] memory accountIds = new bytes32[](1);
             accountIds[0] = userB_id;
-            svLedger.setAccountPendingShares(accountIds, insufficientShares);
+            svLedger.setAccountPendingShares(vaultId, accountIds, insufficientShares);
         }
         // Create two DexRequests
         DexRequest[] memory dexRequests = new DexRequest[](2);
@@ -457,16 +449,14 @@ contract DexIntegrationTest is Base {
 
         // Verify results
         // UserA deposit should succeed
-        (, uint256 userAUnAllocatedAssets,,) = svLedger.accountTokenInfo(userA_id, USDC_HASH);
-        assertEq(userAUnAllocatedAssets, depositAmount);
+        _assertLPDepositResult(userA_id, 5, depositAmount);
 
-        // UserB withdrawal should fail, no frozen shares
-        (,, uint256 userBFrozenShares,) = svLedger.accountTokenInfo(userB_id, USDC_HASH);
-        assertEq(userBFrozenShares, 0);
+        // UserB withdrawal should fail, pendingShares should remain unchanged
+        _assertLPWithdrawResult(userB_id, 6, 0, insufficientShares);
 
         // Both requests should be marked as handled
-        assertTrue(svLedger.isDexRequestHandled(5));
-        assertTrue(svLedger.isDexRequestHandled(6));
+        _assertRequestHandled(5);
+        _assertRequestHandled(6);
     }
 
     /// @notice Generate signature components (r, s, v) for user signature
@@ -609,13 +599,11 @@ contract DexIntegrationTest is Base {
         uint256 expectedFrozenShares,
         uint256 expectedPendingShares
     ) internal view {
-        (
-            , // shares
-            uint256 unAllocatedAssets,
-            uint256 frozenShares,
-            uint256 pendingShares
-        ) = svLedger.accountTokenInfo(accountId, USDC_HASH);
+        AccountToken memory accountToken = svLedger.getAccountToken(vaultId, accountId);
 
+        uint256 unAllocatedAssets = accountToken.unAllocatedAssets;
+        uint256 frozenShares = accountToken.frozenShares;
+        uint256 pendingShares = accountToken.pendingShares;
         assertEq(unAllocatedAssets, expectedUnAllocatedAssets, "Unexpected unAllocatedAssets");
         assertEq(frozenShares, expectedFrozenShares, "Unexpected frozenShares");
         assertEq(pendingShares, expectedPendingShares, "Unexpected pendingShares");
@@ -629,18 +617,10 @@ contract DexIntegrationTest is Base {
         internal
         view
     {
-        (
-            , // pendingState
-            , // performanceFee
-            , // fundAssetsAfterFee
-            uint256 unAllocatedAssets,
-            uint256 frozenShares,
-            , // mainShares
-            , // strategyProviderShares
-            , // totalAssets
-            , // totalShares
-                // hwm
-        ) = svLedger.strategyFundTokenInfo(spId, USDC_HASH);
+        StrategyFundToken memory strategyFundToken = svLedger.getStrategyFund(vaultId, spId);
+
+        uint256 unAllocatedAssets = strategyFundToken.unAllocatedAssets;
+        uint256 frozenShares = strategyFundToken.frozenShares;
 
         assertEq(unAllocatedAssets, expectedUnAllocatedAssets, "Unexpected SP unAllocatedAssets");
         assertEq(frozenShares, expectedFrozenShares, "Unexpected SP frozenShares");
@@ -649,7 +629,7 @@ contract DexIntegrationTest is Base {
     /// @notice Check if request is handled
     /// @param requestId Request ID
     function _assertRequestHandled(uint256 requestId) internal view {
-        assertTrue(svLedger.isDexRequestHandled(requestId), "Request should be marked as handled");
+        assertTrue(svLedger.isDexRequestHandledByVault(vaultId, requestId), "Request should be marked as handled");
     }
 
     /// @notice Combine check for LP deposit result
@@ -747,7 +727,7 @@ contract DexIntegrationTest is Base {
         // Set up SP with pending strategy provider shares
         bytes32[] memory spIds = new bytes32[](1);
         spIds[0] = spId;
-        svLedger.setSpPendingShares(spIds, initialShares);
+        svLedger.setSpPendingShares(vaultId, spIds, initialShares);
 
         DexRequestData memory dexRequestData =
             _createDexRequestData(PayloadType.SP_WITHDRAW, requestId, sp, withdrawAmount);
@@ -771,7 +751,7 @@ contract DexIntegrationTest is Base {
         // Set up SP with insufficient shares
         bytes32[] memory spIds = new bytes32[](1);
         spIds[0] = spId;
-        svLedger.setSpPendingShares(spIds, availableShares);
+        svLedger.setSpPendingShares(vaultId, spIds, availableShares);
 
         DexRequestData memory dexRequestData =
             _createDexRequestData(PayloadType.SP_WITHDRAW, requestId, sp, withdrawAmount);
@@ -866,7 +846,7 @@ contract DexIntegrationTest is Base {
         // Set insufficient shares for withdrawal
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = lpId;
-        svLedger.setAccountPendingShares(accountIds, insufficientShares);
+        svLedger.setAccountPendingShares(vaultId, accountIds, insufficientShares);
 
         DexRequestData memory dexRequestData =
             _createDexRequestData(PayloadType.LP_WITHDRAW, requestId, lp, withdrawAmount);
@@ -890,7 +870,7 @@ contract DexIntegrationTest is Base {
         // Set up SP with shares for withdrawal
         bytes32[] memory spIds = new bytes32[](1);
         spIds[0] = spId;
-        svLedger.setSpPendingShares(spIds, initialSPShares);
+        svLedger.setSpPendingShares(vaultId, spIds, initialSPShares);
 
         // Create mixed requests: LP deposit + SP withdraw
         DexRequest[] memory dexRequests = new DexRequest[](2);
@@ -938,8 +918,8 @@ contract DexIntegrationTest is Base {
         }
 
         // Verify total accumulated assets
-        (, uint256 totalUnAllocatedAssets,,) = svLedger.accountTokenInfo(lpId, USDC_HASH);
-        assertEq(totalUnAllocatedAssets, amount * batchSize);
+        AccountToken memory accountToken = svLedger.getAccountToken(vaultId, lpId);
+        assertEq(accountToken.unAllocatedAssets, amount * batchSize);
     }
 
     /// @notice State consistency after failed operations
@@ -951,7 +931,7 @@ contract DexIntegrationTest is Base {
         // Set up account with limited shares
         bytes32[] memory accountIds = new bytes32[](1);
         accountIds[0] = lpId;
-        svLedger.setAccountPendingShares(accountIds, availableShares);
+        svLedger.setAccountPendingShares(vaultId, accountIds, availableShares);
 
         // Create requests: one success, one fail
         DexRequest[] memory dexRequests = new DexRequest[](2);
@@ -970,14 +950,11 @@ contract DexIntegrationTest is Base {
         svLedger.handleDexRequests(dexRequests, engineSignature);
 
         // Verify state consistency: success operation processed, fail operation handled but no state change
-        (, uint256 unAllocatedAssets, uint256 frozenShares, uint256 pendingShares) =
-            svLedger.accountTokenInfo(lpId, USDC_HASH);
-
-        assertEq(unAllocatedAssets, successAmount, "Successful deposit should be recorded");
-        assertEq(frozenShares, 0, "Failed withdrawal should not freeze shares");
-        assertEq(pendingShares, availableShares, "Pending shares should remain unchanged");
-
-        // Both requests should be marked as handled
+        // After both operations, account should have:
+        // - unAllocatedAssets: successAmount (from successful deposit)
+        // - frozenShares: 0 (withdrawal failed)
+        // - pendingShares: availableShares (unchanged from failed withdrawal)
+        _assertLPAccountTokenInfo(lpId, successAmount, 0, availableShares);
         _assertRequestHandled(300);
         _assertRequestHandled(301);
     }
@@ -988,7 +965,9 @@ contract DexIntegrationTest is Base {
         uint256 requestId = 400;
 
         // Initially request should not be handled
-        assertFalse(svLedger.isDexRequestHandled(requestId));
+        assertFalse(
+            svLedger.isDexRequestHandledByVault(vaultId, requestId), "Request should not be marked as handled initially"
+        );
 
         DexRequestData memory dexRequestData = _createDexRequestData(PayloadType.LP_DEPOSIT, requestId, lp, amount);
         DexRequest[] memory dexRequests = _createDexRequestArray(lpId, lp, lpPrivateKey, dexRequestData);
@@ -998,7 +977,7 @@ contract DexIntegrationTest is Base {
         svLedger.handleDexRequests(dexRequests, engineSignature);
 
         // After handling, request should be marked as handled
-        assertTrue(svLedger.isDexRequestHandled(requestId));
+        assertTrue(svLedger.isDexRequestHandledByVault(vaultId, requestId));
     }
 
     /// @notice Test SOL chain type with invalid signature - should revert with InvalidUser error

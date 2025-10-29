@@ -25,7 +25,7 @@ import {IProtocolVaultLedger} from "../interfaces/IProtocolVaultLedger.sol";
 import {ILedgerCoreImpl} from "../interfaces/ILedgerCoreImpl.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
-import {FEE_BASE, USDC_DECIMAL} from "../lib/types/Constants.sol";
+import {FEE_BASE, USDC_DECIMAL, USDC_HASH} from "../lib/types/Constants.sol";
 
 /// @title Ledger Core Implementation
 /// @notice Contains core business flow methods for the protocol vault ledger
@@ -44,71 +44,22 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         UpdateStrategyFundAssetsParams[] calldata strategyFundAssets,
         bytes calldata signature
     ) external {
-        _check(periodId);
+        _check(periodId, vaultId);
         //only can be called once in a period
-        if (isUpdateStrategyFundAssets[periodId]) {
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        if (vaultState.isUpdateStrategyFundAssets[periodId]) {
             revert AlreadyCalled();
         }
         Signature.verifyUpdateFundAssets(periodId, vaultId, strategyFundAssets, signature, engine);
-
         uint256 assetsAfterFee;
-        //for event
-        UpdateStrategyFundAssetsRes[] memory updateStrategyFundAssetsRes =
-            new UpdateStrategyFundAssetsRes[](strategyFundAssets.length);
-
         for (uint256 i = 0; i < strategyFundAssets.length; i++) {
-            bytes32 spId = strategyFundAssets[i].strategyProviderId;
-            //gas optimization
-            StrategyFundToken storage strategyFundToken = _getStrategyFundToken(spId);
-            PendingState storage pendingState = strategyFundToken.pendingState;
-
-            //reset performance fee
-            strategyFundToken.performanceFee = 0;
-
-            uint256 fundAssets = strategyFundAssets[i].totalAssets;
-            uint256 fundShares = strategyFundToken.totalShares;
-
-            //Performance Fee
-            uint256 performanceFee;
-            uint256 feeShares;
-            if (fundShares > 0) {
-                //avoid stack too deep
-                {
-                    uint256 assetPerShare = fundAssets * 10 ** USDC_DECIMAL / fundShares;
-
-                    if (assetPerShare > strategyFundToken.hwm) {
-                        performanceFee = (assetPerShare - strategyFundToken.hwm) * fundShares * feeRateOfFund[spId]
-                            / FEE_BASE / 10 ** USDC_DECIMAL;
-                        feeShares = LedgerUtils._convertToShares(
-                            performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor
-                        );
-
-                        strategyFundToken.performanceFee = performanceFee;
-                    }
-                }
-                assetsAfterFee +=
-                    strategyFundToken.mainShares * (fundAssets - performanceFee) / strategyFundToken.totalShares;
-            }
-
-            //Update pending state
-            strategyFundToken.pendingState.pendingTotalAssets = fundAssets;
-            strategyFundToken.fundAssetsAfterFee = fundAssets - performanceFee;
-            pendingState.pendingStrategyProviderShares += feeShares;
-            pendingState.pendingTotalShares = fundShares + feeShares;
-
-            //Add to event
-            updateStrategyFundAssetsRes[i] = UpdateStrategyFundAssetsRes({
-                strategyProviderId: strategyFundAssets[i].strategyProviderId,
-                fundAssetsAfterFee: fundAssets - performanceFee,
-                strategyProviderShares: pendingState.pendingStrategyProviderShares,
-                totalShares: fundShares + feeShares
-            });
+            assetsAfterFee += _processSingleFund(vaultState, strategyFundAssets[i]);
         }
 
-        mainAssetsAfterFee = assetsAfterFee;
-        isUpdateStrategyFundAssets[periodId] = true;
+        vaultState.mainAssetsAfterFee = assetsAfterFee;
+        vaultState.isUpdateStrategyFundAssets[periodId] = true;
 
-        emit StrategyFundAssetsUpdate(periodId, vaultId, mainAssetsAfterFee, updateStrategyFundAssetsRes);
+        emit StrategyFundAssetsUpdate(periodId, vaultId, assetsAfterFee, _buildEvent(vaultId, strategyFundAssets));
     }
 
     /// @notice Operator update LP and strategy fund info
@@ -122,17 +73,18 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         UpdateLedgerParams[] calldata updateUserLedgerParams,
         bytes calldata signature
     ) external {
-        _check(periodId);
+        _check(periodId, vaultId);
         Signature.verifyUpdateLPAndStrategyFund(periodId, vaultId, updateUserLedgerParams, signature, engine);
 
         OperationRes[] memory operationRes = new OperationRes[](updateUserLedgerParams.length);
 
         //handle lp operation
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
         for (uint256 i = 0; i < updateUserLedgerParams.length; i++) {
             bytes32 requestId = updateUserLedgerParams[i].operation.requestId;
             uint256 amount;
 
-            if (!isOpHandled[requestId]) {
+            if (!vaultState.isOpHandled[requestId]) {
                 Operation memory operation = updateUserLedgerParams[i].operation;
                 bytes32 id = operation.id;
                 uint256 operationAmount = operation.amount;
@@ -140,23 +92,23 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
 
                 if (operationType == OperationType.LP_DEPOSIT) {
                     //handle LP deposit
-                    amount = _handleLpDeposit(id, operationAmount);
+                    amount = _handleLpDeposit(vaultId, id, operationAmount);
                 } else if (operationType == OperationType.LP_WITHDRAW) {
                     //handle LP withdraw
-                    amount = _handleLpWithdraw(requestId, id, operationAmount);
+                    amount = _handleLpWithdraw(vaultId, requestId, id, operationAmount);
                 } else if (operationType == OperationType.SP_DEPOSIT) {
                     //handle SP deposit
-                    amount = _handleSPDeposit(id, operationAmount);
+                    amount = _handleSPDeposit(vaultId, id, operationAmount);
                 } else if (operationType == OperationType.SP_WITHDRAW) {
                     //handle SP withdraw
-                    amount = _handleSpWithdraw(requestId, id, operationAmount);
+                    amount = _handleSpWithdraw(vaultId, requestId, id, operationAmount);
                 } else {
                     revert InvalidType();
                 }
 
                 operationRes[i] =
                     OperationRes({id: operation.id, requestId: requestId, amount: amount, operationType: operationType});
-                isOpHandled[requestId] = true;
+                vaultState.isOpHandled[requestId] = true;
             }
         }
 
@@ -175,9 +127,10 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         bytes32[] calldata strategyProviderIds,
         bytes calldata signature
     ) external {
-        _check(periodId);
+        _check(periodId, vaultId);
         //only can be called once in a period
-        if (isAllocatedToFunds[periodId]) {
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        if (vaultState.isAllocatedToFunds[periodId]) {
             revert AlreadyCalled();
         }
         Signature.verifyAllocateToFunds(periodId, vaultId, strategyProviderIds, signature, engine);
@@ -189,11 +142,11 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         AllocateFundRes[] memory allocateFundRes = new AllocateFundRes[](strategyProviderIds.length);
 
         //gas saving
-        uint256 depositAssets = pendingLpDepositAssets;
-        uint256 withdrawAssets = pendingLpWithdrawAssets;
+        uint256 depositAssets = vaultState.pendingLpDepositAssets;
+        uint256 withdrawAssets = vaultState.pendingLpWithdrawAssets;
 
         if (strategyProviderIds.length == 1) {
-            strategyFundToken = _getStrategyFundToken(strategyProviderIds[0]);
+            strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderIds[0], USDC_HASH);
 
             //deposit
             uint256 distributeDepositShares = LedgerUtils._convertToShares(
@@ -221,7 +174,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             });
         } else if (strategyProviderIds.length > 1) {
             for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
+                strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderIds[i], USDC_HASH);
                 allocateFundRes[i].strategyProviderId = strategyProviderIds[i];
                 totalMainAssetsInFund += LedgerUtils._convertToAssets(
                     strategyFundToken.mainShares,
@@ -233,7 +186,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             //allocate deposit
             if (depositAssets > 0) {
                 for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                    strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
+                    strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderIds[i], USDC_HASH);
 
                     uint256 mainAssetsInFund = LedgerUtils._convertToAssets(
                         strategyFundToken.mainShares,
@@ -262,7 +215,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             //allocate withdraw
             if (withdrawAssets > 0) {
                 for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-                    strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
+                    strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderIds[i], USDC_HASH);
 
                     uint256 mainAssetsInFund = LedgerUtils._convertToAssets(
                         strategyFundToken.mainShares,
@@ -288,7 +241,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             }
         }
 
-        isAllocatedToFunds[periodId] = true;
+        vaultState.isAllocatedToFunds[periodId] = true;
         emit FundAllocated(periodId, vaultId, strategyProviderIds, allocateFundRes);
     }
 
@@ -303,18 +256,20 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         bytes32[] calldata strategyProviderIds,
         bytes calldata signature
     ) external {
-        _check(periodId);
+        _check(periodId, vaultId);
         Signature.verifySettleMainAndStrategyFunds(periodId, vaultId, strategyProviderIds, signature, engine);
         //settle MAIN
-        mainShares = pendingMainShares;
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        vaultState.mainShares = vaultState.pendingMainShares;
         StrategyFundState[] memory strategyFundStates = new StrategyFundState[](strategyProviderIds.length);
 
         //settle strategy fund
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderIds[i]);
+            StrategyFundToken storage strategyFundToken =
+                _getStrategyFundToken(vaultId, strategyProviderIds[i], USDC_HASH);
 
             //hwm must be updated firstly
-            strategyFundToken.hwm = _calculateHWM(strategyProviderIds[i]);
+            strategyFundToken.hwm = _calculateHWM(vaultId, strategyProviderIds[i]);
 
             //update pending state to actual state
             PendingState storage pendingState = strategyFundToken.pendingState;
@@ -334,7 +289,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             });
         }
 
-        emit MainAndStrategyFundsSettled(periodId, vaultId, mainShares, strategyFundStates);
+        emit MainAndStrategyFundsSettled(periodId, vaultId, vaultState.mainShares, strategyFundStates);
     }
 
     /// @notice Operator settle all LP infos after checking all operations
@@ -345,12 +300,12 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
     function settleAccounts(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds, bytes calldata signature)
         external
     {
-        _check(periodId);
+        _check(periodId, vaultId);
         Signature.verifySettleAccount(periodId, vaultId, accountIds, signature, engine);
 
         AccountState[] memory accountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
-            AccountToken storage accountToken = _getAccountToken(accountIds[i]);
+            AccountToken storage accountToken = _getAccountToken(vaultId, accountIds[i], USDC_HASH);
             accountToken.shares = accountToken.pendingShares;
 
             //for event
@@ -365,15 +320,16 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
     /// @param vaultId vault id
     /// @param signature signature  of BE
     function updatePeriodId(uint256 periodId, bytes32 vaultId, bytes calldata signature) external {
-        if (periodId != latestPeriodId) {
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        if (periodId != vaultState.latestPeriodId) {
             revert InvalidPeriodId();
         }
         Signature.verifyUpdatePeriodId(periodId, vaultId, signature, engine);
 
-        pendingLpDepositAssets = 0;
-        pendingLpWithdrawAssets = 0;
+        vaultState.pendingLpDepositAssets = 0;
+        vaultState.pendingLpWithdrawAssets = 0;
 
-        latestPeriodId++;
+        vaultState.latestPeriodId++;
 
         emit PeriodIdUpdated(periodId, vaultId);
     }
@@ -390,14 +346,17 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         bytes calldata signature
     ) external {
         // Only can be called once in a period
-        if (isAssetDistributed[periodId]) {
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        if (vaultState.isAssetDistributed[periodId]) {
             revert AlreadyCalled();
         }
 
         Signature.verifyAssetsDistribution(periodId, vaultId, assetsDistributions, signature, engine);
+        address vault = idToVault[vaultId];
+        bytes32 broker = vaultBroker[vaultId];
 
         // Change state
-        isAssetDistributed[periodId] = true;
+        vaultState.isAssetDistributed[periodId] = true;
 
         for (uint256 i = 0; i < assetsDistributions.length; i++) {
             // Construct StrategyExecution
@@ -408,7 +367,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             StrategyVaultCCMessage memory message = _createCCMessage(
                 PayloadType.ASSETS_DISTRIBUTION,
                 assetsDistributions[i].chainId,
-                abi.encode(periodId, assetsDistribution)
+                abi.encode(periodId, vault, broker, assetsDistribution)
             );
 
             // Cross-chain
@@ -418,12 +377,6 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         emit AssetsDistributed(periodId, vaultId);
     }
 
-    /// @notice Update unclaimed assets after funds transfer to protocol vault
-    /// @param chainId Chain ID that unclaimed assets will be updated
-    /// @param periodId Period ID
-    /// @param vaultId Vault ID
-    /// @param requestIds Request ID array
-    /// @param signature Signature for verification
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
@@ -436,7 +389,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         // Length that unhandled requestId
         uint256 len;
         for (uint256 i = 0; i < requestIds.length; i++) {
-            if (_isValidRequestId(requestIds[i])) {
+            if (_isValidRequestId(vaultId, requestIds[i])) {
                 len++;
             }
         }
@@ -451,24 +404,30 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             // Handle requestid claim
             for (uint256 i = 0; i < requestIds.length; i++) {
                 // Ignore if handled
-                if (_isValidRequestId(requestIds[i])) {
-                    userClaimInfos[index] = userClaimInfo[requestIds[i]];
-                    isUserClaimHandled[requestIds[i]] = true;
+                if (_isValidRequestId(vaultId, requestIds[i])) {
+                    VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+                    userClaimInfos[index] = vaultState.userClaimInfo[requestIds[i]];
+                    vaultState.isUserClaimHandled[requestIds[i]] = true;
                     index++;
-                    delete userClaimInfo[requestIds[i]];
+                    delete vaultState.userClaimInfo[requestIds[i]];
                 }
             }
 
             uint256 ccFee;
+            address vault = idToVault[vaultId];
+            bytes32 broker = vaultBroker[vaultId];
 
             // Cross chain message
-            StrategyVaultCCMessage memory message =
-                _createCCMessage(PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos));
+            StrategyVaultCCMessage memory message = _createCCMessage(
+                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
+            );
             (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
 
             // Set gas
             message = _createCCMessage(
-                PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, userClaimInfos)
+                PayloadType.UPDATE_USER_CLAIM,
+                chainId,
+                abi.encode(periodId, ccFee / index, vault, broker, userClaimInfos)
             );
 
             // Cross-chain
@@ -491,7 +450,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         // Length that unhandled requestId
         uint256 len;
         for (uint256 i = 0; i < requestIds.length; i++) {
-            if (_isValidRequestId(requestIds[i])) {
+            if (_isValidRequestId(vaultId, requestIds[i])) {
                 len++;
             }
         }
@@ -506,27 +465,33 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
             // Handle requestid claim
             for (uint256 i = 0; i < requestIds.length; i++) {
                 // Ignore if handled
-                if (_isValidRequestId(requestIds[i])) {
-                    userClaimInfos[index] = userClaimInfo[requestIds[i]];
-                    isUserClaimHandled[requestIds[i]] = true;
+                if (_isValidRequestId(vaultId, requestIds[i])) {
+                    VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+                    userClaimInfos[index] = vaultState.userClaimInfo[requestIds[i]];
+                    vaultState.isUserClaimHandled[requestIds[i]] = true;
                     index++;
-                    delete userClaimInfo[requestIds[i]];
+                    delete vaultState.userClaimInfo[requestIds[i]];
                 }
             }
+
+            address vault = idToVault[vaultId];
+            bytes32 broker = vaultBroker[vaultId];
 
             StrategyVaultCCMessage memory message;
             if (ccFee == 0) {
                 message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos)
+                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
                 );
 
                 (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
                 message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, userClaimInfos)
+                    PayloadType.UPDATE_USER_CLAIM,
+                    chainId,
+                    abi.encode(periodId, ccFee / index, vault, broker, userClaimInfos)
                 );
             } else {
                 message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos)
+                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, vault, broker, userClaimInfos)
                 );
             }
 
@@ -543,55 +508,64 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
 
     /// @notice Check if period ID is valid
     /// @param periodId Period ID to check
-    function _check(uint256 periodId) internal view {
-        if (periodId != latestPeriodId) {
+    /// @param vaultId Vault ID to get the latest period from
+    function _check(uint256 periodId, bytes32 vaultId) internal view {
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        if (periodId != vaultState.latestPeriodId) {
             revert InvalidPeriodId();
         }
     }
 
-    function _handleLpDeposit(bytes32 accountId, uint256 amount) internal returns (uint256) {
-        AccountToken storage accountToken = _getAccountToken(accountId);
+    function _handleLpDeposit(bytes32 vaultId, bytes32 accountId, uint256 amount) internal returns (uint256) {
+        AccountToken storage accountToken = _getAccountToken(vaultId, accountId, USDC_HASH);
 
         if (amount > accountToken.unAllocatedAssets) {
             revert NotEnoughLPDeposit(amount);
         }
 
-        uint256 depositShares =
-            LedgerUtils._convertToShares(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        uint256 depositShares = LedgerUtils._convertToShares(
+            amount, vaultState.mainAssetsAfterFee, vaultState.mainShares, Math.Rounding.Floor
+        );
         //effect
         accountToken.pendingShares += depositShares;
         accountToken.unAllocatedAssets -= amount;
 
-        pendingMainShares += depositShares;
-        pendingLpDepositAssets += amount;
+        vaultState.pendingMainShares += depositShares;
+        vaultState.pendingLpDepositAssets += amount;
 
         return depositShares;
     }
 
-    function _handleLpWithdraw(bytes32 requestId, bytes32 accountId, uint256 amount) internal returns (uint256) {
-        AccountToken storage accountToken = _getAccountToken(accountId);
+    function _handleLpWithdraw(bytes32 vaultId, bytes32 requestId, bytes32 accountId, uint256 amount)
+        internal
+        returns (uint256)
+    {
+        AccountToken storage accountToken = _getAccountToken(vaultId, accountId, USDC_HASH);
 
         LedgerUtils.requireEnoughFrozenShares(amount, accountToken.frozenShares);
 
         //effect
-        uint256 withdrawAssets =
-            LedgerUtils._convertToAssets(amount, mainAssetsAfterFee, mainShares, Math.Rounding.Floor);
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        uint256 withdrawAssets = LedgerUtils._convertToAssets(
+            amount, vaultState.mainAssetsAfterFee, vaultState.mainShares, Math.Rounding.Floor
+        );
 
         accountToken.pendingShares -= amount;
         accountToken.frozenShares -= amount;
-        pendingMainShares -= amount;
-        pendingLpWithdrawAssets += withdrawAssets;
+        vaultState.pendingMainShares -= amount;
+        vaultState.pendingLpWithdrawAssets += withdrawAssets;
 
-        userClaimInfo[requestId].requestId = requestId;
-        userClaimInfo[requestId].accountId = accountId;
-        userClaimInfo[requestId].assets = withdrawAssets;
+        vaultState.userClaimInfo[requestId].requestId = requestId;
+        vaultState.userClaimInfo[requestId].accountId = accountId;
+        vaultState.userClaimInfo[requestId].assets = withdrawAssets;
 
         return withdrawAssets;
     }
 
-    function _handleSPDeposit(bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
+    function _handleSPDeposit(bytes32 vaultId, bytes32 strategyProviderId, uint256 amount) internal returns (uint256) {
         //gas optimization
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderId, USDC_HASH);
         PendingState storage pendingState = strategyFundToken.pendingState;
         if (amount > strategyFundToken.unAllocatedAssets) {
             revert NotEnoughSPDeposit();
@@ -608,12 +582,12 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         return depositShares;
     }
 
-    function _handleSpWithdraw(bytes32 requestId, bytes32 strategyProviderId, uint256 amount)
+    function _handleSpWithdraw(bytes32 vaultId, bytes32 requestId, bytes32 strategyProviderId, uint256 amount)
         internal
         returns (uint256)
     {
         //gas optimization
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderId, USDC_HASH);
         PendingState storage pendingState = strategyFundToken.pendingState;
 
         LedgerUtils.requireEnoughFrozenShares(amount, strategyFundToken.frozenShares);
@@ -627,18 +601,20 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         pendingState.pendingTotalAssets -= spWithdrawAssets;
         strategyFundToken.frozenShares -= amount;
 
-        userClaimInfo[requestId].requestId = requestId;
-        userClaimInfo[requestId].strategyProviderId = strategyProviderId;
-        userClaimInfo[requestId].assets = spWithdrawAssets;
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        vaultState.userClaimInfo[requestId].requestId = requestId;
+        vaultState.userClaimInfo[requestId].strategyProviderId = strategyProviderId;
+        vaultState.userClaimInfo[requestId].assets = spWithdrawAssets;
 
         return spWithdrawAssets;
     }
 
     /// @notice Calculate high water mark for strategy fund
+    /// @param vaultId Vault ID
     /// @param strategyProviderId Strategy provider ID
     /// @return High water mark value
-    function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
+    function _calculateHWM(bytes32 vaultId, bytes32 strategyProviderId) internal view returns (uint256) {
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderId, USDC_HASH);
 
         uint256 hwm = strategyFundToken.hwm;
         uint256 totalShares = strategyFundToken.totalShares;
@@ -670,7 +646,65 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         });
     }
 
-    function _isValidRequestId(bytes32 requestId) internal view returns (bool) {
-        return !isUserClaimHandled[requestId] && userClaimInfo[requestId].assets > 0;
+    function _isValidRequestId(bytes32 vaultId, bytes32 requestId) internal view returns (bool) {
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        return !vaultState.isUserClaimHandled[requestId] && vaultState.userClaimInfo[requestId].assets > 0;
+    }
+
+    function _processSingleFund(
+        VaultStateStorage storage vaultState,
+        UpdateStrategyFundAssetsParams calldata strategyFundAssets
+    ) internal returns (uint256 assetsAfterFee) {
+        StrategyFundToken storage token =
+            vaultState.strategyFundTokenInfo[strategyFundAssets.strategyProviderId][USDC_HASH];
+
+        //reset performance fee
+        token.performanceFee = 0;
+
+        uint256 fundAssets = strategyFundAssets.totalAssets;
+        uint256 fundShares = token.totalShares;
+        uint256 performanceFee;
+
+        if (fundShares > 0) {
+            uint256 assetPerShare = fundAssets * 10 ** USDC_DECIMAL / fundShares;
+
+            if (assetPerShare > token.hwm) {
+                performanceFee = (assetPerShare - token.hwm) * fundShares
+                    * feeRateOfFund[strategyFundAssets.strategyProviderId] / FEE_BASE / 10 ** USDC_DECIMAL;
+
+                uint256 feeShares = LedgerUtils._convertToShares(
+                    performanceFee, fundAssets - performanceFee, fundShares, Math.Rounding.Floor
+                );
+
+                token.performanceFee = performanceFee;
+                token.pendingState.pendingStrategyProviderShares += feeShares;
+                token.pendingState.pendingTotalShares = fundShares + feeShares;
+            }
+
+            assetsAfterFee = token.mainShares * (fundAssets - performanceFee) / token.totalShares;
+        }
+
+        //Update pending state
+        token.pendingState.pendingTotalAssets = fundAssets;
+        token.fundAssetsAfterFee = fundAssets - performanceFee;
+    }
+
+    function _buildEvent(bytes32 vaultId, UpdateStrategyFundAssetsParams[] calldata strategyFundAssets)
+        internal
+        view
+        returns (UpdateStrategyFundAssetsRes[] memory res)
+    {
+        res = new UpdateStrategyFundAssetsRes[](strategyFundAssets.length);
+
+        for (uint256 i = 0; i < strategyFundAssets.length; i++) {
+            StrategyFundToken storage token =
+                _getStrategyFundToken(vaultId, strategyFundAssets[i].strategyProviderId, USDC_HASH);
+            res[i] = UpdateStrategyFundAssetsRes({
+                strategyProviderId: strategyFundAssets[i].strategyProviderId,
+                fundAssetsAfterFee: token.fundAssetsAfterFee,
+                strategyProviderShares: token.pendingState.pendingStrategyProviderShares,
+                totalShares: token.pendingState.pendingTotalShares
+            });
+        }
     }
 }

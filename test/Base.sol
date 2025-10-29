@@ -9,7 +9,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 
-import {ProtocolVault} from "../contracts/ProtocolVault.sol";
+import {ProtocolVault} from "../contracts/Vault/ProtocolVault.sol";
 import {VaultCrossChainManager} from "../contracts/VaultCrossChainManager.sol";
 import {ProtocolVaultLedger, ClaimInfo} from "../contracts/Ledger/ProtocolVaultLedger.sol";
 import {LedgerCoreImpl} from "../contracts/Ledger/LedgerCoreImpl.sol";
@@ -20,7 +20,6 @@ import {VaultType, OperationData} from "../contracts/lib/types/VaultStruct.sol";
 import {PayloadType, StrategyVaultCCMessage} from "../contracts/lib/types/CrossChainStruct.sol";
 import {UpdateStrategyFundAssetsParams} from "../contracts/lib/types/LedgerStruct.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-
 // Mock ERC20 token contract
 
 contract MockERC20 is ERC20 {
@@ -54,6 +53,9 @@ contract Base is TestHelperOz5 {
     bytes32 userA_id = _getAccountId(userA, ORDERLY_BROKER);
     bytes32 userB_id = _getAccountId(userB, ORDERLY_BROKER);
     bytes32 spId;
+    bytes32 cvSpId;
+    bytes32 vaultId;
+    bytes32 cvVaultId;
 
     address engine;
     uint256 enginePrivateKey;
@@ -65,6 +67,7 @@ contract Base is TestHelperOz5 {
 
     MockERC20 mockToken;
     ProtocolVault protocolVault;
+    ProtocolVault communityVault;
     MockSVLedger svLedger;
     LedgerCoreImpl ledgerCoreImpl;
     LedgerExtension ledgerExtension;
@@ -72,7 +75,162 @@ contract Base is TestHelperOz5 {
     VaultCrossChainManager bVaultCrossChainManager;
     MockDexVault mockDexVault;
 
-    function testGetComputation() public pure {
+    function setUp() public virtual override {
+        // Call the base setup function from the TestHelperOz5 contract
+        super.setUp();
+        (engine, enginePrivateKey) = makeAddrAndKey("engine");
+        (sp, spPrivateKey) = makeAddrAndKey("sp");
+        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+
+        vm.deal(user, 100 ether);
+        vm.deal(sp, 100 ether);
+        vm.deal(userA, 100 ether);
+        vm.deal(userB, 100 ether);
+        // Deploy LedgerCoreImpl and LedgerExtension contracts
+        ledgerCoreImpl = new LedgerCoreImpl();
+        ledgerExtension = new LedgerExtension();
+
+        // Deploy the StrategyVaultLedger contract
+        address svLedgerImpl = address(new MockSVLedger());
+        address svLedgerProxy = address(
+            new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(ProtocolVaultLedger.initialize.selector, owner))
+        );
+        svLedger = MockSVLedger(svLedgerProxy);
+
+        vm.startPrank(owner);
+        // Set the core and extension implementations
+        svLedger.setCore(address(ledgerCoreImpl));
+        svLedger.setExtension(address(ledgerExtension));
+        svLedger.setOperatorManager(operator);
+        svLedger.setEngine(engine);
+        vm.stopPrank();
+
+        // Deploy the VaultCrossChainManager contract
+        // Initialize 2 endpoints, using UltraLightNode as the library type
+
+        setUpEndpoints(2, LibraryType.UltraLightNode);
+        address aCCManagerImpl = address(new VaultCrossChainManager());
+        address aCCManager = address(
+            new ERC1967Proxy(
+                aCCManagerImpl,
+                abi.encodeWithSelector(VaultCrossChainManager.initialize.selector, address(endpoints[srcEid]), owner)
+            )
+        );
+        aVaultCrossChainManager = VaultCrossChainManager(payable(aCCManager));
+
+        address bCCManagerImpl = address(new VaultCrossChainManager());
+        address bCCManager = address(
+            new ERC1967Proxy(
+                bCCManagerImpl,
+                abi.encodeWithSelector(VaultCrossChainManager.initialize.selector, address(endpoints[ledgerEid]), owner)
+            )
+        );
+        bVaultCrossChainManager = VaultCrossChainManager(payable(bCCManager));
+
+        //check deploy
+        assertEq(aVaultCrossChainManager.owner(), owner);
+        assertEq(bVaultCrossChainManager.owner(), owner);
+
+        vm.startPrank(owner);
+        //set eid with chainid
+        aVaultCrossChainManager.setEid(LEDGER_CHAIN_ID, ledgerEid);
+        bVaultCrossChainManager.setEid(evmChainId, srcEid);
+
+        //set peer
+        aVaultCrossChainManager.setPeer(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
+        bVaultCrossChainManager.setPeer(srcEid, addressToBytes32(address(aVaultCrossChainManager)));
+        //console.logBytes32(aVaultCrossChainManager.peers(LEDGER_EID));
+        //set options
+        aVaultCrossChainManager.setOptions(PayloadType.LP_DEPOSIT, 120000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.LP_WITHDRAW, 150000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.SP_DEPOSIT, 140000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.SP_WITHDRAW, 150000, 0);
+
+        bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 200000, 0);
+        bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 300000, 0);
+
+        svLedger.setCrossChainManager(address(bVaultCrossChainManager));
+        vm.stopPrank();
+
+        //Deploy the MockERC20 contract and approve
+        mockToken = new MockERC20("mockToken", "MTK", 6);
+
+        //deploy dex vault
+        mockDexVault = new MockDexVault();
+        mockDexVault.setToken(address(mockToken));
+
+        //Deploy the ProtocolVault contract
+        address protocolVaultImpl = address(new ProtocolVault());
+        address proxy = address(
+            new ERC1967Proxy(
+                protocolVaultImpl,
+                abi.encodeWithSelector(
+                    ProtocolVault.initialize.selector, address(mockDexVault), owner, address(mockToken), 0, 0
+                )
+            )
+        );
+        protocolVault = ProtocolVault(payable(proxy));
+        vaultId = _getVaultId(address(protocolVault), ORDERLY_BROKER);
+        vm.startPrank(owner);
+        // Calculate spId after protocolVault deployment
+        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
+
+        protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
+        protocolVault.setLedgerEid(ledgerEid);
+        protocolVault.setAllowedBroker(ORDERLY_BROKER, true);
+        svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
+
+        //config cc contract
+        vm.startPrank(owner);
+        aVaultCrossChainManager.setVault(address(protocolVault));
+        aVaultCrossChainManager.setValidVault(address(protocolVault), true);
+        bVaultCrossChainManager.setLedger(svLedgerProxy);
+        svLedger.setProtocolVault(address(protocolVault));
+        vm.stopPrank();
+        //mint token
+        mockToken.mint(user, 100000e18);
+        mockToken.mint(sp, 100000e18);
+        mockToken.mint(userA, 100000e18);
+        mockToken.mint(userB, 100000e18);
+
+        //approve
+        vm.prank(user);
+        mockToken.approve(address(protocolVault), 100e6);
+        vm.prank(sp);
+        mockToken.approve(address(protocolVault), 100e6);
+
+        //Deploy Community Vault
+        address communityVaultImpl = address(new ProtocolVault());
+        address communityVaultProxy = address(
+            new ERC1967Proxy(
+                communityVaultImpl,
+                abi.encodeWithSelector(
+                    ProtocolVault.initialize.selector, address(mockDexVault), owner, address(mockToken), 0, 0
+                )
+            )
+        );
+        communityVault = ProtocolVault(payable(communityVaultProxy));
+        cvVaultId = _getVaultId(address(communityVault), ORDERLY_BROKER);
+        cvSpId = _getStrategyProviderId(address(communityVault), sp, ORDERLY_BROKER);
+        vm.startPrank(owner);
+        communityVault.setCrossChainManager(address(aVaultCrossChainManager));
+        communityVault.setLedgerEid(ledgerEid);
+        communityVault.setAllowedBroker(ORDERLY_BROKER, true);
+        aVaultCrossChainManager.setValidVault(address(communityVault), true);
+
+        //set vaultId to vault on ledger
+        svLedger.setVault(vaultId, address(protocolVault));
+        svLedger.setVault(cvVaultId, address(communityVault));
+        vm.stopPrank();
+
+        //approve
+        vm.prank(user);
+        mockToken.approve(address(communityVault), 100e6);
+        vm.prank(sp);
+        mockToken.approve(address(communityVault), 100e6);
+    }
+
+    function testGetComputation() public {
         bytes32 spAid = keccak256(
             abi.encode(
                 0x15a6aeFb614C6FF43fFeFCC5560ff3F239A77bA3, 0xbddfd22eF902A4898147A1ca5B985D03C62a8C41, ORDERLY_BROKER
@@ -80,7 +238,7 @@ contract Base is TestHelperOz5 {
         );
         console.logBytes32(spAid);
 
-        bytes32 vaultId = keccak256(abi.encode(0x15a6aeFb614C6FF43fFeFCC5560ff3F239A77bA3, ORDERLY_BROKER));
+        vaultId = _getVaultId(0x15a6aeFb614C6FF43fFeFCC5560ff3F239A77bA3, ORDERLY_BROKER);
         console.logBytes32(vaultId);
     }
 
@@ -188,137 +346,16 @@ contract Base is TestHelperOz5 {
     //     console.log("nativeFee", nativeFee);
     // }
 
-    function setUp() public virtual override {
-        // Call the base setup function from the TestHelperOz5 contract
-        super.setUp();
-        (engine, enginePrivateKey) = makeAddrAndKey("engine");
-        (sp, spPrivateKey) = makeAddrAndKey("sp");
-        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
-
-        vm.deal(user, 100 ether);
-        vm.deal(sp, 100 ether);
-        vm.deal(userA, 100 ether);
-        vm.deal(userB, 100 ether);
-        // Deploy LedgerCoreImpl and LedgerExtension contracts
-        ledgerCoreImpl = new LedgerCoreImpl();
-        ledgerExtension = new LedgerExtension();
-
-        // Deploy the StrategyVaultLedger contract
-        address svLedgerImpl = address(new MockSVLedger());
-        address svLedgerProxy = address(
-            new ERC1967Proxy(svLedgerImpl, abi.encodeWithSelector(ProtocolVaultLedger.initialize.selector, owner))
-        );
-        svLedger = MockSVLedger(svLedgerProxy);
-
-        vm.startPrank(owner);
-        // Set the core and extension implementations
-        svLedger.setCore(address(ledgerCoreImpl));
-        svLedger.setExtension(address(ledgerExtension));
-        svLedger.setOperatorManager(operator);
-        svLedger.setEngine(engine);
-        vm.stopPrank();
-
-        // Deploy the VaultCrossChainManager contract
-        // Initialize 2 endpoints, using UltraLightNode as the library type
-
-        setUpEndpoints(2, LibraryType.UltraLightNode);
-        address aCCManagerImpl = address(new VaultCrossChainManager());
-        address aCCManager = address(
-            new ERC1967Proxy(
-                aCCManagerImpl,
-                abi.encodeWithSelector(VaultCrossChainManager.initialize.selector, address(endpoints[srcEid]), owner)
-            )
-        );
-        aVaultCrossChainManager = VaultCrossChainManager(payable(aCCManager));
-
-        address bCCManagerImpl = address(new VaultCrossChainManager());
-        address bCCManager = address(
-            new ERC1967Proxy(
-                bCCManagerImpl,
-                abi.encodeWithSelector(VaultCrossChainManager.initialize.selector, address(endpoints[ledgerEid]), owner)
-            )
-        );
-        bVaultCrossChainManager = VaultCrossChainManager(payable(bCCManager));
-
-        //check deploy
-        assertEq(aVaultCrossChainManager.owner(), owner);
-        assertEq(bVaultCrossChainManager.owner(), owner);
-
-        vm.startPrank(owner);
-        //set eid with chainid
-        aVaultCrossChainManager.setEid(LEDGER_CHAIN_ID, ledgerEid);
-        bVaultCrossChainManager.setEid(evmChainId, srcEid);
-
-        //set peer
-        aVaultCrossChainManager.setPeer(ledgerEid, addressToBytes32(address(bVaultCrossChainManager)));
-        bVaultCrossChainManager.setPeer(srcEid, addressToBytes32(address(aVaultCrossChainManager)));
-        //console.logBytes32(aVaultCrossChainManager.peers(LEDGER_EID));
-        //set options
-        aVaultCrossChainManager.setOptions(PayloadType.LP_DEPOSIT, 120000, 0);
-        aVaultCrossChainManager.setOptions(PayloadType.LP_WITHDRAW, 150000, 0);
-        aVaultCrossChainManager.setOptions(PayloadType.SP_DEPOSIT, 140000, 0);
-        aVaultCrossChainManager.setOptions(PayloadType.SP_WITHDRAW, 150000, 0);
-
-        bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 200000, 0);
-        bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 300000, 0);
-
-        svLedger.setCrossChainManager(address(bVaultCrossChainManager));
-        vm.stopPrank();
-
-        //Deploy the MockERC20 contract and approve
-        mockToken = new MockERC20("mockToken", "MTK", 6);
-
-        //deploy dex vault
-        mockDexVault = new MockDexVault();
-        mockDexVault.setToken(address(mockToken));
-        //Deploy the ProtocolVault contract
-        address protocolVaultImpl = address(new ProtocolVault());
-        address proxy = address(
-            new ERC1967Proxy(
-                protocolVaultImpl,
-                abi.encodeWithSelector(
-                    ProtocolVault.initialize.selector, address(mockDexVault), owner, address(mockToken), 0, 0
-                )
-            )
-        );
-        protocolVault = ProtocolVault(payable(proxy));
-        vm.startPrank(owner);
-        // Calculate spId after protocolVault deployment
-        spId = _getStrategyProviderId(sp, ORDERLY_BROKER);
-
-        protocolVault.setCrossChainManager(address(aVaultCrossChainManager));
-        protocolVault.setLedgerEid(ledgerEid);
-        svLedger.setAllowedStrategyProvider(ORDERLY_BROKER, address(protocolVault), sp, ORDERLY_BROKER, spId, true);
-
-        //config cc contract
-        vm.startPrank(owner);
-        aVaultCrossChainManager.setVault(address(protocolVault));
-        bVaultCrossChainManager.setLedger(svLedgerProxy);
-        svLedger.setProtocolVault(address(protocolVault));
-        vm.stopPrank();
-        //mint token
-        mockToken.mint(user, 100000e18);
-        mockToken.mint(sp, 100000e18);
-        mockToken.mint(userA, 100000e18);
-        mockToken.mint(userB, 100000e18);
-
-        //approve
-        vm.prank(user);
-        mockToken.approve(address(protocolVault), 100e6);
-        vm.prank(sp);
-        mockToken.approve(address(protocolVault), 100e6);
-    }
-
-    function getEstimateFee(PayloadType payloadType) public view returns (uint256) {
+    function getEstimateFee(PayloadType payloadType) public returns (uint256) {
         (uint256 nativeFee,) = aVaultCrossChainManager.quote(ledgerEid, buildCCMessage(), payloadType, false);
         return nativeFee;
     }
 
     //build StrategyVaultCCMessage
-    function buildCCMessage() public view returns (bytes memory) {
-        bytes32 vaultId = keccak256(abi.encodePacked(address(protocolVault)));
+    function buildCCMessage() public returns (bytes memory) {
+        vaultId = _getVaultId(address(protocolVault), ORDERLY_BROKER);
 
-        bytes32 accountId = keccak256(abi.encodePacked(user, vaultId));
+        bytes32 accountId = _getAccountId(user, ORDERLY_BROKER);
 
         OperationData memory operationData = OperationData({
             vaultType: VaultType.PROTOCOL,
@@ -360,6 +397,20 @@ contract Base is TestHelperOz5 {
     function _getUpdateUnclaimedSignature(
         uint32 chainId,
         uint256 _periodId,
+        uint256 _ccFee,
+        bytes32 _vaultId,
+        bytes32[] memory requestIds
+    ) internal view returns (bytes memory) {
+        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _ccFee, _vaultId, requestIds));
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
+        bytes memory signature = abi.encodePacked(r, s, v);
+        return signature;
+    }
+
+    function _getUpdateUnclaimedSignature(
+        uint32 chainId,
+        uint256 _periodId,
         bytes32 _vaultId,
         bytes32[] memory requestIds
     ) internal view returns (bytes memory) {
@@ -370,17 +421,15 @@ contract Base is TestHelperOz5 {
         return signature;
     }
 
-    function _getUpdateUnclaimedSignature(
-        uint32 chainId,
-        uint256 _periodId,
-        uint256 _ccFee,
-        bytes32 _vaultId,
-        bytes32[] memory requestIds
-    ) internal view returns (bytes memory) {
-        bytes32 messageHash = keccak256(abi.encode(chainId, _periodId, _ccFee, _vaultId, requestIds));
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(enginePrivateKey, MessageHashUtils.toEthSignedMessageHash(messageHash));
-        bytes memory signature = abi.encodePacked(r, s, v);
-        return signature;
+    function _getStrategyProviderId(address vault, address strategyProvider, bytes32 brokerHash)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(vault, strategyProvider, brokerHash));
+    }
+
+    function _getVaultId(address vault, bytes32 brokerHash) internal pure returns (bytes32) {
+        return keccak256(abi.encode(vault, brokerHash));
     }
 }
