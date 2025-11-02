@@ -49,7 +49,13 @@ abstract contract OAppReceiverUpgradeable is IOAppReceiver, OAppCoreUpgradeable 
      * @dev Applications can optionally choose to implement separate composeMsg senders that are NOT the bridging layer.
      * @dev The default sender IS the OAppReceiver implementer.
      */
-    function isComposeMsgSender(Origin calldata, /*_origin*/ bytes calldata, /*_message*/ address _sender)
+    function isComposeMsgSender(
+        Origin calldata,
+        /*_origin*/
+        bytes calldata,
+        /*_message*/
+        address _sender
+    )
         public
         view
         virtual
@@ -82,7 +88,16 @@ abstract contract OAppReceiverUpgradeable is IOAppReceiver, OAppCoreUpgradeable 
      * @dev This is also enforced by the OApp.
      * @dev By default this is NOT enabled. ie. nextNonce is hardcoded to return 0.
      */
-    function nextNonce(uint32, /*_srcEid*/ bytes32 /*_sender*/ ) public view virtual returns (uint64 nonce) {
+    function nextNonce(
+        uint32,
+        /*_srcEid*/
+        bytes32 /*_sender*/
+    )
+        public
+        view
+        virtual
+        returns (uint64 nonce)
+    {
         return 0;
     }
 

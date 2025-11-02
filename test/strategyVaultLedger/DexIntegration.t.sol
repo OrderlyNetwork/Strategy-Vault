@@ -561,13 +561,7 @@ contract DexIntegrationTest is Base {
     {
         (uint8 v, bytes32 r, bytes32 s) = _generateUserSignatureComponents(receiver, privateKey, dexRequestData);
         return DexRequest({
-            chainType: ChainType.EVM,
-            chainId: block.chainid,
-            id: id,
-            dexRequestData: dexRequestData,
-            r: r,
-            s: s,
-            v: v
+            chainType: ChainType.EVM, chainId: block.chainid, id: id, dexRequestData: dexRequestData, r: r, s: s, v: v
         });
     }
 

@@ -214,7 +214,7 @@ contract ProtocolVaultLedgerTest is Base {
             requestIds[i] = keccak256(abi.encode(i));
         }
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId,0, periodId, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, 0, periodId, vaultId, requestIds);
 
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
@@ -225,7 +225,7 @@ contract ProtocolVaultLedgerTest is Base {
 
         vm.startPrank(operator);
         uint256 gasBefore = gasleft();
-        svLedger.updateUnclaimed(evmChainId, periodId,0, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         uint256 gasAfter = gasleft();
         uint256 gasUsed = gasBefore - gasAfter;
         console.log("Gas used:", gasUsed);
@@ -238,7 +238,7 @@ contract ProtocolVaultLedgerTest is Base {
         requestIds[0] = keccak256(abi.encode(0));
         requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId,0, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, vaultId, requestIds);
 
         // Set up the claim info on the ledger
         uint256 asset = 1000 * assetDecimal;
@@ -248,7 +248,7 @@ contract ProtocolVaultLedgerTest is Base {
 
         // Process the unclaimed assets update
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId,0, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         // Verify ccFee is recorded correctly
@@ -287,7 +287,7 @@ contract ProtocolVaultLedgerTest is Base {
         requestIds[0] = keccak256(abi.encode(0));
         requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId,0, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, vaultId, requestIds);
 
         // Set up the claim info on the ledger
         uint256 asset = 1000 * assetDecimal;
@@ -297,7 +297,7 @@ contract ProtocolVaultLedgerTest is Base {
 
         // Process the unclaimed assets update
         vm.prank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId,0, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         // Verify ccFee is recorded correctly
@@ -316,7 +316,7 @@ contract ProtocolVaultLedgerTest is Base {
         requestIds[0] = keccak256(abi.encode(0));
         requestIds[1] = keccak256(abi.encode(1));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId,0, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, vaultId, requestIds);
 
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
@@ -325,7 +325,7 @@ contract ProtocolVaultLedgerTest is Base {
         svLedger.setLpClaimInfo(vaultId, requestIds[1], userB_id, asset);
 
         vm.startPrank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId,0, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
 
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
@@ -345,14 +345,14 @@ contract ProtocolVaultLedgerTest is Base {
         bytes32[] memory requestIds = new bytes32[](1);
         requestIds[0] = keccak256(abi.encode(0));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId,0, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, vaultId, requestIds);
         //deal eth to cc contract on ledger
         uint256 asset = 1000 * assetDecimal;
         vm.deal(address(bVaultCrossChainManager), 10 ether);
         svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, asset);
 
         vm.startPrank(operator);
-        svLedger.updateUnclaimed(evmChainId, periodId,0, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
         verifyPackets(srcEid, address(aVaultCrossChainManager));
 
         //repeat requestId
@@ -361,23 +361,23 @@ contract ProtocolVaultLedgerTest is Base {
         newRequestIds[1] = keccak256(abi.encode(1));
         svLedger.setLpClaimInfo(vaultId, newRequestIds[1], userB_id, asset);
 
-        bytes memory new_signature = _getUpdateUnclaimedSignature(evmChainId, periodId,0, vaultId, newRequestIds);
+        bytes memory new_signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, vaultId, newRequestIds);
 
-        svLedger.updateUnclaimed(evmChainId, periodId,0, vaultId, newRequestIds, new_signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, newRequestIds, new_signature);
     }
 
     function testClaimZero() public {
         bytes32[] memory requestIds = new bytes32[](1);
         requestIds[0] = keccak256(abi.encode(0));
 
-        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId,0, vaultId, requestIds);
+        bytes memory signature = _getUpdateUnclaimedSignature(evmChainId, periodId, 0, vaultId, requestIds);
         //deal eth to cc contract on ledger
         vm.deal(address(bVaultCrossChainManager), 10 ether);
         svLedger.setLpClaimInfo(vaultId, requestIds[0], userA_id, 0);
 
         vm.startPrank(operator);
         //will not happen cc
-        svLedger.updateUnclaimed(evmChainId, periodId,0, vaultId, requestIds, signature);
+        svLedger.updateUnclaimed(evmChainId, periodId, 0, vaultId, requestIds, signature);
     }
 
     function testUpgradeFundAssetsSignature() public {

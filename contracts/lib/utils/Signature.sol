@@ -70,8 +70,9 @@ library Signature {
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash =
-            keccak256(abi.encode(periodId, vaultId, strategyProviderIds, "settleMainAndStrategyFunds"));
+        bytes32 messageHash = keccak256(
+            abi.encode(periodId, vaultId, strategyProviderIds, "settleMainAndStrategyFunds")
+        );
         verifySignature(signer, messageHash, signature);
     }
 
@@ -152,8 +153,9 @@ library Signature {
         internal
         view
     {
-        bytes32 eip712DomainHash =
-            keccak256(abi.encode(TYPE_HASH, keccak256(bytes("Orderly")), keccak256(bytes("1")), chainId, address(this)));
+        bytes32 eip712DomainHash = keccak256(
+            abi.encode(TYPE_HASH, keccak256(bytes("Orderly")), keccak256(bytes("1")), chainId, address(this))
+        );
         bytes32 hashStruct = keccak256(
             abi.encode(
                 REQUEST_HASH,
@@ -190,12 +192,8 @@ library Signature {
         );
         bytes memory m = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(hashStruct);
         // the former is the signature of message from eoa, the latter is the signature of tx from ledger
-        if (
-            !(
-                IEd25519(ED25519).verify(signer, r, s, m)
-                    || IEd25519(ED25519).verify(signer, r, s, solanaLedgerSignature(signer, hashStruct))
-            )
-        ) {
+        if (!(IEd25519(ED25519).verify(signer, r, s, m)
+                    || IEd25519(ED25519).verify(signer, r, s, solanaLedgerSignature(signer, hashStruct)))) {
             revert InvalidUser();
         }
     }
