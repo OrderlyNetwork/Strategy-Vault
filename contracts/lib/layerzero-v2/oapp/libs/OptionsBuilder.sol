@@ -197,7 +197,11 @@ library OptionsBuilder {
         uint256 _executionGas,
         uint256 _nativeForDst,
         bytes memory _receiver // @dev Use bytes instead of bytes32 in legacy type 2 for _receiver.
-    ) internal pure returns (bytes memory) {
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
         if (_executionGas > type(uint128).max) revert InvalidSize(type(uint128).max, _executionGas);
         if (_nativeForDst > type(uint128).max) revert InvalidSize(type(uint128).max, _nativeForDst);
         if (_receiver.length > 32) revert InvalidSize(32, _receiver.length);

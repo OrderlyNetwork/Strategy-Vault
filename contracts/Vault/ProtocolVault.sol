@@ -143,10 +143,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         //construct cross chain message
         OperationData memory data = _getOperationData(payloadType, depositParams.receiver, amount, token, brokerHash);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: payloadType,
-            srcChainId: block.chainid,
-            dstChainId: LEDGER_CHAIN_ID,
-            payload: abi.encode(data)
+            payloadType: payloadType, srcChainId: block.chainid, dstChainId: LEDGER_CHAIN_ID, payload: abi.encode(data)
         });
 
         chainNonce++;
@@ -179,10 +176,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         OperationData memory data = _getOperationData(payloadType, msg.sender, amount, token, brokerHash);
 
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: payloadType,
-            srcChainId: block.chainid,
-            dstChainId: LEDGER_CHAIN_ID,
-            payload: abi.encode(data)
+            payloadType: payloadType, srcChainId: block.chainid, dstChainId: LEDGER_CHAIN_ID, payload: abi.encode(data)
         });
 
         chainNonce++;
@@ -249,8 +243,9 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         onlyVaultCrossChainManager
     {
         bytes32 vaultId = _getVaultId(broker);
-        VaultDepositFE memory depositData =
-            VaultDepositFE({accountId: vaultId, brokerHash: broker, tokenHash: USDC_HASH, tokenAmount: uint128(amount)});
+        VaultDepositFE memory depositData = VaultDepositFE({
+            accountId: vaultId, brokerHash: broker, tokenHash: USDC_HASH, tokenAmount: uint128(amount)
+        });
 
         //call dex
         address token = tokenHashToAddress[USDC_HASH];
@@ -377,10 +372,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     function quoteOperation(PayloadType payloadType, address receiver, uint256 amount) public view returns (uint256) {
         OperationData memory data = _getOperationData(payloadType, receiver, amount, address(0), ORDERLY_BROKER);
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: payloadType,
-            srcChainId: block.chainid,
-            dstChainId: LEDGER_CHAIN_ID,
-            payload: abi.encode(data)
+            payloadType: payloadType, srcChainId: block.chainid, dstChainId: LEDGER_CHAIN_ID, payload: abi.encode(data)
         });
         bytes memory lzMessage = abi.encode(message);
 

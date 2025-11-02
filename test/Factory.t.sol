@@ -119,8 +119,12 @@ contract Create3FactoryTest is Test {
         console.logBytes32(salt3);
     }
 
-    function _getSalt() public pure returns (bytes32, bytes32,bytes32) {
-        return (keccak256(abi.encodePacked("ProtocolVault")), keccak256(abi.encodePacked("CrossChainManager")), keccak256(abi.encodePacked("VaultAdapter")));
+    function _getSalt() public pure returns (bytes32, bytes32, bytes32) {
+        return (
+            keccak256(abi.encodePacked("ProtocolVault")),
+            keccak256(abi.encodePacked("CrossChainManager")),
+            keccak256(abi.encodePacked("VaultAdapter"))
+        );
     }
 }
 

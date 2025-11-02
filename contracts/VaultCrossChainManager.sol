@@ -105,7 +105,11 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         bytes calldata _message,
         address, /*_executor*/
         bytes calldata /*_extraData*/
-    ) internal virtual override {
+    )
+        internal
+        virtual
+        override
+    {
         //Decode the payload by payloadType
         StrategyVaultCCMessage memory strategyVaultCCmessage = abi.decode(_message, (StrategyVaultCCMessage));
         PayloadType payloadType = strategyVaultCCmessage.payloadType;
@@ -227,9 +231,8 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     *=========================================================================================*/
 
     function _getOptions(PayloadType payloadType) internal view returns (bytes memory) {
-        return OptionsBuilder.newOptions().addExecutorLzReceiveOption(
-            msgOptions[payloadType].gas, msgOptions[payloadType].value
-        );
+        return OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(msgOptions[payloadType].gas, msgOptions[payloadType].value);
     }
 
     function _convertAmount(uint256 amount, uint256 srcDecimal, uint256 dstDecimal) internal pure returns (uint256) {

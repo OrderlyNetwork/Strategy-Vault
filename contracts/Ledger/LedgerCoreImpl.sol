@@ -106,8 +106,9 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
                     revert InvalidType();
                 }
 
-                operationRes[i] =
-                    OperationRes({id: operation.id, requestId: requestId, amount: amount, operationType: operationType});
+                operationRes[i] = OperationRes({
+                    id: operation.id, requestId: requestId, amount: amount, operationType: operationType
+                });
                 vaultState.isOpHandled[requestId] = true;
             }
         }
@@ -442,65 +443,6 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
     }
 
-    function updateUnclaimed(
-        uint256 chainId,
-        uint256 periodId,
-        uint256 ccFee,
-        bytes32 vaultId,
-        bytes32[] memory requestIds,
-        bytes calldata signature
-    ) external {
-        Signature.verifyUpdateUnclaimed(chainId, periodId, ccFee, vaultId, requestIds, signature, engine);
-
-        // Length that unhandled requestId
-        uint256 len;
-        for (uint256 i = 0; i < requestIds.length; i++) {
-            if (_isValidRequestId(requestIds[i])) {
-                len++;
-            }
-        }
-
-        ClaimInfo[] memory userClaimInfos = new ClaimInfo[](len);
-
-        // Cross chain message
-        if (len != 0) {
-            // New index to avoid out of range
-            uint256 index;
-
-            // Handle requestid claim
-            for (uint256 i = 0; i < requestIds.length; i++) {
-                // Ignore if handled
-                if (_isValidRequestId(requestIds[i])) {
-                    userClaimInfos[index] = userClaimInfo[requestIds[i]];
-                    isUserClaimHandled[requestIds[i]] = true;
-                    index++;
-                    delete userClaimInfo[requestIds[i]];
-                }
-            }
-
-            StrategyVaultCCMessage memory message;
-            if (ccFee == 0) {
-                message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos)
-                );
-
-                (ccFee,) = IVaultCrossChainManager(crossChainManager).quoteClaim(chainId, message);
-                message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee / index, userClaimInfos)
-                );
-            } else {
-                message = _createCCMessage(
-                    PayloadType.UPDATE_USER_CLAIM, chainId, abi.encode(periodId, ccFee, userClaimInfos)
-                );
-            }
-
-            // Cross-chain
-            IVaultCrossChainManager(crossChainManager).sendMessage(message);
-        }
-
-        emit UnclaimedAssetsUpdated(periodId, vaultId, userClaimInfos);
-    }
-
     /*=========================================================================================
     *                                       INTERNAL HELPER FUNCTIONS
     *=========================================================================================*/
@@ -638,10 +580,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         returns (StrategyVaultCCMessage memory message)
     {
         return StrategyVaultCCMessage({
-            payloadType: payloadType,
-            srcChainId: block.chainid,
-            dstChainId: dstChainId,
-            payload: payload
+            payloadType: payloadType, srcChainId: block.chainid, dstChainId: dstChainId, payload: payload
         });
     }
 
@@ -654,8 +593,9 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         VaultStateStorage storage vaultState,
         UpdateStrategyFundAssetsParams calldata strategyFundAssets
     ) internal returns (uint256 assetsAfterFee) {
-        StrategyFundToken storage token =
-            vaultState.strategyFundTokenInfo[strategyFundAssets.strategyProviderId][USDC_HASH];
+        StrategyFundToken storage token = vaultState.strategyFundTokenInfo[
+            strategyFundAssets.strategyProviderId
+        ][USDC_HASH];
 
         //reset performance fee
         token.performanceFee = 0;

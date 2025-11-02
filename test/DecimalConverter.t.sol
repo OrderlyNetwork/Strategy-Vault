@@ -37,7 +37,7 @@ contract DecimalConverterTest is Test {
         assertEq(amount.convertDecimal(6, 18), 0);
     }
 
-    function testRevertOnOverflow() public {
+    function test_RevertOnOverflow() public {
         uint256 amount = type(uint256).max;
         uint128 srcDecimal = 6;
         uint128 dstDecimal = 18;

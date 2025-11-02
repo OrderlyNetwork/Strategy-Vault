@@ -82,10 +82,7 @@ contract ProtocolVaultHandler is Base {
 
         // Prepare withdraw params
         WithdrawParams memory params = WithdrawParams({
-            payloadType: PayloadType.LP_WITHDRAW,
-            token: address(mockToken),
-            amount: amount,
-            brokerHash: ORDERLY_BROKER
+            payloadType: PayloadType.LP_WITHDRAW, token: address(mockToken), amount: amount, brokerHash: ORDERLY_BROKER
         });
 
         // Get required fee
@@ -105,10 +102,7 @@ contract ProtocolVaultHandler is Base {
 
         // Prepare withdraw params
         WithdrawParams memory params = WithdrawParams({
-            payloadType: PayloadType.SP_WITHDRAW,
-            token: address(mockToken),
-            amount: amount,
-            brokerHash: ORDERLY_BROKER
+            payloadType: PayloadType.SP_WITHDRAW, token: address(mockToken), amount: amount, brokerHash: ORDERLY_BROKER
         });
 
         // Get required fee
