@@ -125,6 +125,7 @@ interface ILedgerCoreImpl {
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
+        uint256 ccFee,
         bytes32 vaultId,
         bytes32[] memory requestIds,
         bytes calldata signature

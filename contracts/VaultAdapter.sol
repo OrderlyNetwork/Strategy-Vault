@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
 import {Signature} from "./lib/utils/Signature.sol";
-import {AdapterDeposit, RoleType} from "./lib/types/VaultStruct.sol";
+import {AdapterDeposit, RoleType, AdapterDepositLegacy} from "./lib/types/VaultStruct.sol";
 import {VaultDepositFE, IDexVault} from "./interfaces/IDexVault.sol";
 import {VaultUtils} from "./lib/utils/VaultUtils.sol";
 import {IVaultAdapter} from "./interfaces/IVaultAdapter.sol";
@@ -116,6 +116,94 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
         // Emit event
         emit DepositFromCeffu(adapterDeposit, false);
     }
+
+    /**
+     * @notice Deposit native token (ETH) to the specified receiver
+     * @param adapterDeposit The deposit parameters
+     * @param signature The signature for validation
+     */
+    function depositNative(AdapterDepositLegacy memory adapterDeposit, bytes calldata signature)
+        external
+        onlyOperator
+    {
+        // Process the deposit
+        (uint256 fee, VaultDepositFE memory depositData) = _processDepositLegacy(adapterDeposit, signature);
+        //Transfer native tokens to the DexVault
+        uint256 totalValue = adapterDeposit.amount + fee;
+        IDexVault(dexVault).depositTo{value: totalValue}(adapterDeposit.receiver, depositData);
+
+        // Emit event
+        emit DepositFromCeffu(adapterDeposit, true);
+    }
+
+    function depositTo(AdapterDepositLegacy memory adapterDeposit, bytes calldata signature) external onlyOperator {
+        bytes32 tokenHash = adapterDeposit.tokenHash;
+        // Validate ERC20 token
+        address token = tokenHashToToken[tokenHash];
+        if (token == address(0)) {
+            revert InvalidTokenHash();
+        }
+
+        // Process the deposit
+        (uint256 fee, VaultDepositFE memory depositData) = _processDepositLegacy(adapterDeposit, signature);
+
+        // Approve ERC20
+        SafeTransferLib.safeApprove(ERC20(token), dexVault, adapterDeposit.amount);
+        // Transfer ERC20 tokens to the DexVault
+        IDexVault(dexVault).depositTo{value: fee}(adapterDeposit.receiver, depositData);
+
+        // Emit event
+        emit DepositFromCeffu(adapterDeposit, false);
+    }
+
+    function _processDepositLegacy(AdapterDepositLegacy memory adapterDeposit, bytes calldata signature)
+        internal
+        returns (uint256, VaultDepositFE memory)
+    {
+        // Validate recordId first to save gas in case of reverts
+        if (isRecordHandled[adapterDeposit.recordId]) {
+            revert RecordAlreadyHandled(adapterDeposit.recordId);
+        }
+
+        // Validate amount
+        if (adapterDeposit.amount == 0) {
+            revert InvalidAmount();
+        }
+        // Validate role type
+        RoleType roleType = adapterDeposit.roleType;
+        if (roleType != RoleType.LP && roleType != RoleType.SP) {
+            revert InvalidRoleType();
+        }
+
+        // Validate broker
+        bytes32 brokerHash = adapterDeposit.brokerHash;
+        if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed();
+
+        // Verify signature
+        Signature.verifyAdapterDepositLegacy(adapterDeposit, block.chainid, signature, engine);
+
+        // Calculate ID based on role type
+        address receiver = adapterDeposit.receiver;
+        bytes32 id = roleType == RoleType.LP
+            ? VaultUtils.getAccountId(receiver, brokerHash)
+            : VaultUtils.getStrategyProviderId(protocolVault, receiver, brokerHash);
+
+        // Create deposit data structure
+        VaultDepositFE memory depositData = VaultDepositFE({
+            accountId: id,
+            brokerHash: brokerHash,
+            tokenHash: adapterDeposit.tokenHash,
+            tokenAmount: adapterDeposit.amount
+        });
+
+        // Effect before interaction
+        isRecordHandled[adapterDeposit.recordId] = true;
+
+        // Calculate fee
+        uint256 fee =
+            IDexVault(dexVault).depositFeeEnabled() ? IDexVault(dexVault).getDepositFee(receiver, depositData) : 0;
+        return (fee, depositData);
+    }
     //--------------------------------------INTERNAL--------------------------------------------
     /**
      * @notice Process deposit logic common to both native and ERC20 deposits
@@ -153,7 +241,7 @@ contract VaultAdapter is IVaultAdapter, Ownable2StepUpgradeable, UUPSUpgradeable
         address receiver = adapterDeposit.receiver;
         bytes32 id = roleType == RoleType.LP
             ? VaultUtils.getAccountId(receiver, brokerHash)
-            : VaultUtils.getStrategyProviderId(protocolVault, receiver, brokerHash);
+            : VaultUtils.getStrategyProviderId(adapterDeposit.vault, receiver, brokerHash);
 
         // Create deposit data structure
         VaultDepositFE memory depositData = VaultDepositFE({

@@ -5,7 +5,8 @@ import {PayloadType} from "./CrossChainStruct.sol";
 
 enum VaultType {
     PROTOCOL,
-    USER
+    USER,
+    COMMUNITY
 }
 
 enum RoleType {
@@ -68,6 +69,23 @@ struct UserClaimedInfo {
 }
 
 struct AdapterDeposit {
+    ///@dev role type. LP or SP
+    RoleType roleType;
+    ///@dev receiver address
+    address receiver;
+    ///@dev token amount
+    uint128 amount;
+    ///@dev broker string hash
+    bytes32 brokerHash;
+    ///@dev token name hash
+    bytes32 tokenHash;
+    ///@dev the only index of the transaction
+    uint256 recordId;
+    ///@dev vault address. Zero if role type is LP
+    address vault;
+}
+
+struct AdapterDepositLegacy {
     ///@dev role type. LP or SP
     RoleType roleType;
     ///@dev receiver address

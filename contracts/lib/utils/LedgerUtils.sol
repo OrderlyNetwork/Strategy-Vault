@@ -24,7 +24,7 @@ library LedgerUtils {
         returns (uint256)
     {
         uint256 decimal = USDC_DECIMAL;
-        return (_totalAssets == 0)
+        return (_totalAssets == 0 || _totalShares == 0)
             ? amount.mulDiv(10 ** decimal, 10 ** decimal, rounding)
             : amount.mulDiv(_totalShares, _totalAssets, rounding);
     }

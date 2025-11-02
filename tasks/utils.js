@@ -10,7 +10,7 @@ function checkNetworkEnvRestrictions(currentNetwork, env) {
         return true;
     } else if (currentNetwork === 'orderly') {
         if (env !== 'mainnet') {
-            throw new Error(`network is 'orderly', env must be 'mainnet' rather than '${env}'`);
+            throw new Error(`network is 'orderly', must be 'mainnet' rather than '${env}'`);
         }
         return true;
     } else {

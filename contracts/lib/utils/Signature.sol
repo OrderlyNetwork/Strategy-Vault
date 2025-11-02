@@ -21,7 +21,7 @@ import {
     DexRequestData,
     DexRequest
 } from "../types/LedgerStruct.sol";
-import {AdapterDeposit} from "../types/VaultStruct.sol";
+import {AdapterDeposit, AdapterDepositLegacy} from "../types/VaultStruct.sol";
 import {TYPE_HASH, REQUEST_HASH, ED25519} from "../types/Constants.sol";
 import "./Bytes32ToAsciiBytes.sol";
 import {IEd25519} from "../../interfaces/IEd25519.sol";
@@ -108,12 +108,13 @@ library Signature {
     function verifyUpdateUnclaimed(
         uint256 chainId,
         uint256 periodId,
+        uint256 ccFee,
         bytes32 vaultId,
         bytes32[] memory requestIds,
         bytes memory signature,
         address signer
     ) internal pure {
-        bytes32 messageHash = keccak256(abi.encode(chainId, periodId, vaultId, requestIds));
+        bytes32 messageHash = keccak256(abi.encode(chainId, periodId, ccFee, vaultId, requestIds));
         verifySignature(signer, messageHash, signature);
     }
 
@@ -142,6 +143,16 @@ library Signature {
 
     function verifyAdapterDeposit(
         AdapterDeposit memory adapterDeposit,
+        uint256 chainId,
+        bytes calldata signature,
+        address signer
+    ) internal pure {
+        bytes32 messageHash = keccak256(abi.encode(adapterDeposit, chainId));
+        verifySignature(signer, messageHash, signature);
+    }
+
+    function verifyAdapterDepositLegacy(
+        AdapterDepositLegacy memory adapterDeposit,
         uint256 chainId,
         bytes calldata signature,
         address signer

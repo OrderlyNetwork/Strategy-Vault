@@ -102,14 +102,14 @@ module.exports = {
     },
     sei: {
       url: "https://sei.rpc.grove.city/v1/01fdb492",
-      accounts: [DEPLOY_KEY],
+      accounts: [PRIVATE_KEY],
     }
   },
   etherscan: { //https://api.etherscan.io/v2/chainlist
     apiKey: {
       orderly_sepolia: '123',//not needed
       orderly: '123',//not needed
-      seidev: '123',//not needed
+      sei_dev: '123',//not needed
       sei: '123',//not needed
       sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
       arb_sepolia: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
@@ -163,19 +163,11 @@ module.exports = {
         }
       },
       {
-        network: "seidev",
+        network: "sei_dev",
         chainId: 713715,
         urls: {
           apiURL: "https://seitrace.com/arctic-1/api",
           browserURL: "https://devnet.seitrace.com/",
-        }
-      },
-      {
-        network: "sei",
-        chainId: 1329,
-        urls: {
-          apiURL: "https://seitrace.com/pacific-1/api",
-          browserURL: "https://seiscan.io/",
         }
       }
     ]

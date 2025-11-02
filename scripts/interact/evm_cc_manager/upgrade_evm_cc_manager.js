@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat")
 const hre = require("hardhat")
-const deployment = require('../../../deployment.json');
+const deployment = require('../../../deployment/deployment.json');
 
 async function main() {
     const VaultCrossChainManager = await ethers.getContractFactory("VaultCrossChainManager");

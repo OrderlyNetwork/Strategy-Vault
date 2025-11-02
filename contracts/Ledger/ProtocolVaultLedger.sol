@@ -28,7 +28,7 @@ import {ILedgerCoreImpl} from "../interfaces/ILedgerCoreImpl.sol";
 import {ILedgerExtension} from "../interfaces/ILedgerExtension.sol";
 import {LedgerBase} from "./LedgerBase.sol";
 import {LedgerUtils} from "../lib/utils/LedgerUtils.sol";
-import {USDC_DECIMAL, LEDGER_STORAGE_LOCATION} from "../lib/types/Constants.sol";
+import {USDC_DECIMAL, LEDGER_STORAGE_LOCATION, USDC_HASH} from "../lib/types/Constants.sol";
 import {VaultUtils} from "../lib/utils/VaultUtils.sol";
 
 /// @title protocol vault ledger
@@ -239,26 +239,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     function updateUnclaimed(
         uint256 chainId,
         uint256 periodId,
-        bytes32 vaultId,
-        bytes32[] memory requestIds,
-        bytes calldata signature
-    ) external onlyOperator {
-        _delegateCall(
-            abi.encodeWithSelector(
-                bytes4(keccak256("updateUnclaimed(uint256,uint256,bytes32,bytes32[],bytes)")),
-                chainId,
-                periodId,
-                vaultId,
-                requestIds,
-                signature
-            ),
-            _getLedgerImplStorage().core
-        );
-    }
-
-    function updateUnclaimed(
-        uint256 chainId,
-        uint256 periodId,
         uint256 ccFee,
         bytes32 vaultId,
         bytes32[] memory requestIds,
@@ -266,13 +246,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     ) external {
         _delegateCall(
             abi.encodeWithSelector(
-                bytes4(keccak256("updateUnclaimed(uint256,uint256,uint256,bytes32,bytes32[],bytes)")),
-                chainId,
-                periodId,
-                ccFee,
-                vaultId,
-                requestIds,
-                signature
+                ILedgerCoreImpl.updateUnclaimed.selector, chainId, periodId, ccFee, vaultId, requestIds, signature
             ),
             _getLedgerImplStorage().core
         );
@@ -281,6 +255,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @param vaultId The vault ID
     /// @param params The parameters containing the invalid frozen shares to remove
     /// @param signature The signature to verify
+
     function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
         external
         onlyOperator
@@ -314,7 +289,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         crossChainManager = _crossChainManager;
 
         //emit event
-        emit CrossChainManagerSet(crossChainManager);
+        emit CrossChainManagerSet(_crossChainManager);
     }
 
     /// @notice Set allowed strategy provider
@@ -345,7 +320,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         operator = _operator;
 
         //emit event
-        emit OperatorManagerSet(operator);
+        emit OperatorManagerSet(_operator);
     }
 
     /// @notice Set engine address
@@ -354,7 +329,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         engine = _engine;
 
         //emit event
-        emit EngineSet(engine);
+        emit EngineSet(_engine);
     }
 
     /// @notice Set token decimal
@@ -395,6 +370,12 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         emit ProtocolVaultSet(_vault);
     }
 
+    function setVault(bytes32 vaultId, address _vault) external onlyOwner {
+        idToVault[vaultId] = _vault;
+
+        emit VaultSet(vaultId, _vault);
+    }
+
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
@@ -404,18 +385,19 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @param strategyProviderIds Array of strategy provider IDs
     /// @return pendingMainShares The pending main shares
     /// @return pendingStrategyFundStates Array of strategy fund states
-    function checkMainAndStrategyFund(uint256 periodId, bytes32, bytes32[] calldata strategyProviderIds)
+    function checkMainAndStrategyFund(uint256 periodId, bytes32 vaultId, bytes32[] calldata strategyProviderIds)
         external
         view
         returns (uint256, StrategyFundState[] memory)
     {
-        _check(periodId);
+        _check(periodId, vaultId);
         StrategyFundState[] memory pendingStrategyFundStates = new StrategyFundState[](strategyProviderIds.length);
 
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
-            PendingState storage pendingState = _getStrategyFundToken(strategyProviderIds[i]).pendingState;
+            PendingState storage pendingState =
+                _getStrategyFundToken(vaultId, strategyProviderIds[i], USDC_HASH).pendingState;
 
-            uint256 hwm = _calculateHWM(strategyProviderIds[i]);
+            uint256 hwm = _calculateHWM(vaultId, strategyProviderIds[i]);
             pendingStrategyFundStates[i] = StrategyFundState({
                 strategyProviderId: strategyProviderIds[i],
                 totalShares: pendingState.pendingTotalShares,
@@ -426,22 +408,23 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
             });
         }
 
-        return (pendingMainShares, pendingStrategyFundStates);
+        VaultStateStorage storage vaultStorage = _getVaultStorage(vaultId);
+        return (vaultStorage.pendingMainShares, pendingStrategyFundStates);
     }
 
     /// @notice Check LP account states
     /// @param periodId Period ID
     /// @param accountIds Array of account IDs
     /// @return Array of account states
-    function checkLP(uint256 periodId, bytes32, bytes32[] calldata accountIds)
+    function checkLP(uint256 periodId, bytes32 vaultId, bytes32[] calldata accountIds)
         external
         view
         returns (AccountState[] memory)
     {
-        _check(periodId);
+        _check(periodId, vaultId);
         AccountState[] memory pendingAccountStates = new AccountState[](accountIds.length);
         for (uint256 i = 0; i < accountIds.length; i++) {
-            AccountToken storage accountToken = _getAccountToken(accountIds[i]);
+            AccountToken storage accountToken = _getAccountToken(vaultId, accountIds[i], USDC_HASH);
             pendingAccountStates[i] = AccountState({accountId: accountIds[i], shares: accountToken.pendingShares});
         }
         return pendingAccountStates;
@@ -476,10 +459,22 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @notice Get strategy fund token information
     /// @param spId Strategy provider ID
     /// @return Strategy fund token
-    function getStrategyFund(bytes32 spId) external view returns (StrategyFundToken memory) {
-        return _getStrategyFundToken(spId);
+    function getStrategyFund(bytes32 vaultId, bytes32 spId) external view virtual returns (StrategyFundToken memory) {
+        return _getStrategyFundToken(vaultId, spId, USDC_HASH);
     }
 
+    /// @notice Get account token info by vault and account
+    /// @param vaultId vault id
+    /// @param accountId account id
+    /// @return AccountToken account token information
+    function getAccountToken(bytes32 vaultId, bytes32 accountId) external view virtual returns (AccountToken memory) {
+        return _getAccountToken(vaultId, accountId, USDC_HASH);
+    }
+
+    function getImpl() external view returns (address core, address extension) {
+        ImplStorage storage implStorage = _getLedgerImplStorage();
+        return (implStorage.core, implStorage.extension);
+    }
     /*=========================================================================================
     *                                       INTERNAL
     *=========================================================================================*/
@@ -503,8 +498,9 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         }
     }
 
-    function _check(uint256 periodId) internal view {
-        if (periodId != latestPeriodId) {
+    function _check(uint256 periodId, bytes32 vaultId) internal view {
+        VaultStateStorage storage vaultStorage = _getVaultStorage(vaultId);
+        if (periodId != vaultStorage.latestPeriodId) {
             revert InvalidPeriodId();
         }
     }
@@ -512,8 +508,8 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     /// @notice Calculate high water mark for strategy fund
     /// @param strategyProviderId Strategy provider ID
     /// @return High water mark value
-    function _calculateHWM(bytes32 strategyProviderId) internal view returns (uint256) {
-        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(strategyProviderId);
+    function _calculateHWM(bytes32 vaultId, bytes32 strategyProviderId) internal view returns (uint256) {
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(vaultId, strategyProviderId, USDC_HASH);
 
         uint256 hwm = strategyFundToken.hwm;
         uint256 totalShares = strategyFundToken.totalShares;

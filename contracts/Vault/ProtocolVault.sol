@@ -8,9 +8,9 @@ import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-import {IVaultCrossChainManager} from "./interfaces/IVaultCrossChainManager.sol";
-import {IProtocolVault} from "./interfaces/IProtocolVault.sol";
-import {VaultDepositFE, IDexVault} from "./interfaces/IDexVault.sol";
+import {IVaultCrossChainManager} from "../interfaces/IVaultCrossChainManager.sol";
+import {IProtocolVault} from "../interfaces/IProtocolVault.sol";
+import {VaultDepositFE, IDexVault} from "../interfaces/IDexVault.sol";
 import {
     VaultType,
     VaultState,
@@ -20,10 +20,10 @@ import {
     WithdrawParams,
     OperationData,
     UserClaimedInfo
-} from "./lib/types/VaultStruct.sol";
-import {PayloadType, StrategyVaultCCMessage} from "./lib/types/CrossChainStruct.sol";
-import {ClaimInfo} from "./lib/types/LedgerStruct.sol";
-import {USDC_HASH, ORDERLY_BROKER, LEDGER_CHAIN_ID} from "./lib/types/Constants.sol";
+} from "../lib/types/VaultStruct.sol";
+import {PayloadType, StrategyVaultCCMessage} from "../lib/types/CrossChainStruct.sol";
+import {ClaimInfo} from "../lib/types/LedgerStruct.sol";
+import {USDC_HASH, ORDERLY_BROKER, LEDGER_CHAIN_ID} from "../lib/types/Constants.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -31,8 +31,6 @@ import {USDC_HASH, ORDERLY_BROKER, LEDGER_CHAIN_ID} from "./lib/types/Constants.
 /// @title ProtocolVault for user to deposit and withdraw assets
 contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgradeable, IProtocolVault {
     using Address for address payable;
-
-    // Constants moved to Constants library
 
     VaultState public vaultState;
     address public dexVault;
@@ -118,7 +116,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
 
         dexVault = _dexVault;
 
-        isAllowedBroker[ORDERLY_BROKER] = true;
         isAllowedToken[token] = true;
         isAllowedStrategy[_dexVault] = true;
         tokenHashToAddress[USDC_HASH] = token;
@@ -127,9 +124,6 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         minDepositForLp = _minDepositForLp;
         minDepositForSp = _minDepositForSp;
     }
-    /*=========================================================================================
-    *                                       EXTERNAL
-    *=========================================================================================*/
 
     //--------------------------------------FROM USER-----------------------------------------
     /**
@@ -237,8 +231,11 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     }
 
     //--------------------------------------FROM Strategy-----------------------------------------
-    function depositFromStrategy(uint256 periodId, address token, uint256 amount) external allowedStrategy {
-        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
+    function depositFromStrategy(uint256 periodId, bytes32 broker, address token, uint256 amount)
+        external
+        allowedStrategy
+    {
+        bytes32 vaultId = _getVaultId(broker);
 
         //transfer token to this contract
         SafeTransferLib.safeTransferFrom(ERC20(token), msg.sender, address(this), amount);
@@ -247,17 +244,13 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     }
 
     //--------------------------------------FROM LEDGER-----------------------------------------
-    function depositToStrategy(uint256 periodId, address receiver, uint256 amount)
+    function depositToStrategy(uint256 periodId, address receiver, bytes32 broker, uint256 amount)
         external
         onlyVaultCrossChainManager
     {
-        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
-        VaultDepositFE memory depositData = VaultDepositFE({
-            accountId: vaultId,
-            brokerHash: ORDERLY_BROKER,
-            tokenHash: USDC_HASH,
-            tokenAmount: uint128(amount)
-        });
+        bytes32 vaultId = _getVaultId(broker);
+        VaultDepositFE memory depositData =
+            VaultDepositFE({accountId: vaultId, brokerHash: broker, tokenHash: USDC_HASH, tokenAmount: uint128(amount)});
 
         //call dex
         address token = tokenHashToAddress[USDC_HASH];
@@ -271,7 +264,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit DepositToStrategy(periodId, vaultId, receiver, amount, dexNonce);
     }
 
-    function updateUnClaimed(uint256 periodId, uint256 ccFee, ClaimInfo[] memory userClaimInfos)
+    function updateUnClaimed(uint256 periodId, uint256 ccFee, bytes32 broker, ClaimInfo[] memory userClaimInfos)
         external
         onlyVaultCrossChainManager
     {
@@ -284,7 +277,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             crossChainFee[userId] += ccFee;
         }
 
-        bytes32 vaultId = _getVaultId(ORDERLY_BROKER);
+        bytes32 vaultId = _getVaultId(broker);
         emit UnClaimedUpdated(periodId, vaultId, userClaimInfos);
     }
 
