@@ -191,7 +191,8 @@ async function deployCommunityVault(env, cv) {
     const spId = getStrategyProviderId(CommunityVaultAddr, cvDeployment[cv].sp, cvDeployment[cv].broker);
     updateCommunityVaultInfo(cv, {
         vaultId: vaultId,
-        spId: spId
+        spId: spId,
+        implAddress: implAddr
     });
 
     // Verify proxy contract
@@ -737,7 +738,7 @@ function updateCommunityVaultInfo(cv, updates) {
         }
 
         let hasChanges = false;
-        const fieldsToUpdate = ['vaultId', 'spId'];
+        const fieldsToUpdate = ['vaultId', 'spId', 'implAddress'];
 
         fieldsToUpdate.forEach(field => {
             if (updates[field] !== undefined) {

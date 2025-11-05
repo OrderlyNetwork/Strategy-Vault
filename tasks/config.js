@@ -150,7 +150,7 @@ task("config-cv", "Config ProtocolVault")
             throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
         }
         await configCommunityVault(taskArgs.env, taskArgs.cv);
-        await configEVMCCForCommunityVault(taskArgs.env, taskArgs.cv);
+        //await configEVMCCForCommunityVault(taskArgs.env, taskArgs.cv);
     });
 task("ledger-add-cv", "Add CommunityVault to ledger")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -202,13 +202,13 @@ async function configCommunityVault(env, cv) {
     console.log("Allowed broker set successfully");
 
     //transfer native for cc fee 
-    const [sender] = await ethers.getSigners();
-    tx = await sender.sendTransaction({
-        to: cvDeployment[cv].address,
-        value: ethers.parseEther('0.1'),
-    });
-    await tx.wait()
-    console.log("transfer native to community vault successfully");
+    // const [sender] = await ethers.getSigners();
+    // tx = await sender.sendTransaction({
+    //     to: cvDeployment[cv].address,
+    //     value: ethers.parseEther('0.1'),
+    // });
+    // await tx.wait()
+    // console.log("transfer native to community vault successfully");
 }
 async function configEVMCCForCommunityVault(env, cv) {
     //get the contract instance
