@@ -28,17 +28,17 @@ async function main() {
 
     //upgrade
     //!need to change with your env
-    const env = "qa";
+    // const env = "qa";
 
-    const vaultCrossChainManager = await ethers.getContractAt(
-        "VaultCrossChainManager",
-        deployment[env].crossChainManager
-    )
+    // const vaultCrossChainManager = await ethers.getContractAt(
+    //     "VaultCrossChainManager",
+    //     deployment[env].crossChainManager
+    // )
 
-    const impl = implAddr;
-    tx = await vaultCrossChainManager.upgradeToAndCall(impl, "0x")
-    await tx.wait();
-    console.log("upgrade VaultCrossChainManager contract successfully");
+    // const impl = implAddr;
+    // tx = await vaultCrossChainManager.upgradeToAndCall(impl, "0x")
+    // await tx.wait();
+    // console.log("upgrade VaultCrossChainManager contract successfully");
 }
 
 

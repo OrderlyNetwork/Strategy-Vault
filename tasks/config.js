@@ -202,13 +202,15 @@ async function configCommunityVault(env, cv) {
     console.log("Allowed broker set successfully");
 
     //transfer native for cc fee 
-    const [sender] = await ethers.getSigners();
-    tx = await sender.sendTransaction({
-        to: cvDeployment[cv].address,
-        value: ethers.parseEther('0.1'),
-    });
-    await tx.wait()
-    console.log("transfer native to community vault successfully");
+    if (env != 'mainet') {
+        const [sender] = await ethers.getSigners();
+        tx = await sender.sendTransaction({
+            to: cvDeployment[cv].address,
+            value: ethers.parseEther('0.1'),
+        });
+        await tx.wait()
+        console.log("transfer native to community vault successfully");
+    }
 }
 async function configEVMCCForCommunityVault(env, cv) {
     //get the contract instance

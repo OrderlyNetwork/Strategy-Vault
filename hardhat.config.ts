@@ -49,7 +49,7 @@ module.exports = {
       accounts: [DEPLOY_KEY],
     },
     op: {
-      url: "https://optimism-mainnet.public.blastapi.io",
+      url: "https://optimism.rpc.subquery.network/public",
       accounts: [DEPLOY_KEY],
     },
     op_sepolia: {
@@ -101,8 +101,8 @@ module.exports = {
       accounts: [PRIVATE_KEY],
     },
     sei: {
-      url: "https://sei.rpc.grove.city/v1/01fdb492",
-      accounts: [PRIVATE_KEY],
+      url: "https://sei-evm-rpc.stakeme.pro",
+      accounts: [DEPLOY_KEY],
     }
   },
   etherscan: { //https://api.etherscan.io/v2/chainlist
