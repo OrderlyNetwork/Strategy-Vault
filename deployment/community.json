@@ -43,7 +43,8 @@
     "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
     "spId": "0x0cd0bb4301741da45879be87758add22b9d052f7dde724710d81e3a409d2823d",
     "minDepositForLp": 10000000,
-    "minDepositForSp": 10000000
+    "minDepositForSp": 10000000,
+    "network": "base_sepolia"
   },
   "mainnet": {
     "sp": "",

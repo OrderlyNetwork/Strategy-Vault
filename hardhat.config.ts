@@ -169,6 +169,14 @@ module.exports = {
           apiURL: "https://seitrace.com/arctic-1/api",
           browserURL: "https://devnet.seitrace.com/",
         }
+      },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=8453",
+          browserURL: "https://basescan.org/",
+        }
       }
     ]
   }
