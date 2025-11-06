@@ -46,9 +46,21 @@
     "minDepositForSp": 10000000,
     "network": "base_sepolia"
   },
-  "mainnet": {
-    "sp": "",
-    "nonce": 0,
-    "address": ""
+  "smaug": {
+    "sp": "0xB774F1d84E728c2043c2dD2F6B6dBd4b2996b056",
+    "nonce": "0x997c7353623997cb46869f594635a02d2cb9620bc4c198a201162c2f261d2708",
+    "vaultId": "0xe983638959ffd486bcbfe527396f52a2bce173614a96c641c139561efa75f565",
+    "address": "0xf62Ed1c0Dd53d499aE11ACdEd24415CC48443630",
+    "feeRate": 30,
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "spId": "0x959e2e043e408ae2ca4c4142032e699d69ff29d02084ce196d2ee8dd4f579d5f",
+    "minDepositForLp": 1000000000,
+    "minDepositForSp": 1000000000,
+    "network": [
+      "arb",
+      "base",
+      "op",
+      "sei"
+    ]
   }
 }

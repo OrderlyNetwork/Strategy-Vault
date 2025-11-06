@@ -1,5 +1,7 @@
 const { task } = require('hardhat/config');
 const deployment = require('../deployment/deployment.json');
+const cvDeployment = require('../deployment/community.json');
+const config = require('../config.json');
 
 task("verify-adapter", "Verify VaultAdapter contracts on block explorer")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -70,6 +72,47 @@ task("verify-protocolvault", "Verify ProtocolVault contracts on block explorer")
 
         await verifyProtocolVaultContracts(implAddr, proxyAddr, dexVault, owner, usdc, minDepositForLp, minDepositForSp);
     });
+
+    task("verify-cv", "Verify CommunityVault contracts on block explorer")
+        .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+        .addParam("cv", "Community Vault name")
+        .setAction(async (taskArgs, hre) => {
+            const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+            if (!validEnvs.includes(taskArgs.env)) {
+                throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+            }
+
+            const currentNetwork = hre.network.name;
+
+            // Ensure CV exists in community.json
+            if (!cvDeployment[taskArgs.cv] || !cvDeployment[taskArgs.cv].address) {
+                throw new Error(`CommunityVault ${taskArgs.cv} not found in community.json or missing address`);
+            }
+
+            const proxyAddr = cvDeployment[taskArgs.cv].address;
+
+            // Read implementation address from proxy contract
+            const implAddr = await getImplementationFromProxy(proxyAddr);
+            console.log(`Implementation address read from proxy: ${implAddr}`);
+
+            // Get configuration values for constructor arguments
+            const dexVault = deployment[taskArgs.env].dex[currentNetwork];
+            const usdc = config[currentNetwork].USDC;
+            let owner;
+            if (taskArgs.env == 'mainnet') {
+                owner = "0xa564129634c705981AE48C2A7Fb4A5f0690e2B9E"
+            } else {
+                owner = "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1"
+            }
+            const minDepositForLp = cvDeployment[taskArgs.cv].minDepositForLp;
+            const minDepositForSp = cvDeployment[taskArgs.cv].minDepositForSp;
+
+            if (!dexVault || !usdc || !owner || minDepositForLp === undefined || minDepositForSp === undefined) {
+                throw new Error(`Missing required configuration for ${taskArgs.env} environment or community vault ${taskArgs.cv} on ${currentNetwork}`);
+            }
+
+            await verifyProtocolVaultContracts(implAddr, proxyAddr, dexVault, owner, usdc, minDepositForLp, minDepositForSp);
+        });
 
 /**
  * Verify VaultAdapter contracts on block explorer
@@ -232,3 +275,4 @@ module.exports = {
     verifyProtocolVaultContracts,
     getImplementationFromProxy
 };
+

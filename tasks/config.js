@@ -149,7 +149,7 @@ task("config-cv", "Config ProtocolVault")
         if (!cvDeployment[taskArgs.cv]) {
             throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
         }
-        await configCommunityVault(taskArgs.env, taskArgs.cv);
+        //await configCommunityVault(taskArgs.env, taskArgs.cv);
         await configEVMCCForCommunityVault(taskArgs.env, taskArgs.cv);
     });
 task("ledger-add-cv", "Add CommunityVault to ledger")

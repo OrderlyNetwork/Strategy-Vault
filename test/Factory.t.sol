@@ -126,6 +126,10 @@ contract Create3FactoryTest is Test {
             keccak256(abi.encodePacked("VaultAdapter"))
         );
     }
+    function testGetSingleSalt() public pure {
+        bytes32 salt = keccak256(abi.encodePacked("smaug"));
+        console.logBytes32(salt);
+    }
 }
 
 contract SimpleStorage {

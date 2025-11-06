@@ -9,7 +9,6 @@ const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/
 
 const ERC1967ProxyPath = path.join(__dirname, 'ERC1967ProxyBytecode_oz_v5.json');
 const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
-const ORDER_HASH = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
 task("deploy-evm", "Deploy strategy vault contracts on EVM")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .setAction(async (taskArgs, hre) => {
@@ -58,7 +57,11 @@ task("deploy-cv", "Deploy CommunityVault contract")
         if (!cvDeployment[taskArgs.cv]) {
             throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
         }
+        // Deploy the CommunityVault first
         await deployCommunityVault(taskArgs.env, taskArgs.cv);
+
+        // Configure the deployed CommunityVault
+        await configCommunityVault(taskArgs.env, taskArgs.cv);
     });
 task("deploy-pvledger", "Deploy ProtocolVaultLedger contract")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -762,6 +765,66 @@ function updateCommunityVaultInfo(cv, updates) {
         }
     } catch (error) {
         console.error(`Error updating community vault info: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Configure a deployed Community Vault (moved from tasks/config.js)
+ * @param {string} env
+ * @param {string} cv
+ */
+async function configCommunityVault(env, cv) {
+    try {
+        // get the contract instance
+        const pvContract = await ethers.getContractAt(
+            "ProtocolVault",
+            cvDeployment[cv].address
+        );
+
+        let tx;
+
+        // set crossChainManager
+        tx = await pvContract.setCrossChainManager(deployment[env].crossChainManager);
+        await tx.wait();
+        console.log("CrossChainManager set successfully");
+
+        // set sp
+        const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+        tx = await pvContract.setAllowedStrategyProvider(spId, true);
+        await tx.wait();
+        console.log("Allowed SP set successfully");
+
+        // set ledger eid
+        let ledgerEid;
+        const currentNetwork = hre.network.name;
+
+        if (env == 'dev' || env == 'qa' || env == 'staging') {
+            ledgerEid = config['orderly_sepolia'].eid;
+        } else if (env == 'mainnet') {
+            ledgerEid = config['orderly'].eid;
+        }
+        tx = await pvContract.setLedgerEid(ledgerEid);
+        await tx.wait();
+        console.log(`set ledger eid ${ledgerEid} successfully for ${currentNetwork}`);
+
+        // set broker
+        tx = await pvContract.setAllowedBroker(cvDeployment[cv].broker, true);
+        await tx.wait();
+        console.log("Allowed broker set successfully");
+
+        // transfer native for cc fee
+        if (env != 'mainnet') {
+            const [sender] = await ethers.getSigners();
+            tx = await sender.sendTransaction({
+                to: cvDeployment[cv].address,
+                value: ethers.parseEther('0.1'),
+            });
+            await tx.wait();
+            console.log("transfer native to community vault successfully");
+        }
+    } catch (error) {
+        console.error(`Error configuring CommunityVault ${cv}: ${error.message}`);
         throw error;
     }
 }
