@@ -812,7 +812,9 @@ async function configCommunityVault(env, cv) {
         tx = await pvContract.setAllowedBroker(cvDeployment[cv].broker, true);
         await tx.wait();
         console.log("Allowed broker set successfully");
-
+        
+        //transfer owner 
+        tx = await pvContract.transferOwnership(deployment[env].owner);
         // transfer native for cc fee
         if (env != 'mainnet') {
             const [sender] = await ethers.getSigners();
