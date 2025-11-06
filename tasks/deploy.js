@@ -58,7 +58,7 @@ task("deploy-cv", "Deploy CommunityVault contract")
             throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
         }
         // Deploy the CommunityVault first
-        await deployCommunityVault(taskArgs.env, taskArgs.cv);
+        //await deployCommunityVault(taskArgs.env, taskArgs.cv);
 
         // Configure the deployed CommunityVault
         await configCommunityVault(taskArgs.env, taskArgs.cv);
@@ -784,37 +784,39 @@ async function configCommunityVault(env, cv) {
 
         let tx;
 
-        // set crossChainManager
-        tx = await pvContract.setCrossChainManager(deployment[env].crossChainManager);
-        await tx.wait();
-        console.log("CrossChainManager set successfully");
+        // // set crossChainManager
+        // tx = await pvContract.setCrossChainManager(deployment[env].crossChainManager);
+        // await tx.wait();
+        // console.log("CrossChainManager set successfully");
 
-        // set sp
-        const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
-        tx = await pvContract.setAllowedStrategyProvider(spId, true);
-        await tx.wait();
-        console.log("Allowed SP set successfully");
+        // // set sp
+        // const spId = getStrategyProviderId(cvDeployment[cv].address, cvDeployment[cv].sp, cvDeployment[cv].broker);
+        // tx = await pvContract.setAllowedStrategyProvider(spId, true);
+        // await tx.wait();
+        // console.log("Allowed SP set successfully");
 
-        // set ledger eid
-        let ledgerEid;
-        const currentNetwork = hre.network.name;
+        // // set ledger eid
+        // let ledgerEid;
+        // const currentNetwork = hre.network.name;
 
-        if (env == 'dev' || env == 'qa' || env == 'staging') {
-            ledgerEid = config['orderly_sepolia'].eid;
-        } else if (env == 'mainnet') {
-            ledgerEid = config['orderly'].eid;
-        }
-        tx = await pvContract.setLedgerEid(ledgerEid);
-        await tx.wait();
-        console.log(`set ledger eid ${ledgerEid} successfully for ${currentNetwork}`);
+        // if (env == 'dev' || env == 'qa' || env == 'staging') {
+        //     ledgerEid = config['orderly_sepolia'].eid;
+        // } else if (env == 'mainnet') {
+        //     ledgerEid = config['orderly'].eid;
+        // }
+        // tx = await pvContract.setLedgerEid(ledgerEid);
+        // await tx.wait();
+        // console.log(`set ledger eid ${ledgerEid} successfully for ${currentNetwork}`);
 
-        // set broker
-        tx = await pvContract.setAllowedBroker(cvDeployment[cv].broker, true);
-        await tx.wait();
-        console.log("Allowed broker set successfully");
+        // // set broker
+        // tx = await pvContract.setAllowedBroker(cvDeployment[cv].broker, true);
+        // await tx.wait();
+        // console.log("Allowed broker set successfully");
         
         //transfer owner 
         tx = await pvContract.transferOwnership(deployment[env].owner);
+        await tx.wait();
+        console.log("Ownership transferred successfully");
         // transfer native for cc fee
         if (env != 'mainnet') {
             const [sender] = await ethers.getSigners();
