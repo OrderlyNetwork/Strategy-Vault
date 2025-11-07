@@ -54,6 +54,7 @@
     "feeRate": 30,
     "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
     "spId": "0x959e2e043e408ae2ca4c4142032e699d69ff29d02084ce196d2ee8dd4f579d5f",
+    "ceffuwallet": "0x2ed82e9642cb1b7acf1907558daa06eee94bbc96",
     "minDepositForLp": 1000000000,
     "minDepositForSp": 1000000000,
     "network": [
