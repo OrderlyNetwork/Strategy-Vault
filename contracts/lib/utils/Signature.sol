@@ -22,7 +22,7 @@ import {
     DexRequest
 } from "../types/LedgerStruct.sol";
 import {AdapterDeposit, AdapterDepositLegacy} from "../types/VaultStruct.sol";
-import {TYPE_HASH, REQUEST_HASH, ED25519} from "../types/Constants.sol";
+import {TYPE_HASH, REQUEST_HASH} from "../types/Constants.sol";
 import "./Bytes32ToAsciiBytes.sol";
 import {IEd25519} from "../../interfaces/IEd25519.sol";
 
@@ -174,7 +174,7 @@ library Signature {
         }
     }
 
-    function verifySOLSig(DexRequestData memory data, bytes32 r, bytes32 s, uint256 chainId, bytes32 signer)
+    function verifySOLSig(DexRequestData memory data, bytes32 r, bytes32 s, uint256 chainId, bytes32 signer,address ed25519)
         internal
         pure
     {
@@ -192,8 +192,8 @@ library Signature {
         );
         bytes memory m = Bytes32ToAsciiBytes.bytes32ToAsciiBytes(hashStruct);
         // the former is the signature of message from eoa, the latter is the signature of tx from ledger
-        if (!(IEd25519(ED25519).verify(signer, r, s, m)
-                    || IEd25519(ED25519).verify(signer, r, s, solanaLedgerSignature(signer, hashStruct)))) {
+        if (!(IEd25519(ed25519).verify(signer, r, s, m)
+                    || IEd25519(ed25519).verify(signer, r, s, solanaLedgerSignature(signer, hashStruct)))) {
             revert InvalidUser();
         }
     }
