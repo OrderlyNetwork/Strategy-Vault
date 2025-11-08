@@ -243,7 +243,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         bytes32 vaultId,
         bytes32[] memory requestIds,
         bytes calldata signature
-    ) external onlyOperator{
+    ) external {
         _delegateCall(
             abi.encodeWithSelector(
                 ILedgerCoreImpl.updateUnclaimed.selector, chainId, periodId, ccFee, vaultId, requestIds, signature
