@@ -371,10 +371,7 @@ contract Base is TestHelperOz5 {
         });
 
         StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
-            payloadType: PayloadType.LP_DEPOSIT,
-            srcChainId: 1,
-            dstChainId: 2,
-            payload: abi.encode(operationData)
+            payloadType: PayloadType.LP_DEPOSIT, srcChainId: 1, dstChainId: 2, payload: abi.encode(operationData)
         });
 
         bytes memory lzMessage = abi.encode(message);

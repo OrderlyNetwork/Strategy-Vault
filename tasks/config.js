@@ -202,13 +202,13 @@ async function configCommunityVault(env, cv) {
     console.log("Allowed broker set successfully");
 
     //transfer native for cc fee 
-    // const [sender] = await ethers.getSigners();
-    // tx = await sender.sendTransaction({
-    //     to: cvDeployment[cv].address,
-    //     value: ethers.parseEther('0.1'),
-    // });
-    // await tx.wait()
-    // console.log("transfer native to community vault successfully");
+    const [sender] = await ethers.getSigners();
+    tx = await sender.sendTransaction({
+        to: cvDeployment[cv].address,
+        value: ethers.parseEther('0.1'),
+    });
+    await tx.wait()
+    console.log("transfer native to community vault successfully");
 }
 async function configEVMCCForCommunityVault(env, cv) {
     //get the contract instance
@@ -345,6 +345,8 @@ async function configNewChainForOrderly(env, network) {
         "VaultCrossChainManager",
         deployment[env].crossChainManager
     )
+    console.log(config[network].chainId, config[network].eid)
+    console.log(config[network].eid, ethers.zeroPadValue(deployment[env].crossChainManager, 32))
     //set eid
     tx = await ccManagerContract.setEid(config[network].chainId, config[network].eid);
     await tx.wait()

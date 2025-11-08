@@ -49,7 +49,7 @@ module.exports = {
       accounts: [DEPLOY_KEY],
     },
     op: {
-      url: "https://optimism-mainnet.public.blastapi.io",
+      url: "https://optimism.rpc.subquery.network/public",
       accounts: [DEPLOY_KEY],
     },
     op_sepolia: {
@@ -101,8 +101,8 @@ module.exports = {
       accounts: [PRIVATE_KEY],
     },
     sei: {
-      url: "https://sei.rpc.grove.city/v1/01fdb492",
-      accounts: [PRIVATE_KEY],
+      url: "https://sei-evm-rpc.stakeme.pro",
+      accounts: [DEPLOY_KEY],
     }
   },
   etherscan: { //https://api.etherscan.io/v2/chainlist
@@ -113,13 +113,14 @@ module.exports = {
       sei: '123',//not needed
       sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
       arb_sepolia: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
-      arbitrumOne: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
+      arb: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
+      op: "GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK",
       op_sepolia: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
       baseSepolia: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
       base: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
       optimisticEthereum: 'TZY1RU2T9BJE973MX6SB2FU2D6QZYWW8XN',
       bscTestnet: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE',
-      bsc: 'A2WXW5P36IKUUB2CGJEC6WEXR4SQ5MRKKE'
+      bsc: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK'
     },
     customChains: [
       {
@@ -169,7 +170,47 @@ module.exports = {
           apiURL: "https://seitrace.com/arctic-1/api",
           browserURL: "https://devnet.seitrace.com/",
         }
-      }
+      },
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=8453",
+          browserURL: "https://basescan.org/",
+        }
+      },
+      {
+        network: "arb",
+        chainId: 42161,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=42161",
+          browserURL: "https://arbiscan.io/",
+        }
+      },
+      {
+        network: "op",
+        chainId: 10,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=10",
+          browserURL: "https://optimistic.etherscan.io/",
+        }
+      },
+      {
+        network: "bsc",
+        chainId: 56,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=56",
+          browserURL: "https://bscscan.com/",
+        }
+      },
+      {
+        network: "sei",
+        chainId: 1329,
+        urls: {
+          apiURL: "https://seitrace.com/pacific-1/api",
+          browserURL: "https://seiscan.io/",
+        }
+      },
     ]
   }
 };

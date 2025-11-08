@@ -25,6 +25,7 @@ import {
     OperationRes,
     ClaimInfo
 } from "../lib/types/LedgerStruct.sol";
+
 /// @title IProtocolVaultLedger
 /// @notice Interface for the main Protocol Vault Ledger contract
 /// @dev Contains high-frequency functions and configuration methods
@@ -76,7 +77,7 @@ interface IProtocolVaultLedger {
     event DexRequestHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-    
+
     //core
     function updateStrategyFundAssets(
         uint256 periodId,
@@ -164,8 +165,7 @@ interface IProtocolVaultLedger {
 
     //extension
     /// @notice Handles operations from vault
-    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
-        external;
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData) external;
 
     /// @notice Handle DEX requests
     /// @param dexRequests Array of DEX requests

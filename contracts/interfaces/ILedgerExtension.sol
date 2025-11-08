@@ -16,14 +16,13 @@ interface ILedgerExtension {
 
     // Events
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
-    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce,bytes32 vaultId);
+    event NotEnoughWithdrawShare(PayloadType payloadType, uint256 chainId, uint256 chainNonce, bytes32 vaultId);
     event DexRequestHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
 
     /// @notice Handles operations from vault
-    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
-        external;
+    function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData) external;
 
     /// @notice Handle DEX requests
     /// @param dexRequests Array of DEX requests

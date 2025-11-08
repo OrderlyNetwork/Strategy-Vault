@@ -80,7 +80,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
     }
 
     /*=========================================================================================
-    *                                       EXTERNAL 
+    *                                       EXTERNAL
     *=========================================================================================*/
 
     //--------------------------------------FROM VAULT-----------------------------------------
@@ -395,7 +395,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
 
         for (uint256 i = 0; i < strategyProviderIds.length; i++) {
             PendingState storage pendingState =
-                _getStrategyFundToken(vaultId, strategyProviderIds[i], USDC_HASH).pendingState;
+            _getStrategyFundToken(vaultId, strategyProviderIds[i], USDC_HASH).pendingState;
 
             uint256 hwm = _calculateHWM(vaultId, strategyProviderIds[i]);
             pendingStrategyFundStates[i] = StrategyFundState({
@@ -475,6 +475,7 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         ImplStorage storage implStorage = _getLedgerImplStorage();
         return (implStorage.core, implStorage.extension);
     }
+
     /*=========================================================================================
     *                                       INTERNAL
     *=========================================================================================*/

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {AdapterDeposit,AdapterDepositLegacy} from "../lib/types/VaultStruct.sol";
+import {AdapterDeposit, AdapterDepositLegacy} from "../lib/types/VaultStruct.sol";
 
 interface IVaultAdapter {
     event DepositFromCeffu(AdapterDeposit adapterDeposit, bool isNative);
@@ -12,7 +12,7 @@ interface IVaultAdapter {
     event TokenHashToTokenSet(bytes32 tokenHash, address token);
     event ProtocolVaultSet(address protocolVault);
     event DepositFromCeffu(AdapterDepositLegacy adapterDeposit, bool isNative);
-    
+
     //0x82b42900
     error Unauthorized();
     //0xd92e233d

@@ -2,7 +2,8 @@
 pragma solidity ^0.8.20;
 
 import {
-    ILayerZeroReceiver, Origin
+    ILayerZeroReceiver,
+    Origin
 } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroReceiver.sol";
 
 interface IOAppReceiver is ILayerZeroReceiver {

@@ -16,18 +16,18 @@ async function main() {
     await verifyContract(implAddr, [], "VaultAdapter Implementation");
 
     //upgrade
-    //!need to change with your env
-    const env = "qa";
+    // //!need to change with your env
+    // const env = "qa";
 
-    const vaultAdapter = await ethers.getContractAt(
-        "VaultAdapter",
-        deployment[env].vaultAdapter
-    )
+    // const vaultAdapter = await ethers.getContractAt(
+    //     "VaultAdapter",
+    //     deployment[env].vaultAdapter
+    // )
 
-    const impl = implAddr;
-    tx = await vaultAdapter.upgradeToAndCall(impl, "0x")
-    await tx.wait();
-    console.log("✅ VaultAdapter upgrade completed successfully!");
+    // const impl = implAddr;
+    // tx = await vaultAdapter.upgradeToAndCall(impl, "0x")
+    // await tx.wait();
+    // console.log("✅ VaultAdapter upgrade completed successfully!");
     
 }
 

@@ -73,15 +73,13 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             bytes32 tokenHash = keccak256(abi.encodePacked(request.dexRequestData.token));
             vaultState.isDexRequestHandled[requestId] = true;
 
-            if (
-                _handleRequest(
+            if (_handleRequest(
                     request.dexRequestData.payloadType,
                     request.id,
                     tokenHash,
                     request.dexRequestData.amount,
                     request.dexRequestData.vaultId
-                )
-            ) {
+                )) {
                 emit DexRequestHandled(request);
             } else {
                 emit DexWithdrawNotEnough(requestId);
@@ -187,11 +185,9 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             strategyFundToken.unAllocatedAssets += amount;
         } else if (payloadType == PayloadType.SP_WITHDRAW) {
             strategyFundToken = _getStrategyFundToken(vaultId, id, tokenHash);
-            if (
-                _checkWithdraw(
+            if (_checkWithdraw(
                     amount, strategyFundToken.frozenShares, strategyFundToken.pendingState.pendingStrategyProviderShares
-                )
-            ) {
+                )) {
                 strategyFundToken.frozenShares += amount;
             } else {
                 return false;

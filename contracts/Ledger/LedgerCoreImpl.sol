@@ -106,8 +106,9 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
                     revert InvalidType();
                 }
 
-                operationRes[i] =
-                    OperationRes({id: operation.id, requestId: requestId, amount: amount, operationType: operationType});
+                operationRes[i] = OperationRes({
+                    id: operation.id, requestId: requestId, amount: amount, operationType: operationType
+                });
                 vaultState.isOpHandled[requestId] = true;
             }
         }
@@ -579,10 +580,7 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         returns (StrategyVaultCCMessage memory message)
     {
         return StrategyVaultCCMessage({
-            payloadType: payloadType,
-            srcChainId: block.chainid,
-            dstChainId: dstChainId,
-            payload: payload
+            payloadType: payloadType, srcChainId: block.chainid, dstChainId: dstChainId, payload: payload
         });
     }
 
@@ -595,8 +593,9 @@ contract LedgerCoreImpl is LedgerBase, ILedgerCoreImpl {
         VaultStateStorage storage vaultState,
         UpdateStrategyFundAssetsParams calldata strategyFundAssets
     ) internal returns (uint256 assetsAfterFee) {
-        StrategyFundToken storage token =
-            vaultState.strategyFundTokenInfo[strategyFundAssets.strategyProviderId][USDC_HASH];
+        StrategyFundToken storage token = vaultState.strategyFundTokenInfo[
+            strategyFundAssets.strategyProviderId
+        ][USDC_HASH];
 
         //reset performance fee
         token.performanceFee = 0;

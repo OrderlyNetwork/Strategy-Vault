@@ -21,7 +21,9 @@ async function main() {
 
     await verifyContract(implAddr, [], "ProtocolVaultLedger Implementation");
 
-    //update
+    await verifyContract(implAddr, [], "ProtocolVaultLedger Implementation");
+
+    //updage
     const protocolVaultLedger = await ethers.getContractAt(
         "ProtocolVaultLedger",
         deployment[env].pvLedger

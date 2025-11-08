@@ -35,7 +35,7 @@
     "vaultId": "0x8ba6ac87ed40c14d4d5952a8afb772e0d53d3d8e7898c6fc7b87579e1fda686d",
     "address": "0x3EFC5DD58feBB65B20a3E0C62262c20bAFA2Fb13",
     "feeRate": 0,
-    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f125a8bc1d9b19e5b",
     "spId": "0x0cd0bb4301741da45879be87758add22b9d052f7dde724710d81e3a409d2823d",
     "minDepositForLp": 0,
     "minDepositForSp": 0
@@ -52,9 +52,22 @@
     "minDepositForSp": 10000000,
     "network": "base_sepolia"
   },
-  "mainnet": {
-    "sp": "",
-    "nonce": 0,
-    "address": ""
+  "smaug": {
+    "sp": "0xB774F1d84E728c2043c2dD2F6B6dBd4b2996b056",
+    "nonce": "0x997c7353623997cb46869f594635a02d2cb9620bc4c198a201162c2f261d2708",
+    "vaultId": "0xe983638959ffd486bcbfe527396f52a2bce173614a96c641c139561efa75f565",
+    "address": "0xf62Ed1c0Dd53d499aE11ACdEd24415CC48443630",
+    "feeRate": 30,
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "spId": "0x959e2e043e408ae2ca4c4142032e699d69ff29d02084ce196d2ee8dd4f579d5f",
+    "ceffuwallet": "0x2ed82e9642cb1b7acf1907558daa06eee94bbc96",
+    "minDepositForLp": 1000000000,
+    "minDepositForSp": 1000000000,
+    "network": [
+      "arb",
+      "base",
+      "op",
+      "sei"
+    ]
   }
 }

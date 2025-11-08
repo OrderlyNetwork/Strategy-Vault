@@ -138,7 +138,7 @@ contract MockSVLedger is ProtocolVaultLedger {
         VaultStateStorage storage vaultStorage = _getVaultStorage(vaultId);
         return vaultStorage.pendingMainShares;
     }
-    
+
     function getVaultMainAssetsAfterFee(bytes32 vaultId) external view returns (uint256) {
         VaultStateStorage storage vaultStorage = _getVaultStorage(vaultId);
         return vaultStorage.mainAssetsAfterFee;
