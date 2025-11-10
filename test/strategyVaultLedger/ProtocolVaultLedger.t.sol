@@ -27,6 +27,7 @@ import {LedgerUtils} from "../../contracts/lib/utils/LedgerUtils.sol";
 import {UserClaimedInfo, RoleType, ClaimParams} from "../../contracts/Vault/ProtocolVault.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {StrategyVaultCCMessage, PayloadType} from "../../contracts/lib/types/CrossChainStruct.sol";
+import {OperationData, VaultType} from "../../contracts/lib/types/VaultStruct.sol";
 
 contract ProtocolVaultLedgerTest is Base {
     // Contract-specific errors (not related to ledger implementation)
@@ -52,6 +53,163 @@ contract ProtocolVaultLedgerTest is Base {
         svLedger.setOperatorManager(operator);
     }
 
+    /*============================================================
+    *                PERMISSION: onlyOperator (negative tests)
+    *============================================================*/
+    function testRevertOnlyOperator_updateStrategyFundAssets() public {
+        UpdateStrategyFundAssetsParams[] memory params = new UpdateStrategyFundAssetsParams[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.updateStrategyFundAssets(0, bytes32(0), params, signature);
+    }
+
+    function testRevertOnlyOperator_updateLPAndStrategyFund() public {
+        UpdateLedgerParams[] memory updateParams = new UpdateLedgerParams[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.updateLPAndStrategyFund(0, bytes32(0), updateParams, signature);
+    }
+
+    function testRevertOnlyOperator_allocateToFunds() public {
+        bytes32[] memory spIdsLocal = new bytes32[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.allocateToFunds(0, bytes32(0), spIdsLocal, signature);
+    }
+
+    function testRevertOnlyOperator_settleMainAndStrategyFunds() public {
+        bytes32[] memory spIdsLocal = new bytes32[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.settleMainAndStrategyFunds(0, bytes32(0), spIdsLocal, signature);
+    }
+
+    function testRevertOnlyOperator_settleAccounts() public {
+        bytes32[] memory accountIds = new bytes32[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.settleAccounts(0, bytes32(0), accountIds, signature);
+    }
+
+    function testRevertOnlyOperator_updatePeriodId() public {
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.updatePeriodId(0, bytes32(0), signature);
+    }
+
+    function testRevertOnlyOperator_handleDexRequests() public {
+        DexRequest[] memory dexRequests = new DexRequest[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.handleDexRequests(dexRequests, signature);
+    }
+
+    function testRevertOnlyOperator_distributeAssets() public {
+        AssetsDistribution[] memory dists = new AssetsDistribution[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.distributeAssets(0, bytes32(0), dists, signature);
+    }
+
+    function testRevertOnlyOperator_updateUnclaimed() public {
+        bytes32[] memory requestIds = new bytes32[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.updateUnclaimed(0, 0, 0, bytes32(0), requestIds, signature);
+    }
+
+    function testRevertOnlyOperator_removeInvalidFrozenShares() public {
+        UpdateLedgerParams[] memory params = new UpdateLedgerParams[](0);
+        bytes memory signature = bytes("");
+        vm.expectRevert(IProtocolVaultLedger.InvalidOperator.selector);
+        svLedger.removeInvalidFrozenShares(bytes32(0), params, signature);
+    }
+
+    /*============================================================
+    *                PERMISSION: onlyOwner (negative tests)
+    *============================================================*/
+    function testRevertOnlyOwner_setOperatorManager() public {
+        vm.prank(userA); // non-owner
+        vm.expectRevert();
+        svLedger.setOperatorManager(address(0xabc));
+    }
+
+    function testRevertOnlyOwner_setCrossChainManager() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setCrossChainManager(address(0xdef));
+    }
+
+    function testRevertOnlyOwner_setFeeRate() public {
+        bytes32[] memory ids = new bytes32[](1);
+        uint256[] memory rates = new uint256[](1);
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setFeeRate(ids, rates);
+    }
+
+    function testRevertOnlyOwner_setAllowedStrategyProvider() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setAllowedStrategyProvider(bytes32(0), address(0x1), address(0x2), bytes32(0), bytes32(0), true);
+    }
+
+    function testRevertOnlyOwner_setDecimal() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setDecimal(bytes32(0), 6);
+    }
+
+    function testRevertOnlyOwner_setVaultBroker() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setVaultBroker(bytes32(0), bytes32(0));
+    }
+
+    function testRevertOnlyOwner_setCore() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setCore(address(0x123));
+    }
+
+    function testRevertOnlyOwner_setExtension() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setExtension(address(0x456));
+    }
+
+    function testRevertOnlyOwner_setProtocolVault() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setProtocolVault(address(0x789));
+    }
+
+    function testRevertOnlyOwner_setVault() public {
+        vm.prank(userA);
+        vm.expectRevert();
+        svLedger.setVault(bytes32(0), address(0x999));
+    }
+
+    /*============================================================
+    *          PERMISSION: onlyVaultCrossChainManager negative
+    *============================================================*/
+    function testRevertOnlyVaultCrossChainManager_handleOpFromVault() public {
+        OperationData memory opData = OperationData({
+            vaultType: VaultType.PROTOCOL,
+            sender: address(this),
+            receiver: address(this),
+            chainNonce: 0,
+            amount: 0,
+            vaultId: bytes32(0),
+            accountId: bytes32(0),
+            strategyProviderId: bytes32(0),
+            tokenHash: bytes32(0),
+            brokerHash: bytes32(0)
+        });
+        vm.expectRevert(IProtocolVaultLedger.InvalidVaultCrossChainManager.selector);
+        svLedger.handleOpFromVault(PayloadType.LP_DEPOSIT, 1, opData);
+    }
+
     function testGetCCFee() public view{
         ClaimInfo[] memory userClaimInfos = new ClaimInfo[](1);
         //fill userClaimInfos[0]
@@ -70,6 +228,7 @@ contract ProtocolVaultLedgerTest is Base {
             dstChainId: 42161,
             payload: "0x0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e56308ebb1554556e92cdfbd346e3a4f5bc7898eaa8e3f0151919b4df433e900df707c3c3a62e6b14b3017c0c347bf113e6fa9c4bbfc118b66bf02c9366b2ba12e97000000000000000000000000000000000000000000000000000000003b9aca00"
         });
+            console.logBytes(message.payload);
     }
 
     function testWithdrawETHFromCCManager() public {
