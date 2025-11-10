@@ -54,7 +54,6 @@ abstract contract LedgerBase {
 
     address public protocolVault;
     mapping(bytes32 vaultId => address vault) public idToVault;
-    address public ed25519;
 
     /// @custom:storage-location erc7201:orderly.vault.state
     struct VaultStateStorage {

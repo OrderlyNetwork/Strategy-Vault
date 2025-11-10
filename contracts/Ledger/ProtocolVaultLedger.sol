@@ -376,13 +376,6 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         emit VaultSet(vaultId, _vault);
     }
 
-
-    function setEd25519(address _ed25519) public onlyOwner {
-        ed25519 = _ed25519;
-
-        emit Ed25519Set(_ed25519);
-    }
-
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/

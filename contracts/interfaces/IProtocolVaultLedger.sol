@@ -77,7 +77,6 @@ interface IProtocolVaultLedger {
     event DexRequestHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-    event Ed25519Set(address ed25519);
 
     //core
     function updateStrategyFundAssets(

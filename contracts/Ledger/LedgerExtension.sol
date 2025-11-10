@@ -159,7 +159,7 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
             revert InvalidId();
         }
 
-        Signature.verifySOLSig(data, request.r, request.s, request.chainId, data.receiver, ed25519);
+        Signature.verifySOLSig(data, request.r, request.s, request.chainId, data.receiver);
     }
 
     function _handleRequest(PayloadType payloadType, bytes32 id, bytes32 tokenHash, uint256 amount, bytes32 vaultId)
