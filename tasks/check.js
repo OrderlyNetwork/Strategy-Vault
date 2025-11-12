@@ -109,7 +109,43 @@ task("check-cv", "Check CommunityVault contract configuration")
             throw error;
         }
     });
+task("check-cv-all", "Check CommunityVault contract configuration on other contracts")
+    .addParam("env", "environment (dev/qa/staging/mainnet)")
+    .addParam("cv", "Community Vault name")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
 
+        const cv = taskArgs.cv;
+        const env = taskArgs.env;
+
+        if (!cvDeployment[cv]) {
+            throw new Error(`CommunityVault ${cv} not found in community.json`);
+        }
+
+        if (!cvDeployment[cv].address) {
+            throw new Error(`CommunityVault address not found for ${cv}`);
+        }
+
+        const currentNetwork = hre.network.name;
+        console.log(`Checking CommunityVault: ${cv} on network: ${currentNetwork}`);
+        console.log(`CommunityVault address: ${cvDeployment[cv].address}`);
+
+        try {
+            await checkCommunityVaultOnOtherContracts(env, cv, currentNetwork);
+            console.log("✅ ----------------------Community Vault Config Done----------------------")
+        } catch (error) {
+            console.error("❌ Error checking CommunityVault configuration:");
+            console.error(`Network: ${currentNetwork}`);
+            console.error(`Environment: ${env}`);
+            console.error(`Community Vault: ${cv}`);
+            console.error(`Contract Address: ${cvDeployment[cv].address}`);
+            console.error(`Error: ${error.message}`);
+            throw error;
+        }
+    });
 async function checkProtocolVault(env) {
     //get the contract instance
     const pvContract = await ethers.getContractAt(
@@ -360,4 +396,19 @@ async function checkVaultAdapter(env) {
         console.error(`Failed to verify configuration: ${error.message}`);
         throw error;
     }
+}
+
+async function checkCommunityVaultOnOtherContracts(env, cv, currentNetwork) {
+    if (network != "orderly") {
+        //get the contract instance
+        const ccManagerContract = await ethers.getContractAt(
+            "VaultCrossChainManager",
+            deployment[env].crossChainManager
+        )
+
+        assert.equal(await ccManagerContract.isValidVault(cvDeployment[cv].address), true, `${cv} not registered in crossChainManager`);
+        console.log("CrossChainManager registration verified ✓");
+    }
+
+    
 }
