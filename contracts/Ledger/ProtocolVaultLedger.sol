@@ -476,6 +476,46 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         return (implStorage.core, implStorage.extension);
     }
 
+    function getLPAssets(bytes32 vaultId, address account) external view virtual returns (uint256) {
+        bytes32 broker = vaultBroker[vaultId];
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        bytes32 accountId = VaultUtils.getAccountId(account, broker);
+        AccountToken storage accountToken = _getAccountToken(vaultId, accountId, USDC_HASH);
+        return LedgerUtils._convertToAssets(
+            accountToken.shares, vaultState.mainAssetsAfterFee, vaultState.mainShares, Math.Rounding.Floor
+        );
+    }
+
+    function getSPAssets(bytes32 vaultId, bytes32 spId) external view virtual returns (uint256) {
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(vaultId, spId, USDC_HASH);
+        return LedgerUtils._convertToAssets(
+            strategyFundToken.strategyProviderShares,
+            strategyFundToken.fundAssetsAfterFee,
+            strategyFundToken.totalShares,
+            Math.Rounding.Floor
+        );
+    }
+
+    function convertLPAssetsToShares(bytes32 vaultId, uint256 amount) external view virtual returns (uint256) {
+        VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
+        return
+            LedgerUtils._convertToShares(
+                amount, vaultState.mainAssetsAfterFee, vaultState.mainShares, Math.Rounding.Floor
+            );
+    }
+
+    function convertSPSharesToAssets(bytes32 vaultId, bytes32 spId, uint256 amount)
+        external
+        view
+        virtual
+        returns (uint256)
+    {
+        StrategyFundToken storage strategyFundToken = _getStrategyFundToken(vaultId, spId, USDC_HASH);
+        return LedgerUtils._convertToAssets(
+            amount, strategyFundToken.fundAssetsAfterFee, strategyFundToken.totalShares, Math.Rounding.Floor
+        );
+    }
+
     /*=========================================================================================
     *                                       INTERNAL
     *=========================================================================================*/

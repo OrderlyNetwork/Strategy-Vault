@@ -1,9 +1,15 @@
 {
   "dev": {
-    "sp": "0x4e9FeE6661422BBD72e8133121E9387bf238C2e1",
-    "nonce": 1,
-    "vaultId": "",
-    "address": ""
+    "sp": "0x8211b71Ea278d6Dbe85bb1E5ec8D4350C3564182",
+    "nonce": 3,
+    "vaultId": "0xeec91eb053babf6dad2659ed23a8dd8c50880833c4cd391a109885bd8315f223",
+    "address": "0xf25BF13c8f66e1781771D5DF3acf0d985Fa37fa7",
+    "feeRate": 15,
+    "broker": "0x6ca2f644ef7bd6d75953318c7f2580014941e753b3c6d54da56b3bf75dd14dfc",
+    "spId": "0x137b9247b9c216719cca635ca1e07f4449a6b69148ee584e976125491859f0d7",
+    "minDepositForLp": 0,
+    "minDepositForSp": 0,
+    "implAddress": "0x94b73747e209Ef3b9a3b37f5330d098094b8B09F"
   },
   "qa": {
     "sp": "0x8211b71Ea278d6Dbe85bb1E5ec8D4350C3564182",
@@ -23,13 +29,13 @@
     "minDepositForLp": 0,
     "minDepositForSp": 0
   },
-  "kronos": {
+  "kronos-staging": {
     "sp": "0xbddfd22eF902A4898147A1ca5B985D03C62a8C41",
     "nonce": 0,
     "vaultId": "0x8ba6ac87ed40c14d4d5952a8afb772e0d53d3d8e7898c6fc7b87579e1fda686d",
     "address": "0x3EFC5DD58feBB65B20a3E0C62262c20bAFA2Fb13",
     "feeRate": 0,
-    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f125a8bc1d9b19e5b",
     "spId": "0x0cd0bb4301741da45879be87758add22b9d052f7dde724710d81e3a409d2823d",
     "minDepositForLp": 0,
     "minDepositForSp": 0
@@ -37,17 +43,49 @@
   "staging": {
     "sp": "0xbddfd22eF902A4898147A1ca5B985D03C62a8C41",
     "nonce": 0,
-    "vaultId": "0x8ba6ac87ed40c14d4d5952a8afb772e0d53d3d8e7898c6fc7b87579e1fda686d",
+    "vaultId": "0x2553d14a6a985bf69b3a859a085d77494e83749e5567d621b1604175a16893cb",
     "address": "0x3EFC5DD58feBB65B20a3E0C62262c20bAFA2Fb13",
     "feeRate": 10,
-    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
-    "spId": "0x0cd0bb4301741da45879be87758add22b9d052f7dde724710d81e3a409d2823d",
+    "broker": "0x6ca2f644ef7bd6d75953318c7f2580014941e753b3c6d54da56b3bf75dd14dfc",
+    "spId": "0x0f79e88923cdf354785586913177d118870b311af43d56826f877c83393cccd3",
     "minDepositForLp": 10000000,
-    "minDepositForSp": 10000000
+    "minDepositForSp": 10000000,
+    "network": "base_sepolia"
   },
-  "mainnet": {
-    "sp": "",
-    "nonce": 0,
-    "address": ""
+  "smaug": {
+    "sp": "0xB774F1d84E728c2043c2dD2F6B6dBd4b2996b056",
+    "nonce": "0x997c7353623997cb46869f594635a02d2cb9620bc4c198a201162c2f261d2708",
+    "vaultId": "0xe983638959ffd486bcbfe527396f52a2bce173614a96c641c139561efa75f565",
+    "address": "0xf62Ed1c0Dd53d499aE11ACdEd24415CC48443630",
+    "feeRate": 30,
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "spId": "0x959e2e043e408ae2ca4c4142032e699d69ff29d02084ce196d2ee8dd4f579d5f",
+    "ceffuwallet": "0x2ed82e9642cb1b7acf1907558daa06eee94bbc96",
+    "minDepositForLp": 1000000000,
+    "minDepositForSp": 1000000000,
+    "network": [
+      "arb",
+      "base",
+      "op",
+      "sei"
+    ]
+  },
+  "kronos": {
+    "sp": "0xeb9977F80EFf17fD00DDdde4339E60d4E7d1FFA0",
+    "nonce": "0xd956bf3f94862f4e0a8c705ddc2763454c9288fcd784ca45289639cd06722b87",
+    "vaultId": "0xc02a58c70f714fafca18866d4f77efb9dde983805ad3ea9e5061271ef3bbac73",
+    "address": "0xa37e01D3089E9DD9010dA99A6F4a80Cb01F2F88F",
+    "feeRate": 30,
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "spId": "0x61ce74a2d32b3c81603cbd003d371d6c6bb672cbb5b46f275e3deaee8e10fa95",
+    "ceffuwallet": "0xf76f4c7d0ba648421395f6ba20e101958f9dca66",
+    "minDepositForLp": 100000000,
+    "minDepositForSp": 100000000,
+    "network": [
+      "arb",
+      "base",
+      "op",
+      "sei"
+    ]
   }
 }

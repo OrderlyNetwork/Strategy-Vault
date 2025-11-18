@@ -150,7 +150,7 @@ task("config-cv", "Config ProtocolVault")
             throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
         }
         await configCommunityVault(taskArgs.env, taskArgs.cv);
-        await configEVMCCForCommunityVault(taskArgs.env, taskArgs.cv);
+        //await configEVMCCForCommunityVault(taskArgs.env, taskArgs.cv);
     });
 task("ledger-add-cv", "Add CommunityVault to ledger")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -345,6 +345,8 @@ async function configNewChainForOrderly(env, network) {
         "VaultCrossChainManager",
         deployment[env].crossChainManager
     )
+    console.log(config[network].chainId, config[network].eid)
+    console.log(config[network].eid, ethers.zeroPadValue(deployment[env].crossChainManager, 32))
     //set eid
     tx = await ccManagerContract.setEid(config[network].chainId, config[network].eid);
     await tx.wait()

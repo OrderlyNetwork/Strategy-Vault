@@ -109,7 +109,43 @@ task("check-cv", "Check CommunityVault contract configuration")
             throw error;
         }
     });
+task("check-cv-all", "Check CommunityVault contract configuration on other contracts")
+    .addParam("env", "environment (dev/qa/staging/mainnet)")
+    .addParam("cv", "Community Vault name")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
 
+        const cv = taskArgs.cv;
+        const env = taskArgs.env;
+
+        if (!cvDeployment[cv]) {
+            throw new Error(`CommunityVault ${cv} not found in community.json`);
+        }
+
+        if (!cvDeployment[cv].address) {
+            throw new Error(`CommunityVault address not found for ${cv}`);
+        }
+
+        const currentNetwork = hre.network.name;
+        console.log(`Checking CommunityVault: ${cv} on network: ${currentNetwork}`);
+        console.log(`CommunityVault address: ${cvDeployment[cv].address}`);
+
+        try {
+            await checkCommunityVaultOnOtherContracts(env, cv, currentNetwork);
+            console.log("✅ ----------------------Community Vault Config Done----------------------")
+        } catch (error) {
+            console.error("❌ Error checking CommunityVault configuration:");
+            console.error(`Network: ${currentNetwork}`);
+            console.error(`Environment: ${env}`);
+            console.error(`Community Vault: ${cv}`);
+            console.error(`Contract Address: ${cvDeployment[cv].address}`);
+            console.error(`Error: ${error.message}`);
+            throw error;
+        }
+    });
 async function checkProtocolVault(env) {
     //get the contract instance
     const pvContract = await ethers.getContractAt(
@@ -359,5 +395,61 @@ async function checkVaultAdapter(env) {
     } catch (error) {
         console.error(`Failed to verify configuration: ${error.message}`);
         throw error;
+    }
+}
+
+async function checkCommunityVaultOnOtherContracts(env, cv, currentNetwork) {
+    if (currentNetwork != "orderly") {
+        // Check on EVM chain: VaultCrossChainManager
+        const ccManagerContract = await ethers.getContractAt(
+            "VaultCrossChainManager",
+            deployment[env].crossChainManager
+        )
+
+        assert.equal(await ccManagerContract.isValidVault(cvDeployment[cv].address), true, `${cv} not registered in crossChainManager`);
+        console.log("CrossChainManager registration verified ✓");
+    } else {
+        // Check on Orderly chain: ProtocolVaultLedger
+        const pvLedgerContract = await ethers.getContractAt(
+            "ProtocolVaultLedger",
+            deployment[env].pvLedger
+        );
+
+        // Check vault broker mapping
+        const vaultBroker = await pvLedgerContract.vaultBroker(cvDeployment[cv].vaultId);
+        assert.equal(vaultBroker.toLowerCase(), cvDeployment[cv].broker.toLowerCase(), `${cv} vaultBroker not set correctly`);
+        console.log("VaultBroker verified ✓");
+
+        // Check vault address mapping
+        const vaultAddress = await pvLedgerContract.idToVault(cvDeployment[cv].vaultId);
+        assert.equal(vaultAddress.toLowerCase(), cvDeployment[cv].address.toLowerCase(), `${cv} vault address mapping not set correctly`);
+        console.log("Vault address mapping verified ✓");
+
+        // Check fee rate
+        const feeRate = await pvLedgerContract.feeRateOfFund(cvDeployment[cv].spId);
+        assert.equal(feeRate.toString(), cvDeployment[cv].feeRate.toString(), `${cv} feeRate not set correctly`);
+        console.log("FeeRate verified ✓");
+
+        // Check prime wallet and DexLedger valid vault - using direct ABIs
+        const dexLedgerABI = [
+            "function idToPrimeWallet(bytes32) view returns (address)",
+            "function isValidVault(address) view returns (bool)"
+        ];
+        if (deployment[env].dexLedger) {
+            const dexLedgerContract = new ethers.Contract(
+                deployment[env].dexLedger,
+                dexLedgerABI,
+                ethers.provider
+            );
+
+            assert.equal(await dexLedgerContract.isValidVault(cvDeployment[cv].address), true, `${cv} not set as valid vault on DexLedger`);
+            console.log("DexLedger valid vault verified ✓");
+
+            if (cvDeployment[cv].ceffuwallet) {
+                const primeWallet = await dexLedgerContract.idToPrimeWallet(cvDeployment[cv].spId);
+                assert.equal(primeWallet.toLowerCase(), cvDeployment[cv].ceffuwallet.toLowerCase(), `${cv} primeWallet not set correctly`);
+                console.log("PrimeWallet verified ✓");
+            }
+        }
     }
 }
