@@ -17,7 +17,6 @@ bytes32 constant REQUEST_HASH = 0x590ef38f093814e411b876bc59d8020504481133ef17b2
 
 address constant ED25519 = 0x9A7Fa019B2848E075768966caFe42b203B23b4F1;
 
-
 /*
     ERC7201 Storage Locations
 */
