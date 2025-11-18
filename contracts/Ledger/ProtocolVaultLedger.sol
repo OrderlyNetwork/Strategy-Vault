@@ -471,6 +471,11 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         return _getAccountToken(vaultId, accountId, USDC_HASH);
     }
 
+    function getImpl() external view returns (address core, address extension) {
+        ImplStorage storage implStorage = _getLedgerImplStorage();
+        return (implStorage.core, implStorage.extension);
+    }
+
     function getLPAssets(bytes32 vaultId, address account) external view virtual returns (uint256) {
         bytes32 broker = vaultBroker[vaultId];
         VaultStateStorage storage vaultState = _getVaultStorage(vaultId);
