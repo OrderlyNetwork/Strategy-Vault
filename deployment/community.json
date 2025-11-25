@@ -52,6 +52,19 @@
     "minDepositForSp": 10000000,
     "network": "base_sepolia"
   },
+  "starchild_stg": {
+    "sp": "0xaaeab15de29a6c355eee724c37797c7ff49a2628",
+    "nonce": 1,
+    "vaultId": "0x98035a15483cd5ddf16ab355f7f55302c7689c8f78153eb856fd6909f191cfab",
+    "address": "0xb73d2f8eDE4FB483B6E48c7b88bF63EF8D734912",
+    "feeRate": 10,
+    "broker": "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",
+    "spId": "0x41a1032b4b848188df7546ad9a77988c75666e8f5b28f4c7ca89d580568281f1",
+    "minDepositForLp": 10000000,
+    "minDepositForSp": 10000000,
+    "network": "base_sepolia",
+    "implAddress": "0x1FeD75D75Adf2c7B7315ecD44e35ADF0b20e1548"
+  },
   "smaug": {
     "sp": "0xB774F1d84E728c2043c2dD2F6B6dBd4b2996b056",
     "nonce": "0x997c7353623997cb46869f594635a02d2cb9620bc4c198a201162c2f261d2708",

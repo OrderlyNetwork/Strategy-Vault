@@ -58,7 +58,7 @@ task("deploy-cv", "Deploy CommunityVault contract")
             throw new Error(`CommunityVault deployment not found for environment: ${taskArgs.env}`);
         }
         // Deploy the CommunityVault first
-        //await deployCommunityVault(taskArgs.env, taskArgs.cv);
+        await deployCommunityVault(taskArgs.env, taskArgs.cv);
         console.log(`✅ CommunityVault deployed for ${taskArgs.cv} in ${taskArgs.env} environment.`);
         // Configure the deployed CommunityVault
         await configCommunityVault(taskArgs.env, taskArgs.cv);
@@ -199,17 +199,17 @@ async function deployCommunityVault(env, cv) {
     });
 
     // Verify proxy contract
-    try {
-        const currentNetwork = hre.network.name;
-        const dexVault = deployment[env].dex[currentNetwork];
-        const usdc = config[currentNetwork].USDC;
-        const minDepositForLp = cvDeployment[cv].minDepositForLp;
-        const minDepositForSp = cvDeployment[cv].minDepositForSp;
+    // try {
+    //     const currentNetwork = hre.network.name;
+    //     const dexVault = deployment[env].dex[currentNetwork];
+    //     const usdc = config[currentNetwork].USDC;
+    //     const minDepositForLp = cvDeployment[cv].minDepositForLp;
+    //     const minDepositForSp = cvDeployment[cv].minDepositForSp;
 
-        await verifyProtocolVaultProxy(ProtocolVault, implAddr, CommunityVaultAddr, dexVault, owner.address, usdc, minDepositForLp, minDepositForSp);
-    } catch (error) {
-        console.log(`⚠️ ProtocolVault proxy verification failed: ${error.message}`);
-    }
+    //     await verifyProtocolVaultProxy(ProtocolVault, implAddr, CommunityVaultAddr, dexVault, owner.address, usdc, minDepositForLp, minDepositForSp);
+    // } catch (error) {
+    //     console.log(`⚠️ ProtocolVault proxy verification failed: ${error.message}`);
+    // }
 }
 async function deployProtocolVault(env) {
     //deploy impl
