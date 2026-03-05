@@ -269,8 +269,8 @@ sequenceDiagram
 
 **Key Functions:**
 ```solidity
-function deployAndDepositToVault(bytes32 depositId, bytes32 vaultId, DepositParams memory params) external payable onlyOperator
-function deployAndDepositToDex(bytes32 depositId, address receiver, VaultDepositFE memory data) external payable onlyOperator
+function deployAndDepositToVault(uint256 depositId, bytes32 vaultId, DepositParams memory params) external payable onlyOperator
+function deployAndDepositToDex(uint256 depositId, address receiver, VaultDepositFE memory data) external payable onlyOperator
 ```
 
 **State Variables:**
@@ -280,7 +280,8 @@ address public dexVault;                            // DexVault address
 address public operator;                            // Authorized operator (single address)
 mapping(bytes32 => address) public vaults;          // vaultId => vault address mapping
 mapping(address => bool) public supportedTokens;    // token => supported status
-mapping(bytes32 => bool) public processedDeposits;  // depositId => processed (idempotency guard)
+mapping(uint256 => bool) public processedDeposits;  // depositId => processed (idempotency guard)
+bytes public proxyInitCode;                         // Frozen BeaconProxy initCode (see 4.2.1)
 ```
 
 **accountId Derivation (Security Design):**
@@ -335,6 +336,8 @@ address public immutable FACTORY;  // Factory address (set in constructor)
 
 ### 4.2 CREATE2 Address Calculation
 
+Address prediction and deployment use OpenZeppelin's `Create2` library. The salt and initCode hash are defined as follows:
+
 ```solidity
 // accountId is derived from receiver and brokerHash
 bytes32 accountId = keccak256(abi.encode(receiver, brokerHash));
@@ -342,25 +345,34 @@ bytes32 accountId = keccak256(abi.encode(receiver, brokerHash));
 // Salt is computed from accountId and vaultAddress
 bytes32 salt = keccak256(abi.encodePacked(accountId, vaultAddress));
 
-// Beacon proxy bytecode (OpenZeppelin BeaconProxy)
-bytes memory bytecode = abi.encodePacked(
-    type(BeaconProxy).creationCode,
-    abi.encode(factoryAddress, "") // beacon = factory, no init data
-);
+// Address prediction (uses frozen proxyInitCode — see 4.2.1)
+address predictedAddress = Create2.computeAddress(salt, keccak256(proxyInitCode));
 
-// Compute CREATE2 address
-address predictedAddress = address(uint160(uint256(keccak256(abi.encodePacked(
-    bytes1(0xff),
-    factoryAddress,
-    salt,
-    keccak256(bytecode)
-)))));
+// Deployment (same proxyInitCode)
+address proxy = Create2.deploy(0, salt, proxyInitCode);
 ```
 
 **Note**: The salt includes both `accountId` (which encodes receiver + brokerHash) and `vaultAddress`, meaning:
 - Each `(receiver, brokerHash, vault)` triple maps to exactly one deposit address
 - Same user depositing to different vaults will have different addresses
 - Address is fully deterministic and can be precomputed off-chain
+
+#### 4.2.1 BeaconProxy Version Stability (Frozen initCode)
+
+**Problem:** CREATE2 address depends on `keccak256(initCode)`. If the Factory contract is ever recompiled (e.g. after an OpenZeppelin upgrade), `type(BeaconProxy).creationCode` may change. Then:
+- `getDepositAddress` would return **new** addresses (based on the new bytecode).
+- Already-deployed proxies and user-facing deposit addresses were computed with the **old** bytecode.
+- New and old addresses would diverge: users who were given an address under the old bytecode could no longer have their deposits matched to the same CREATE2 target after a Factory upgrade.
+
+**Solution:** Freeze the full BeaconProxy initCode once at Factory initialization and store it in state:
+
+1. **In `initialize()`:** Set `proxyInitCode = abi.encodePacked(type(BeaconProxy).creationCode, abi.encode(address(this), ""))`. This is the exact bytecode used for CREATE2 at that moment; it is written to storage and never updated.
+
+2. **Address prediction:** `getDepositAddress` uses `Create2.computeAddress(salt, keccak256(proxyInitCode))` — i.e. the hash of the **stored** initCode, not the current compiler’s `BeaconProxy` bytecode.
+
+3. **Deployment:** `_deployIfNeeded` uses `Create2.deploy(0, salt, proxyInitCode)` — the **same** stored bytes. So the contract deployed at the predicted address is always built from the same initCode that was used to compute the address.
+
+**Result:** Once the Factory is deployed and initialized, the deposit addresses for each `(accountId, vaultAddress)` are stable for the lifetime of that Factory, regardless of future OpenZeppelin or compiler upgrades. Upgrading the Factory implementation (e.g. UUPS) does not change the stored `proxyInitCode` (it lives in the proxy’s storage), so existing users’ addresses remain valid.
 
 ### 4.3 Deposit Flow Details
 
@@ -371,7 +383,7 @@ Used for LP deposits through registered vault contracts.
 **Interface:**
 ```solidity
 function deployAndDepositToVault(
-    bytes32 depositId,
+    uint256 depositId,
     bytes32 vaultId,
     DepositParams memory params
 ) external payable onlyOperator returns (address proxy)
@@ -410,7 +422,7 @@ Used for direct deposits to DexVault for trading.
 **Interface:**
 ```solidity
 function deployAndDepositToDex(
-    bytes32 depositId,
+    uint256 depositId,
     address receiver,
     VaultDepositFE memory data
 ) external payable onlyOperator returns (address proxy)
@@ -460,13 +472,13 @@ The fee is passed as `msg.value` on the deposit call. It is not stored in the co
 Every deposit execution carries a unique `depositId` derived **off-chain** by the Indexer from the on-chain transfer event:
 
 ```
-depositId = keccak256(abi.encodePacked(transferTxHash, logIndex))
+depositId = uint256(keccak256(abi.encodePacked(transferTxHash, logIndex)))
 ```
 
 The Factory maintains a single mapping:
 
 ```solidity
-mapping(bytes32 => bool) public processedDeposits;
+mapping(uint256 => bool) public processedDeposits;
 ```
 
 On each call the Factory:
@@ -609,7 +621,7 @@ Used when the user's funds should be deposited into a registered Vault (e.g. Pro
 
 ```solidity
 function deployAndDepositToVault(
-    bytes32 depositId,    // keccak256(abi.encodePacked(transferTxHash, logIndex))
+    uint256 depositId,    // uint256(keccak256(abi.encodePacked(transferTxHash, logIndex)))
     bytes32 vaultId,      // Registered vault identifier
     DepositParams memory params
 ) external payable returns (address proxy);
@@ -632,7 +644,7 @@ Used when the user's funds should be deposited directly into DexVault for tradin
 
 ```solidity
 function deployAndDepositToDex(
-    bytes32 depositId,        // keccak256(abi.encodePacked(transferTxHash, logIndex))
+    uint256 depositId,        // uint256(keccak256(abi.encodePacked(transferTxHash, logIndex)))
     address receiver,          // User's on-chain receiving address
     VaultDepositFE memory data
 ) external payable returns (address proxy);
@@ -656,28 +668,28 @@ The Indexer must monitor two on-chain events emitted by `DepositFactory` to conf
 #### `DepositToVault`
 
 ```solidity
-event DepositToVault(bytes32 depositId);
+event DepositToVault(uint256 depositId);
 ```
 
 Emitted at the end of a successful `deployAndDepositToVault` call.
 
 | Field | Type | Description |
 |---|---|---|
-| `depositId` | `bytes32` | Unique deposit ID, matches the one submitted by the Operator |
+| `depositId` | `uint256` | Unique deposit ID, matches the one submitted by the Operator |
 
 **Action:** Mark the corresponding pending deposit record as **Completed** and notify the user.
 
 #### `DepositToDex`
 
 ```solidity
-event DepositToDex(bytes32 depositId);
+event DepositToDex(uint256 depositId);
 ```
 
 Emitted at the end of a successful `deployAndDepositToDex` call.
 
 | Field | Type | Description |
 |---|---|---|
-| `depositId` | `bytes32` | Unique deposit ID, matches the one submitted by the Operator |
+| `depositId` | `uint256` | Unique deposit ID, matches the one submitted by the Operator |
 
 **Action:** Mark the corresponding pending deposit record as **Completed** and notify the user.
 
@@ -688,3 +700,122 @@ Key properties:
 - `depositId` is the canonical link between an on-chain USDC transfer and its deposit execution
 - A `depositId` can only ever be processed once (`processedDeposits[depositId]` mapping)
 - If the Operator retries a call with the same `depositId`, the factory reverts — no double-spend
+
+## 7. Deployment and Configuration Workflow
+
+部署与运行配置复用现有 vault 体系的环境与地址，配置来源见 `deployment/` 目录（如 `deployment.json` 按环境 dev/qa/staging/mainnet，`community.json` 按社区 vault）。
+
+### 7.1 Deployment
+
+DepositFactory 采用 UUPS + ERC1967Proxy 部署，工厂代理通过 **VaultFactory**（CREATE3）创建。
+
+1. **部署 DepositFactory**
+   - 部署 DepositFactory **实现合约**（逻辑合约）。
+   - 使用当前环境的 **VaultFactory**（`deployment.json` → `factory`）。
+   - 构造 creationCode：DepositFactory 实现 + ERC1967Proxy，init 数据调用 `DepositFactory.initialize(dexVault, operator, owner)`
+   - 调用 `VaultFactory.deploy(salt, creationCode)`，使用专用 salt，得到 **DepositFactory 代理地址**并记录在`depositBytransfer.json`
+
+2. **部署 DepositBeaconImpl**
+   - 部署 `DepositBeaconImpl`，构造函数参数 `_factory` 填步骤 1 得到的 **DepositFactory 代理地址**。
+   - 记录 DepositBeaconImpl 地址。
+
+3. **配置工厂：设置 implementation**
+   - 以 **owner**（`deployment.json` → `owner`）调用 `DepositFactory.setImplementation(depositBeaconImplAddress)`，将 beacon 指向步骤 2 的合约。
+   - 此后所有 deposit 代理的 delegatecall 均使用 DepositBeaconImpl；未调用前，`deployAndDepositToVault` / `deployAndDepositToDex` 会因 `_checkImplementationConfigured()` 检查未通过而回滚（见 7.3）。
+
+### 7.2 Configuration
+
+在 `setImplementation` 完成后，完成业务侧配置：
+
+1. **注册支持的 token**
+   - `DepositFactory.setSupportedToken(tokenAddress, true)`（如该链 USDC）。
+   - `DepositFactory.setTokenHash(tokenHash, tokenAddress)`（如 `keccak256("USDC")` → USDC 地址），供 Dex 路径解析 token。
+
+2. **注册 vault**
+   - `DepositFactory.registerVault(vaultId, vaultAddress)`。  
+   - `vaultId` 来自 `deployment.json` 或 `community.json`；`vaultAddress` 为 `deployment.json` 中该环境的 `protocolVault`（或对应社区 vault 地址）。
+
+3. **核对**
+   - 确认 `operator`、`dexVault` 已在 `initialize` 中正确（来自 `deployment.json`）；`implementation` 已通过 `setImplementation` 设置。之后即可由 Operator 执行 `deployAndDepositToVault` / `deployAndDepositToDex`。
+
+**配置引用**
+- **deployment/deployment.json**：各环境 `factory`（VaultFactory）、`owner`、`operator`、`protocolVault`、`dex.<network>`、`vaultId` 等。
+
+### 7.3 Runtime Safety
+
+为防止“上线后未配置 implementation 即被调用”，Factory 在 `deployAndDepositToVault` 与 `deployAndDepositToDex` 入口会调用 `_checkImplementationConfigured()`：若 `implementation` 未设置或该地址无代码，则回滚（`ImplementationNotConfigured`）。该检查在 `processedDeposits` 写入之前执行，避免误占 depositId。
+
+---
+
+## 8. Test Cases
+
+根据本功能的设计与安全约束，建议覆盖的测试用例如下（正向用例以 `test*` 命名，反向/回滚用例以 `testRevert*` 命名）。
+
+### 8.1 DepositFactory — 地址与部署
+
+| 用例 | 描述 |
+|------|------|
+| testGetDepositAddressDeterministic | 相同 `(accountId, vaultAddress)` 多次调用 `getDepositAddress` 返回同一地址。 |
+| testGetDepositAddressDifferentSalts | 不同 accountId 或不同 vaultAddress 得到不同地址。 |
+| testDeployedProxyMatchesPredictedAddress | 首次 `deployAndDepositToVault` 后，实际部署的 proxy 地址等于 `getDepositAddress(accountId, vault)`。 |
+| testIsDeployedBeforeAndAfter | 部署前 `isDeployed` 为 false，部署后为 true。 |
+
+### 8.2 DepositFactory — deployAndDepositToVault
+
+| 用例 | 描述 |
+|------|------|
+| testDeployAndDepositToVaultSuccess | 首次存款：代理未部署时自动 CREATE2 部署，并成功将 USDC 存入 ProtocolVault；校验 vault 余额、ledger 状态、事件 `DepositToVault(depositId)`。 |
+| testDeployAndDepositToVaultSecondDeposit | 同一 (accountId, vault) 第二次存款：不再部署新代理，直接使用已有代理完成存款。 |
+| testDeployAndDepositToVaultForwardsMsgValue | 调用时传入 `msg.value`，确认跨链 fee 被正确转发至 vault（如需要）。 |
+| testRevertDeployAndDepositToVaultNotOperator | 非 operator 调用 `deployAndDepositToVault` 回滚（如 `UnauthorizedCaller`）。 |
+| testRevertDeployAndDepositToVaultDuplicateDepositId | 相同 `depositId` 第二次调用回滚 `DepositAlreadyProcessed(depositId)`。 |
+| testRevertDeployAndDepositToVaultTokenNotSupported | `params.token` 未在 `supportedTokens` 中回滚 `TokenNotSupported`。 |
+| testRevertDeployAndDepositToVaultVaultNotRegistered | `vaultId` 未注册或映射到 address(0) 回滚 `VaultNotRegistered`。 |
+| testRevertDeployAndDepositToVaultInsufficientBalance | 代理内代币余额 < `params.amount` 回滚 `InsufficientBalance`。 |
+| testRevertDeployAndDepositToVaultImplementationNotConfigured | 未调用 `setImplementation` 时调用 `deployAndDepositToVault` 回滚 `ImplementationNotConfigured`。 |
+| testRevertDeployAndDepositToVaultWrongReceiverTargetsEmptyProxy | accountId 由 `(receiver, brokerHash)` 推导；若 operator 篡改 `receiver`，推导出的 accountId 对应另一代理（无余额），执行时回滚 `InsufficientBalance`。 |
+
+### 8.3 DepositFactory — deployAndDepositToDex
+
+| 用例 | 描述 |
+|------|------|
+| testDeployAndDepositToDexSuccess | 首次/再次存款到 DexVault：代理按需部署，USDC 正确转入 DexVault；校验事件 `DepositToDex(depositId)`。 |
+| testDeployAndDepositToDexForwardsMsgValue | `msg.value` 正确转发至 DexVault。 |
+| testRevertDeployAndDepositToDexNotOperator | 非 operator 调用回滚。 |
+| testRevertDeployAndDepositToDexDuplicateDepositId | 重复 `depositId` 回滚 `DepositAlreadyProcessed`。 |
+| testRevertDeployAndDepositToDexInvalidAccountId | 传入的 `data.accountId` 与链上推导的 `keccak256(abi.encode(receiver, data.brokerHash))` 不一致时回滚 `InvalidAccountId`。 |
+| testRevertDeployAndDepositToDexTokenHashNotRegistered | `tokenHash` 未在 `tokenHashToAddress` 中注册回滚 `TokenNotSupported`。 |
+| testRevertDeployAndDepositToDexInsufficientBalance | 代理余额 < `data.tokenAmount` 回滚 `InsufficientBalance`。 |
+| testRevertDeployAndDepositToDexImplementationNotConfigured | implementation 未配置时回滚。 |
+
+### 8.4 DepositFactory — 管理接口与权限
+
+| 用例 | 描述 |
+|------|------|
+| testSetImplementationOnlyOwner | 仅 owner 可调用 `setImplementation`；非 owner 回滚。 |
+| testSetImplementationUpdatesBeacon | 调用后 `implementation()` 返回新地址；之后新发起的 proxy 调用使用新实现。 |
+| testRegisterVaultOnlyOwner | 仅 owner 可 `registerVault`；写入后 `vaults(vaultId)` 正确。 |
+| testUnregisterVaultOnlyOwner | 仅 owner 可 `unregisterVault`；对应 vaultId 清除后 `deployAndDepositToVault` 该 vaultId 回滚。 |
+| testSetSupportedTokenOnlyOwner | 仅 owner 可 `setSupportedToken`；开关生效。 |
+| testSetTokenHashOnlyOwner | 仅 owner 可 `setTokenHash`；Dex 路径能正确解析 token。 |
+| testSetOperatorOnlyOwner | 仅 owner 可 `setOperator`；更新后只有新 operator 能调用 deposit 入口。 |
+| testEmergencyWithdrawOnlyOwner | 仅 owner 可 `emergencyWithdraw`；指定代理内代币被转至指定地址，并发出相应事件。 |
+| testRevertEmergencyWithdrawProxyNotDeployed | 对未部署的 (accountId, vaultAddress) 调用 `emergencyWithdraw` 回滚（如 `DepositFailed("Proxy not deployed")`）。 |
+
+### 8.5 DepositBeaconImpl — 访问控制与逻辑
+
+| 用例 | 描述 |
+|------|------|
+| testRevertDepositToVaultOnlyFactory | 非 Factory 地址调用 `depositToVault` 回滚 `OnlyFactory`。 |
+| testRevertDepositToDexOnlyFactory | 非 Factory 地址调用 `depositToDex` 回滚 `OnlyFactory`。 |
+| testRevertWithdrawOnlyFactory | 非 Factory 地址调用 `withdraw` 回滚 `OnlyFactory`。 |
+| testDepositToVaultSuccess | 由 Factory 通过 proxy 调用时，代币被 approve 并成功调用 `IProtocolVault(vault).deposit(params)`，且 `msg.value` 正确传递。 |
+| testDepositToDexSuccess | 由 Factory 通过 proxy 调用时，代币被 approve 并成功调用 `IDexVault.depositTo`，且 `msg.value` 正确传递。 |
+| testWithdrawSuccess | Factory 通过 proxy 调用 `withdraw` 后，指定 token 的指定数量转至目标地址。 |
+
+### 8.6 Beacon 升级
+
+| 用例 | 描述 |
+|------|------|
+| testSetImplementationUpgradesAllProxies | 部署多个 proxy 后，owner 调用 `setImplementation(newImpl)`；之后对任一已存在 proxy 的 deposit 调用应走新实现逻辑（如新实现有可观测行为变更，可断言该行为）。 |
+| testSetImplementationRollback | 升级后再次 `setImplementation(oldImpl)`，后续调用恢复为旧实现行为。 |
