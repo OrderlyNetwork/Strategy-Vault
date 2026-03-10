@@ -1,0 +1,22 @@
+{
+  "dev": {
+    "deposit_factory_salt": "0x0000000000000000000000000000000000000000000000000000000000000020",
+    "depositFactory": "0x5F79435988E9Ae079371D690032c0c1B57f8F4a3",
+    "depositBeaconImpl": "0x4fE870acfc7EF48D500C43ae721F98DF8Bd3B43D"
+  },
+  "qa": {
+    "deposit_factory_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",
+    "depositFactory": "",
+    "depositBeaconImpl": ""
+  },
+  "staging": {
+    "deposit_factory_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",
+    "depositFactory": "",
+    "depositBeaconImpl": ""
+  },
+  "mainnet": {
+    "deposit_factory_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",
+    "depositFactory": "",
+    "depositBeaconImpl": ""
+  }
+}
