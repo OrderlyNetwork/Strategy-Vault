@@ -361,7 +361,7 @@ async function deployDepositByTransfer(env) {
     // VaultFactory is already deployed per env; address is in deployment.json under "factory"
     const vaultFactoryAddr = deployment[env].factory;
     const dexVault = deployment[env].dex[currentNetwork];
-    const operator = deployment[env].operator;
+    const operator = deployment[env].dex_operator;
     const ownerAddr = deployment[env].owner;
     const protocolVault = deployment[env].protocolVault;
 

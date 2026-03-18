@@ -5,9 +5,9 @@
     "depositBeaconImpl": "0x4fE870acfc7EF48D500C43ae721F98DF8Bd3B43D"
   },
   "qa": {
-    "deposit_factory_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",
-    "depositFactory": "",
-    "depositBeaconImpl": ""
+    "deposit_factory_salt": "0x0000000000000000000000000000000000000000000000000000000000000021",
+    "depositFactory": "0xa4FFdEDe23eAa5748eF7D03310191a334502b71f",
+    "depositBeaconImpl": "0xcA812018F783daA44cEa014baB45d0A38183901E"
   },
   "staging": {
     "deposit_factory_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",

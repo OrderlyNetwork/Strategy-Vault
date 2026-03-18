@@ -3,7 +3,7 @@ const deployment = require("../../../deployment/deployment.json");
 const depositInfo = require("../../../deployment/depositBytransfer.json");
 
 async function main() {
-	const env = "dev";
+	const env = "qa";
 	const factoryAddress = depositInfo[env].depositFactory;
 	const dexOperator = deployment[env].dex_operator;
 
@@ -18,7 +18,7 @@ async function main() {
 	//set operator 
 	tx = await factory.setOperator(dexOperator);
 	await tx.wait();
-	console.log(`new operator: ${newOperator}`);
+	console.log(`set operator done`);
 }
 
 main().catch((error) => {
