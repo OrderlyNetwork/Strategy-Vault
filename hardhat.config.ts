@@ -212,6 +212,9 @@ module.exports = {
         }
       },
     ]
+  },
+  metadata: {
+    bytecodeHash: "none"
   }
 };
 

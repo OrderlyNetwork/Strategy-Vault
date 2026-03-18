@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,7 +17,7 @@ import {VaultDepositFE} from "../interfaces/IDexVault.sol";
 /// @dev Acts as IBeacon for all proxies, stores current implementation address
 /// @dev All deployed proxies query this contract for implementation and can be upgraded simultaneously
 /// @dev This contract itself is upgradeable using UUPS pattern
-contract DepositFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, IDepositFactory, IBeacon {
+contract DepositFactory is UUPSUpgradeable, OwnableUpgradeable, IDepositFactory, IBeacon {
     /// @notice Current implementation address (beacon)
     address public implementation;
 
@@ -53,10 +52,7 @@ contract DepositFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, I
     /// @param _dexVault DexVault address
     /// @param _operator Operator address
     /// @param _owner Owner address
-    function initialize(address _dexVault, address _operator, address _owner)
-        external
-        initializer
-    {
+    function initialize(address _dexVault, address _operator, address _owner) external initializer {
         if (_dexVault == address(0) || _operator == address(0) || _owner == address(0)) {
             revert ZeroAddress();
         }
@@ -221,7 +217,7 @@ contract DepositFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, I
     function _checkBalanceAndExecute(address proxy, address token, uint256 amount, bytes memory callData) internal {
         uint256 balance = IERC20(token).balanceOf(proxy);
         if (balance < amount) revert InsufficientBalance(amount, balance);
-        
+
         (bool success, bytes memory returnData) = proxy.call{value: msg.value}(callData);
         if (!success) {
             _revertWithReason(returnData);
