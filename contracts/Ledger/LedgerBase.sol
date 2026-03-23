@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AccountToken, StrategyFundToken, ClaimInfo} from "../lib/types/LedgerStruct.sol";
+import {AccountToken, StrategyFundToken, ClaimInfo, ShareTransferRequest} from "../lib/types/LedgerStruct.sol";
 import {USDC_HASH, VAULT_STORAGE_LOCATION, PROTOCOL_VAULT_ID, ORDERLY_BROKER} from "../lib/types/Constants.sol";
 
 /// @title Ledger Storage
@@ -51,9 +51,10 @@ abstract contract LedgerBase {
     mapping(uint256 periodId => bool) public isDexRequestHandled;
     /// @dev vault id to sv broker hash
     mapping(bytes32 vaultId => bytes32 brokerHash) public vaultBroker;
-
     address public protocolVault;
     mapping(bytes32 vaultId => address vault) public idToVault;
+    /// @dev share transfer requests
+    mapping(bytes32 requestId => ShareTransferRequest) public shareTransferRequests;
 
     /// @custom:storage-location erc7201:orderly.vault.state
     struct VaultStateStorage {

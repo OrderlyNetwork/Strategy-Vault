@@ -6,6 +6,8 @@ import "./tasks/config.js";
 import "./tasks/check.js";
 import "./tasks/transferOwnerShip.js";
 import "./tasks/verify.js";
+import "./tasks/update_task.js";
+
 const config: HardhatUserConfig = {
   solidity: "0.8.26",
 };
@@ -123,6 +125,14 @@ module.exports = {
       bsc: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK'
     },
     customChains: [
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=11155111",
+          browserURL: "https://sepolia.etherscan.io/",
+        }
+      },
       {
         network: "orderly_sepolia",
         chainId: 4460,

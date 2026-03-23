@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-import {UpdateLedgerParams, DexRequest, OperationRes} from "../lib/types/LedgerStruct.sol";
+import {UpdateLedgerParams, DexRequest, OperationRes, ShareTransferResult} from "../lib/types/LedgerStruct.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
 
@@ -13,6 +13,10 @@ interface ILedgerExtension {
     error AlreadyCalled();
     error InvalidType();
     error InvalidId();
+    error RequestNotFound();
+    error AlreadyExecuted();
+    error AccountNotFinalized();
+    error InsufficientAvailableShares();
 
     // Events
     event OperationHandled(PayloadType payloadType, uint256 chainId, OperationData operationData);
@@ -20,6 +24,7 @@ interface ILedgerExtension {
     event DexRequestHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
+    event ShareTransferExecuted(ShareTransferResult[] results);
 
     /// @notice Handles operations from vault
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData) external;
@@ -35,4 +40,9 @@ interface ILedgerExtension {
     /// @param signature The signature to verify
     function removeInvalidFrozenShares(bytes32 vaultId, UpdateLedgerParams[] calldata params, bytes calldata signature)
         external;
+
+    /// @notice Execute share transfer after backend validation
+    /// @param requestIds Array of request IDs
+    /// @param signature Backend signature
+    function executeShareTransfer(bytes32[] calldata requestIds, bytes calldata signature) external;
 }

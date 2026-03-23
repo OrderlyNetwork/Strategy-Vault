@@ -6,7 +6,7 @@ const { verifyContract } = require("../../utils/verifyContract");
 
 async function main() {
     //!need to change with your env
-    const env = "qa";
+    const env = "dev";
     const currentNetwork = hre.network.name;
 
     checkNetworkEnvRestrictions(currentNetwork, env);

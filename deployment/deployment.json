@@ -22,9 +22,7 @@
     "minDepositForLp": 0,
     "minDepositForSp": 0,
     "deployedNetwork": [
-      "sepolia",
-      "adapter: arb_sepolia",
-      "adapter: base_sepolia"
+      "sepolia"
     ],
     "factory": "0x2b1E9a839a873E05eeE8D90c6AfF7aA3E724E6cF"
   },
@@ -59,7 +57,8 @@
       "arb_sepolia",
       "base_sepolia",
       "op_sepolia",
-      "sei_dev"
+      "sei_dev",
+      "bsc_test"
     ],
     "allowedBrokersForAdapter": [
       "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b",

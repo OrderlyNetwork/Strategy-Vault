@@ -7,7 +7,8 @@ enum PayloadType {
     SP_DEPOSIT,
     SP_WITHDRAW,
     ASSETS_DISTRIBUTION,
-    UPDATE_USER_CLAIM
+    UPDATE_USER_CLAIM,
+    LP_SHARE_TRANSFER
 }
 
 struct StrategyVaultCCMessage {

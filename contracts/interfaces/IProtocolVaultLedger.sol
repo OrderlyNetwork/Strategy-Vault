@@ -10,21 +10,12 @@ import {
     StrategyFundState,
     AccountState,
     ClaimInfo,
-    DexRequest
+    DexRequest,
+    AssetsDistribution,
+    ShareTransferResult
 } from "../lib/types/LedgerStruct.sol";
 import {OperationData} from "../lib/types/VaultStruct.sol";
 import {PayloadType} from "../lib/types/CrossChainStruct.sol";
-import {
-    UpdateStrategyFundAssetsParams,
-    UpdateStrategyFundAssetsRes,
-    UpdateLedgerParams,
-    AssetsDistribution,
-    AccountState,
-    StrategyFundState,
-    AllocateFundRes,
-    OperationRes,
-    ClaimInfo
-} from "../lib/types/LedgerStruct.sol";
 
 /// @title IProtocolVaultLedger
 /// @notice Interface for the main Protocol Vault Ledger contract
@@ -77,7 +68,7 @@ interface IProtocolVaultLedger {
     event DexRequestHandled(DexRequest request);
     event DexWithdrawNotEnough(uint256 requestId);
     event InvalidFrozenSharesRemoved(bytes32 vaultId, OperationRes[] operationRes);
-
+    event ShareTransferExecuted(ShareTransferResult[] results);
     //core
     function updateStrategyFundAssets(
         uint256 periodId,
