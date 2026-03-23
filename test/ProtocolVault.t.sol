@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ProtocolVault} from "../contracts/Vault/ProtocolVault.sol";
 import {MockDexVault} from "./mock/MockDexVault.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {
     VaultType,
@@ -582,5 +583,18 @@ contract TestProtocolVault is Base {
         assertEq(accountToken.unAllocatedAssets, 0);
         assertEq(protocolVault.chainNonce(), 0);
         assertEq(IERC20(mockToken).balanceOf(address(protocolVault)), 0);
+    }
+
+    function testCalcRequestID() public {
+        bytes32 vaultId = 0xe983638959ffd486bcbfe527396f52a2bce173614a96c641c139561efa75f565;
+        console.logBytes32(
+            keccak256(
+                abi.encodePacked(
+                    Strings.toString(42161),
+                    Strings.toString(15),
+                    vaultId
+                )
+            )
+        );
     }
 }

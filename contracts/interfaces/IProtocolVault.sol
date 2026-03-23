@@ -23,6 +23,7 @@ interface IProtocolVault {
     event AllowedTokenSet(address token, bool isAllowed);
     event AdminSet(address admin);
     event AllowedStrategySet(address strategy, bool isAllowed);
+    event InnerTransferWhitelistUpdated(address[] users, bool isWhitelisted);
 
     error InvalidDepositAmount(uint256 amount);
     error InvalidRoleType();
@@ -40,10 +41,13 @@ interface IProtocolVault {
     error InvalidClaimToken(address token);
     error ZeroAmount();
     error NotEnoughCCFee();
+    error InvalidReceiver();
+    error NotInInnerTransferWhitelist();
 
     function deposit(DepositParams memory depositParams) external payable;
     function withdraw(WithdrawParams memory withdrawParams) external payable;
     function claimWithFee(ClaimParams memory claimParams) external payable;
+    function transferShare(address to, uint256 amount, bytes32 brokerHash) external payable;
     function depositToStrategy(uint256 periodId, address receiver, bytes32 broker, uint256 amount) external;
     function updateUnClaimed(uint256 periodId, uint256 ccFee, bytes32 broker, ClaimInfo[] memory userClaimInfos)
         external;

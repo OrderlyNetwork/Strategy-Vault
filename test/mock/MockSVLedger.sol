@@ -152,4 +152,55 @@ contract MockSVLedger is ProtocolVaultLedger {
         VaultStateStorage storage vaultStorage = _getVaultStorage(vaultId);
         return vaultStorage.isDexRequestHandled[requestId];
     }
+
+    /// @notice Mock function to set account shares for testing
+    /// @param vaultId Vault ID
+    /// @param accountId Account ID
+    /// @param tokenHash Token hash
+    /// @param shares Shares amount
+    /// @param pendingShares Pending shares amount
+    /// @param frozenShares Frozen shares amount
+    function mockSetAccountShares(
+        bytes32 vaultId,
+        bytes32 accountId,
+        bytes32 tokenHash,
+        uint256 shares,
+        uint256 pendingShares,
+        uint256 frozenShares
+    ) external {
+        AccountToken storage token = _getAccountToken(vaultId, accountId, tokenHash);
+        token.shares = shares;
+        token.pendingShares = pendingShares;
+        token.frozenShares = frozenShares;
+    }
+
+    /// @notice Mock function to set account pending shares for testing
+    /// @param vaultId Vault ID
+    /// @param accountId Account ID
+    /// @param tokenHash Token hash
+    /// @param pendingShares Pending shares amount
+    function mockSetAccountPendingShares(
+        bytes32 vaultId,
+        bytes32 accountId,
+        bytes32 tokenHash,
+        uint256 pendingShares
+    ) external {
+        AccountToken storage token = _getAccountToken(vaultId, accountId, tokenHash);
+        token.pendingShares = pendingShares;
+    }
+
+    /// @notice Mock function to set account frozen shares for testing
+    /// @param vaultId Vault ID
+    /// @param accountId Account ID
+    /// @param tokenHash Token hash
+    /// @param frozenShares Frozen shares amount
+    function mockSetAccountFrozenShares(
+        bytes32 vaultId,
+        bytes32 accountId,
+        bytes32 tokenHash,
+        uint256 frozenShares
+    ) external {
+        AccountToken storage token = _getAccountToken(vaultId, accountId, tokenHash);
+        token.frozenShares = frozenShares;
+    }
 }

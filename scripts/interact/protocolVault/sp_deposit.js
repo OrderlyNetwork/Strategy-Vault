@@ -1,5 +1,5 @@
 const { ethers } = require("hardhat")
-const deployment = require('../../../deployment.json');
+const deployment = require('../../../deployment/deployment.json');
 const config = require('../../../config.json');
 
 

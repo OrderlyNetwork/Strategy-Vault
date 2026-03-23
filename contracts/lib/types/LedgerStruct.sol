@@ -198,3 +198,31 @@ struct DexRequest {
     bytes32 s;
     uint8 v;
 }
+
+struct ShareTransferRequest {
+    ///@dev from account id
+    bytes32 fromAccountId;
+    ///@dev to account id
+    bytes32 toAccountId;
+    ///@dev share amount to transfer
+    uint256 amount;
+    ///@dev vault id
+    bytes32 vaultId;
+    ///@dev whether executed
+    bool executed;
+}
+
+struct ShareTransferResult {
+    ///@dev request id
+    bytes32 requestId;
+    ///@dev vault id
+    bytes32 vaultId;
+    ///@dev from account id
+    bytes32 fromAccountId;
+    ///@dev from account shares after transfer
+    uint256 fromShares;
+    ///@dev to account id
+    bytes32 toAccountId;
+    ///@dev to account shares after transfer
+    uint256 toShares;
+}

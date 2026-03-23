@@ -65,7 +65,8 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
     mapping(address => bool) public lpWhitelist;
     /// @dev id to cross chain fee that user should afford
     mapping(bytes32 => uint256) public crossChainFee;
-
+    /// @dev whitelist for inner share transfer
+    mapping(address => bool) public innerTransferWhitelist;
     //receive native token
     receive() external payable {}
 
@@ -224,6 +225,50 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         emit UserClaimed(claimParams.roleType, id, amount, requestIds);
     }
 
+    /**
+     * @notice Allows a user to transfer shares to another account. This contract now refunds surplus
+     *         native tokens directly to msg.sender. Contracts unable to receive native tokens may encounter
+     *         issues during transfer.
+     * @dev This function can only be called when the contract is not paused.
+     * @param to The receiver address
+     * @param amount The amount to transfer
+     * @param brokerHash The broker hash
+     */
+    function transferShare(address to, uint256 amount, bytes32 brokerHash) external payable whenNotPaused {
+        // Validate
+        _validateInnerShareTransfer(to, amount, brokerHash);
+
+        // Construct OperationData
+        // accountId = fromAccountId, receiver = to address, strategyProviderId is not used
+        OperationData memory data = OperationData({
+            vaultType: VaultType.PROTOCOL,
+            sender: msg.sender,
+            receiver: to,
+            chainNonce: chainNonce,
+            amount: amount,
+            vaultId: _getVaultId(brokerHash),
+            accountId: _getAccountId(msg.sender, brokerHash),
+            strategyProviderId: bytes32(0),
+            tokenHash: USDC_HASH,
+            brokerHash: brokerHash
+        });
+
+        // Construct cross-chain message
+        StrategyVaultCCMessage memory message = StrategyVaultCCMessage({
+            payloadType: PayloadType.LP_SHARE_TRANSFER,
+            srcChainId: block.chainid,
+            dstChainId: LEDGER_CHAIN_ID,
+            payload: abi.encode(data)
+        });
+
+        chainNonce++;
+
+        // Cross-chain
+        IVaultCrossChainManager(crossChainManager).sendMessageWithValueAndRefund{value: msg.value}(message, msg.sender);
+
+        emit OperationExecuted(PayloadType.LP_SHARE_TRANSFER, data);
+    }
+
     //--------------------------------------FROM Strategy-----------------------------------------
     function depositFromStrategy(uint256 periodId, bytes32 broker, address token, uint256 amount)
         external
@@ -361,6 +406,16 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             lpWhitelist[_users[i]] = _isWhitelisted;
         }
     }
+
+    /// @notice Update inner transfer whitelist
+    /// @param _users Array of user addresses
+    /// @param _isWhitelisted Whether the users are whitelisted
+    function updateInnerTransferWhitelist(address[] calldata _users, bool _isWhitelisted) external onlyOwner {
+        for (uint256 i = 0; i < _users.length; i++) {
+            innerTransferWhitelist[_users[i]] = _isWhitelisted;
+        }
+        emit InnerTransferWhitelistUpdated(_users, _isWhitelisted);
+    }
     /*=========================================================================================
     *                                       VIEW
     *=========================================================================================*/
@@ -380,6 +435,7 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
             IVaultCrossChainManager(crossChainManager).quote(ledgerEid, lzMessage, payloadType, false);
         return nativeFee;
     }
+
     /*========================================================`=================================
     *                                       INTERNAL
     *=========================================================================================*/
@@ -441,6 +497,14 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed(brokerHash);
     }
 
+    function _validateInnerShareTransfer(address to, uint256 amount, bytes32 brokerHash) internal view {
+        if (amount == 0) revert ZeroAmount();
+        if (to == address(0) || to == msg.sender) revert InvalidReceiver();
+        if (!innerTransferWhitelist[msg.sender]) revert NotInInnerTransferWhitelist();
+        if (!isAllowedBroker[brokerHash]) revert BrokerNotAllowed(brokerHash);
+        if (vaultState == VaultState.CLOSED) revert VaultClosed();
+    }
+
     function _getOperationData(PayloadType payloadType, address receiver, uint256 amount, address, bytes32 brokerHash)
         internal
         view
@@ -449,7 +513,10 @@ contract ProtocolVault is Ownable2StepUpgradeable, UUPSUpgradeable, PausableUpgr
         bytes32 accountId;
         bytes32 strategyProviderId;
 
-        if (payloadType == PayloadType.LP_DEPOSIT || payloadType == PayloadType.LP_WITHDRAW) {
+        if (
+            payloadType == PayloadType.LP_DEPOSIT || payloadType == PayloadType.LP_WITHDRAW
+                || payloadType == PayloadType.LP_SHARE_TRANSFER
+        ) {
             accountId = _getAccountId(receiver, brokerHash);
         } else if (payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.SP_WITHDRAW) {
             strategyProviderId = _getStrategyProviderId(receiver, brokerHash);

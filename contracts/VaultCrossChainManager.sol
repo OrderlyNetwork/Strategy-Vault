@@ -21,6 +21,7 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
 
     error InvalidCaller(address caller);
     error InvalidPayloadType();
+    error InvalidDecimalRange();
 
     using OptionsBuilder for bytes;
     using DecimalConverter for uint256;
@@ -118,11 +119,12 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
         if (
             payloadType == PayloadType.SP_WITHDRAW || payloadType == PayloadType.LP_DEPOSIT
                 || payloadType == PayloadType.SP_DEPOSIT || payloadType == PayloadType.LP_WITHDRAW
+                || payloadType == PayloadType.LP_SHARE_TRANSFER
         ) {
             //Decode the payload
             OperationData memory operationData = abi.decode(payload, (OperationData));
 
-            //Convert the amount (only for deposits; withdrawals use shares and must NOT be converted)
+            //Convert the amount only for deposits
             uint256 srcChainId = strategyVaultCCmessage.srcChainId;
             if (
                 (payloadType == PayloadType.LP_DEPOSIT || payloadType == PayloadType.SP_DEPOSIT)
@@ -185,12 +187,18 @@ contract VaultCrossChainManager is OAppUpgradeable, IVaultCrossChainManager {
     }
 
     function setSpecialTokenDecimal(bytes32 tokenHash, uint256 chainId, uint256 decimal) external onlyOwner {
+        if (decimal < 6 || decimal > 18) {
+            revert InvalidDecimalRange();
+        }
         tokenDecimals[tokenHash][chainId] = decimal;
-
+        
         isSpecialDecimal[tokenHash][chainId] = true;
     }
 
     function setLedgerDecimal(uint256 decimal) external onlyOwner {
+        if (decimal < 6 || decimal > 18) {
+            revert InvalidDecimalRange();
+        }
         ledgerDecimal = decimal;
     }
 

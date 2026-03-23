@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {
     AccountToken,
     StrategyFundToken,
@@ -12,7 +13,9 @@ import {
     DexRequestData,
     OperationRes,
     OperationType,
-    Operation
+    Operation,
+    ShareTransferRequest,
+    ShareTransferResult
 } from "../lib/types/LedgerStruct.sol";
 import {Signature} from "../lib/utils/Signature.sol";
 import {VaultUtils} from "../lib/utils/VaultUtils.sol";
@@ -34,6 +37,13 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
     function handleOpFromVault(PayloadType payloadType, uint256 chainId, OperationData calldata operationData)
         external
     {
+        // Handle share transfer request 
+        if (payloadType == PayloadType.LP_SHARE_TRANSFER) {
+            _handleShareTransferRequest(operationData, chainId);
+            emit OperationHandled(payloadType, chainId, operationData);
+            return;
+        }
+
         bytes32 id = operationData.accountId == bytes32(0) ? operationData.strategyProviderId : operationData.accountId;
 
         if (_handleRequest(payloadType, id, operationData.tokenHash, operationData.amount, operationData.vaultId)) {
@@ -133,6 +143,70 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         emit InvalidFrozenSharesRemoved(vaultId, operationRes);
     }
 
+        /**
+     * @notice Backend executes inner share transfer after validation
+     * @param requestIds Array of request IDs
+     * @param signature Backend signature
+     */
+    function executeShareTransfer(bytes32[] calldata requestIds, bytes calldata signature) external {
+        // Verify signature for the entire array
+        Signature.verifyShareTransfer(requestIds, signature, engine);
+
+        // Initialize results array
+        ShareTransferResult[] memory results = new ShareTransferResult[](requestIds.length);
+
+        // Process each request
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            bytes32 requestId = requestIds[i];
+            ShareTransferRequest storage request = shareTransferRequests[requestId];
+
+            // Verify request exists
+            if (request.vaultId == bytes32(0)) revert RequestNotFound();
+            
+            // Verify request not executed
+            if (request.executed) revert AlreadyExecuted();
+
+            bytes32 vaultId = request.vaultId;
+            bytes32 fromAccountId = request.fromAccountId;
+            bytes32 toAccountId = request.toAccountId;
+            uint256 amount = request.amount;
+
+            // Get from account
+            AccountToken storage fromAccount = _getAccountToken(vaultId, fromAccountId, USDC_HASH);
+            // Condition checks 
+            if (fromAccount.shares != fromAccount.pendingShares) {
+                revert AccountNotFinalized();
+            }
+            if (fromAccount.shares < fromAccount.frozenShares + amount) {
+                revert InsufficientAvailableShares();
+            }
+
+            // Execute transfer
+            fromAccount.shares -= amount;
+            fromAccount.pendingShares -= amount;
+
+            // Get to account
+            AccountToken storage toAccount = _getAccountToken(vaultId, toAccountId, USDC_HASH);
+            toAccount.shares += amount;
+            toAccount.pendingShares += amount;
+
+            // Mark as executed
+            request.executed = true;
+
+            // Record result
+            results[i] = ShareTransferResult({
+                requestId: requestId,
+                vaultId: vaultId,
+                fromAccountId: fromAccountId,
+                fromShares: fromAccount.shares,  // Shares after transfer
+                toAccountId: toAccountId,
+                toShares: toAccount.shares        // Shares after transfer
+            });
+        }
+
+        // Emit event with all results
+        emit ShareTransferExecuted(results);
+    }
     /*=========================================================================================
     *                                       INTERNAL HELPER FUNCTIONS
     *=========================================================================================*/
@@ -205,5 +279,33 @@ contract LedgerExtension is LedgerBase, ILedgerExtension {
         returns (bool)
     {
         return withdrawAmount + frozenAmount <= totalAmount;
+    } 
+
+    /**
+     * @notice Handle share transfer request from vault
+     * @dev Record transfer request, Backend will execute it after validation
+     */
+    function _handleShareTransferRequest(OperationData calldata operationData, uint256 chainId) internal {
+        // Calculate requestId 
+        bytes32 requestId = keccak256(
+            abi.encodePacked(
+                Strings.toString(chainId),
+                Strings.toString(operationData.chainNonce),
+                operationData.vaultId
+            )
+        );
+        bytes32 vaultId = operationData.vaultId;
+        
+        // Calculate toAccountId from receiver address
+        bytes32 toAccountId = VaultUtils.getAccountId(operationData.receiver, operationData.brokerHash);
+
+        // Record transfer request in global storage
+        shareTransferRequests[requestId] = ShareTransferRequest({
+            fromAccountId: operationData.accountId,
+            toAccountId: toAccountId,
+            amount: operationData.amount,
+            vaultId: vaultId,
+            executed: false
+        });
     }
 }

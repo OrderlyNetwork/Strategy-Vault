@@ -220,4 +220,16 @@ library Signature {
             revert InvalidSigner();
         }
     }
+
+    /// @notice Verify share transfer signature
+    /// @param requestIds Array of request IDs
+    /// @param signature Backend signature
+    /// @param signer Expected signer address
+    function verifyShareTransfer(bytes32[] calldata requestIds, bytes calldata signature, address signer)
+        internal
+        pure
+    {
+        bytes32 messageHash = keccak256(abi.encode(requestIds));
+        verifySignature(signer, messageHash, signature);
+    }
 }
