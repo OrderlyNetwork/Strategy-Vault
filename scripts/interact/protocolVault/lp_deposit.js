@@ -5,11 +5,11 @@ const config = require('../../../config.json');
 
 async function main() {
   //!need to change with your env
-  const env = "qa";
+  const env = "dev";
   const currentNetwork = hre.network.name;
   const [sender] = await ethers.getSigners();
   const orderlyHash = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
-  const value = ethers.parseUnits("0.1", 6);
+  const value = ethers.parseUnits("1", 6);
   const protocolVault = await ethers.getContractAt(
     "ProtocolVault",
     deployment[env].protocolVault
@@ -23,7 +23,7 @@ async function main() {
     amount: value,
     brokerHash: orderlyHash
   };
-
+  
   console.log("Deposit Params: ", depositParams)
 
   //approve

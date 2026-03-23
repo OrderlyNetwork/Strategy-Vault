@@ -266,6 +266,16 @@ contract ProtocolVaultLedger is Ownable2StepUpgradeable, UUPSUpgradeable, Ledger
         );
     }
 
+    /// @notice Execute share transfer after backend validation
+    /// @param requestIds Array of request IDs
+    /// @param signature Backend signature
+    function executeShareTransfer(bytes32[] calldata requestIds, bytes calldata signature) external onlyOperator {
+        _delegateCall(
+            abi.encodeWithSelector(ILedgerExtension.executeShareTransfer.selector, requestIds, signature),
+            _getLedgerImplStorage().extension
+        );
+    }
+
     //--------------------------------------CONFIG--------------------------------------------
 
     /// @notice Set fee rate for strategy providers

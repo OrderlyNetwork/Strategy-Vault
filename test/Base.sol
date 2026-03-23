@@ -145,6 +145,7 @@ contract Base is TestHelperOz5 {
         aVaultCrossChainManager.setOptions(PayloadType.LP_WITHDRAW, 150000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.SP_DEPOSIT, 140000, 0);
         aVaultCrossChainManager.setOptions(PayloadType.SP_WITHDRAW, 150000, 0);
+        aVaultCrossChainManager.setOptions(PayloadType.LP_SHARE_TRANSFER, 200000, 0);
 
         bVaultCrossChainManager.setOptions(PayloadType.ASSETS_DISTRIBUTION, 200000, 0);
         bVaultCrossChainManager.setOptions(PayloadType.UPDATE_USER_CLAIM, 300000, 0);
