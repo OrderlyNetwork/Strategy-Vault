@@ -113,7 +113,7 @@ module.exports = {
       orderly: '123',//not needed
       sei_dev: '123',//not needed
       sei: '123',//not needed
-      sepolia: 'X2T8M83VFFCCPBAP646B7AB4XT263CRRXZ',
+      sepolia: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
       arb_sepolia: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
       arb: 'GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK',
       op: "GSEA6USAS8YIHX695W1B1BR3HU7Z77JUSK",
@@ -222,6 +222,9 @@ module.exports = {
         }
       },
     ]
+  },
+  metadata: {
+    bytecodeHash: "none"
   }
 };
 

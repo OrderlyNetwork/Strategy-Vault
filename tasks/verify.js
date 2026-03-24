@@ -1,7 +1,18 @@
+const path = require('path');
+const fs = require('fs');
 const { task } = require('hardhat/config');
 const deployment = require('../deployment/deployment.json');
 const cvDeployment = require('../deployment/community.json');
 const config = require('../config.json');
+
+function loadDepositByTransferConfig() {
+    const p = path.join(process.cwd(), 'deployment/depositBytransfer.json');
+    try {
+        return JSON.parse(fs.readFileSync(p, 'utf8'));
+    } catch (e) {
+        return null;
+    }
+}
 
 task("verify-adapter", "Verify VaultAdapter contracts on block explorer")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -113,6 +124,41 @@ task("verify-protocolvault", "Verify ProtocolVault contracts on block explorer")
 
             await verifyProtocolVaultContracts(implAddr, proxyAddr, dexVault, owner, usdc, minDepositForLp, minDepositForSp);
         });
+
+task("verify-deposit-by-transfer", "Verify DepositFactory and DepositBeaconImpl contracts on block explorer")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+
+        const depositByTransfer = loadDepositByTransferConfig();
+        if (!depositByTransfer || !depositByTransfer[taskArgs.env]) {
+            throw new Error(`Missing depositBytransfer.json or no entry for env ${taskArgs.env}. Deploy first with deploy-deposit-by-transfer.`);
+        }
+
+        const proxyAddr = depositByTransfer[taskArgs.env].depositFactory;
+        const depositBeaconImplAddr = depositByTransfer[taskArgs.env].depositBeaconImpl;
+
+        if (!proxyAddr || !depositBeaconImplAddr) {
+            throw new Error(`Missing depositFactory or depositBeaconImpl for ${taskArgs.env} in depositBytransfer.json.`);
+        }
+
+        const currentNetwork = hre.network.name;
+        const dexVault = deployment[taskArgs.env].dex[currentNetwork];
+        const operator = deployment[taskArgs.env].operator;
+        const owner = deployment[taskArgs.env].owner;
+
+        if (!dexVault || !operator || !owner) {
+            throw new Error(`Missing deployment config for ${taskArgs.env} on ${currentNetwork}: dex.${currentNetwork}, operator, owner.`);
+        }
+
+        const implAddr = await getImplementationFromProxy(proxyAddr);
+        console.log(`DepositFactory implementation address read from proxy: ${implAddr}`);
+
+        await verifyDepositByTransferContracts(implAddr, proxyAddr, depositBeaconImplAddr, dexVault, operator, owner);
+    });
 
 /**
  * Verify VaultAdapter contracts on block explorer
@@ -239,6 +285,76 @@ async function verifyProtocolVaultContracts(implAddr, proxyAddr, dexVault, owner
 }
 
 /**
+ * Verify DepositFactory (impl + proxy) and DepositBeaconImpl on block explorer
+ * @param {string} factoryImplAddr - DepositFactory implementation address
+ * @param {string} factoryProxyAddr - DepositFactory proxy (ERC1967Proxy) address
+ * @param {string} depositBeaconImplAddr - DepositBeaconImpl address (constructor takes factory proxy)
+ * @param {string} dexVault - Dex vault address
+ * @param {string} operator - Operator address
+ * @param {string} owner - Owner address
+ */
+async function verifyDepositByTransferContracts(
+    factoryImplAddr,
+    factoryProxyAddr,
+    depositBeaconImplAddr,
+    dexVault,
+    operator,
+    owner
+) {
+    console.log("Starting DepositByTransfer contract verification...");
+
+    try {
+        console.log(`Verifying DepositFactory implementation: ${factoryImplAddr}`);
+        await hre.run("verify:verify", {
+            address: factoryImplAddr,
+            contract: "contracts/DepositProxy/DepositFactory.sol:DepositFactory",
+            constructorArguments: []
+        });
+        console.log(`✅ DepositFactory implementation verified: ${factoryImplAddr}`);
+    } catch (error) {
+        console.log(`⚠️ DepositFactory implementation verification failed: ${error.message}`);
+        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
+            console.error("DepositFactory implementation verification error:", error);
+        }
+    }
+
+    try {
+        const DepositFactory = await ethers.getContractFactory("DepositFactory");
+        const initializeData = DepositFactory.interface.encodeFunctionData("initialize", [dexVault, operator, owner]);
+
+        console.log(`Verifying DepositFactory ERC1967Proxy: ${factoryProxyAddr}`);
+        await hre.run("verify:verify", {
+            address: factoryProxyAddr,
+            contract: "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            constructorArguments: [factoryImplAddr, initializeData]
+        });
+        console.log(`✅ DepositFactory proxy verified: ${factoryProxyAddr}`);
+    } catch (error) {
+        console.log(`⚠️ DepositFactory proxy verification failed: ${error.message}`);
+        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
+            console.error("DepositFactory proxy verification error:", error);
+        }
+    }
+
+    try {
+        console.log(`Verifying DepositBeaconImpl: ${depositBeaconImplAddr}`);
+        await hre.run("verify:verify", {
+            address: depositBeaconImplAddr,
+            contract: "contracts/DepositProxy/DepositBeaconImpl.sol:DepositBeaconImpl",
+            constructorArguments: [factoryProxyAddr]
+        });
+        console.log(`✅ DepositBeaconImpl verified: ${depositBeaconImplAddr}`);
+    } catch (error) {
+        console.log(`⚠️ DepositBeaconImpl verification failed: ${error.message}`);
+        if (!error.message.includes("Already Verified") && !error.message.includes("already verified")) {
+            console.error("DepositBeaconImpl verification error:", error);
+        }
+    }
+
+    console.log("DepositByTransfer contract verification completed!");
+}
+
+/**
  * Read implementation address from ERC1967 proxy contract
  * @param {string} proxyAddr - Proxy contract address
  * @returns {string} Implementation contract address
@@ -273,6 +389,8 @@ async function getImplementationFromProxy(proxyAddr) {
 module.exports = {
     verifyVaultAdapterContracts,
     verifyProtocolVaultContracts,
-    getImplementationFromProxy
+    verifyDepositByTransferContracts,
+    getImplementationFromProxy,
+    loadDepositByTransferConfig
 };
 
