@@ -2,10 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const deployment = require('../deployment/deployment.json');
 const cvDeployment = require('../deployment/community.json');
+const depositByTransferPath = path.join(process.cwd(), 'deployment/depositBytransfer.json');
 const config = require('../config.json');
 const { task } = require('hardhat/config');
 const { checkNetworkEnvRestrictions } = require('./utils');
 const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/utils/getId');
+const { getImplementationFromProxy: getImplFromProxy, verifyDepositByTransferContracts } = require('./verify');
 
 const ERC1967ProxyPath = path.join(__dirname, 'ERC1967ProxyBytecode_oz_v5.json');
 const ERC1967ProxyArtifact = JSON.parse(fs.readFileSync(ERC1967ProxyPath, 'utf8'));
@@ -91,6 +93,16 @@ task("deploy-adapter", "Deploy VaultAdapter contract")
             throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
         }
         await deployVaultAdapter(taskArgs.env);
+    });
+
+task("deploy-deposit-by-transfer", "Deploy DepositFactory + DepositBeaconImpl and configure (Ch.7 Deployment and Configuration Workflow)")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await deployDepositByTransfer(taskArgs.env);
     });
 
 async function deployProtocolLedger(env) {
@@ -337,6 +349,122 @@ function getCrossChainManagerBytecode(VaultCrossChainManager, implAddr, ownerAdd
     ]);
     return bytecode;
 }
+
+// USDC_HASH and ORDERLY_BROKER from contracts/lib/types/Constants.sol (for deposit-by-transfer config)
+const USDC_HASH = '0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa';
+const ORDERLY_BROKER = '0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b';
+
+async function deployDepositByTransfer(env) {
+    const currentNetwork = hre.network.name;
+    const [owner] = await ethers.getSigners();
+
+    // VaultFactory is already deployed per env; address is in deployment.json under "factory"
+    const vaultFactoryAddr = deployment[env].factory;
+    const dexVault = deployment[env].dex[currentNetwork];
+    const operator = deployment[env].dex_operator;
+    const ownerAddr = deployment[env].owner;
+    const protocolVault = deployment[env].protocolVault;
+
+    if (!vaultFactoryAddr || !dexVault || !operator || !ownerAddr || !protocolVault) {
+        throw new Error(`Missing required deployment config for env ${env} on network ${currentNetwork}. Need: factory, dex.${currentNetwork}, operator, owner, protocolVault.`);
+    }
+
+    const depositByTransfer = loadDepositByTransferConfig();
+    if (!depositByTransfer?.[env]?.deposit_factory_salt) {
+        throw new Error(`Missing deposit_factory_salt for env ${env} in deployment/depositBytransfer.json (salt must be unique per network for CREATE3).`);
+    }
+    const salt = depositByTransfer[env].deposit_factory_salt;
+
+    const usdc = config[currentNetwork]?.USDC;
+    if (!usdc) {
+        throw new Error(`No USDC address for network ${currentNetwork} in config.json`);
+    }
+
+    // Step 1: Deploy DepositFactory implementation
+    const DepositFactory = await ethers.getContractFactory('DepositFactory');
+    const factoryImpl = await DepositFactory.deploy();
+    await factoryImpl.waitForDeployment();
+    const factoryImplAddr = factoryImpl.target;
+    console.log('DepositFactory implementation deployed at:', factoryImplAddr);
+
+    // Step 2: Deploy DepositFactory proxy via VaultFactory (CREATE3); salt from depositBytransfer.json (unique per network)
+    const bytecode = getDepositFactoryBytecode(DepositFactory, factoryImplAddr, dexVault, operator, ownerAddr);
+    const VaultFactory = await ethers.getContractAt('VaultFactory', vaultFactoryAddr);
+    const tx = await VaultFactory.deploy(salt, bytecode);
+    await tx.wait();
+    const depositFactoryProxyAddr = await VaultFactory.getDeployed(salt);
+    console.log('DepositFactory proxy deployed at:', depositFactoryProxyAddr);
+
+    // Step 3: Deploy DepositBeaconImpl (constructor takes factory proxy address)
+    const DepositBeaconImpl = await ethers.getContractFactory('DepositBeaconImpl');
+    const beaconImpl = await DepositBeaconImpl.deploy(depositFactoryProxyAddr);
+    await beaconImpl.waitForDeployment();
+    const depositBeaconImplAddr = beaconImpl.target;
+    console.log('DepositBeaconImpl deployed at:', depositBeaconImplAddr);
+
+    // Step 4: Configure factory — set implementation (must be called by owner)
+    const depositFactory = await ethers.getContractAt('DepositFactory', depositFactoryProxyAddr);
+    await (await depositFactory.setImplementation(depositBeaconImplAddr)).wait();
+    console.log('DepositFactory.setImplementation done');
+
+    // Step 5: Register supported token and token hash
+    await (await depositFactory.setSupportedToken(usdc, true)).wait();
+    console.log('DepositFactory.setSupportedToken(USDC, true) done');
+    await (await depositFactory.setTokenHash(USDC_HASH, usdc)).wait();
+    console.log('DepositFactory.setTokenHash(USDC_HASH, USDC) done');
+
+    // Step 6: Register Protocol Vault (vaultId = keccak256(protocolVault, ORDERLY_BROKER))
+    const vaultId = getVaultId(protocolVault, ORDERLY_BROKER);
+    await (await depositFactory.registerVault(vaultId, protocolVault)).wait();
+    console.log('DepositFactory.registerVault(vaultId, protocolVault) done');
+
+    updateDepositByTransferConfig(env, depositFactoryProxyAddr, depositBeaconImplAddr);
+    console.log('deployment/depositBytransfer.json updated');
+
+    // Verify contracts on block explorer (same network)
+    try {
+        const implAddr = await getImplFromProxy(depositFactoryProxyAddr);
+        await verifyDepositByTransferContracts(
+            implAddr,
+            depositFactoryProxyAddr,
+            depositBeaconImplAddr,
+            dexVault,
+            operator,
+            ownerAddr
+        );
+    } catch (error) {
+        console.log(`⚠️ DepositByTransfer verification failed: ${error.message}`);
+    }
+
+    console.log('Deploy and configuration for deposit-by-transfer completed.');
+}
+
+function getDepositFactoryBytecode(DepositFactory, implAddr, dexVault, operator, ownerAddr) {
+    const initializeData = DepositFactory.interface.encodeFunctionData('initialize', [dexVault, operator, ownerAddr]);
+    const constructorArgs = ethers.AbiCoder.defaultAbiCoder().encode(
+        ['address', 'bytes'],
+        [implAddr, initializeData]
+    );
+    return ethers.concat([ERC1967ProxyArtifact.bytecode, constructorArgs]);
+}
+
+function loadDepositByTransferConfig() {
+    try {
+        return JSON.parse(fs.readFileSync(depositByTransferPath, 'utf8'));
+    } catch (e) {
+        return null;
+    }
+}
+
+function updateDepositByTransferConfig(env, depositFactory, depositBeaconImpl) {
+    let cfg = loadDepositByTransferConfig();
+    if (!cfg) cfg = { dev: {}, qa: {}, staging: {}, mainnet: {} };
+    if (!cfg[env]) cfg[env] = {};
+    cfg[env].depositFactory = depositFactory;
+    cfg[env].depositBeaconImpl = depositBeaconImpl;
+    fs.writeFileSync(depositByTransferPath, JSON.stringify(cfg, null, 2));
+}
+
 function updateAddressConfig(env, contractName, address) {
     const configPath = path.join(process.cwd(), 'deployment/deployment.json');
 
