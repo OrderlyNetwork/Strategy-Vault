@@ -2,11 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const deployment = require('../deployment/deployment.json');
 const cvDeployment = require('../deployment/community.json');
+const depositByTransferPath = path.join(process.cwd(), 'deployment/depositBytransfer.json');
 const config = require('../config.json');
 const { getAccountId, getStrategyProviderId, getVaultId } = require('../scripts/utils/getId');
 const { checkNetworkEnvRestrictions, getEndpointV2 } = require('./utils');
 const { task } = require('hardhat/config');
 const broker = "0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b"
+const USDC_HASH = '0xd6aca1be9729c13d677335161321649cccae6a591554772516700f986f942eaa';
+const ORDERLY_BROKER = '0x95d85ced8adb371760e4b6437896a075632fbd6cefe699f8125a8bc1d9b19e5b';
 
 task("config-evm", "Config strategy vault contracts on EVM")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
@@ -136,6 +139,17 @@ task("config-adapter", "Config VaultAdapter allowed brokers")
         }
         await configVaultAdapter(taskArgs.env);
     });
+
+task("config-deposit-by-transfer", "Config DepositFactory for deposit-by-transfer")
+    .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
+    .setAction(async (taskArgs, hre) => {
+        const validEnvs = ['dev', 'qa', 'staging', 'mainnet'];
+        if (!validEnvs.includes(taskArgs.env)) {
+            throw new Error(`Invalid environment. Must be one of: ${validEnvs.join(', ')}`);
+        }
+        await configDepositByTransfer(taskArgs.env);
+    });
+
 task("config-cv", "Config ProtocolVault")
     .addParam("env", "Deployment environment (dev/qa/staging/mainnet)")
     .addParam("cv", "Community Vault name)")
@@ -471,6 +485,51 @@ async function configVaultAdapter(env) {
     });
     await tx.wait()
     console.log("transfer native to vault adapter successfully");
+}
+
+function loadDepositByTransferConfig() {
+    try {
+        return JSON.parse(fs.readFileSync(depositByTransferPath, 'utf8'));
+    } catch (e) {
+        return null;
+    }
+}
+
+async function configDepositByTransfer(env) {
+    const currentNetwork = hre.network.name;
+    const depositByTransfer = loadDepositByTransferConfig();
+
+    const depositFactoryAddr = depositByTransfer?.[env]?.depositFactory;
+    const depositBeaconImplAddr = depositByTransfer?.[env]?.depositBeaconImpl;
+    const protocolVault = deployment[env]?.protocolVault;
+    const usdc = config[currentNetwork]?.USDC;
+
+    if (!depositFactoryAddr || !depositBeaconImplAddr) {
+        throw new Error(`Missing depositFactory/depositBeaconImpl for env ${env} in deployment/depositBytransfer.json. Run deploy-deposit-by-transfer first.`);
+    }
+    if (!protocolVault) {
+        throw new Error(`Missing protocolVault for env ${env} in deployment/deployment.json`);
+    }
+    if (!usdc) {
+        throw new Error(`No USDC address for network ${currentNetwork} in config.json`);
+    }
+
+    const depositFactory = await ethers.getContractAt('DepositFactory', depositFactoryAddr);
+
+    await (await depositFactory.setImplementation(depositBeaconImplAddr)).wait();
+    console.log('DepositFactory.setImplementation done');
+
+    await (await depositFactory.setSupportedToken(usdc, true)).wait();
+    console.log('DepositFactory.setSupportedToken(USDC, true) done');
+
+    await (await depositFactory.setTokenHash(USDC_HASH, usdc)).wait();
+    console.log('DepositFactory.setTokenHash(USDC_HASH, USDC) done');
+
+    const vaultId = getVaultId(protocolVault, ORDERLY_BROKER);
+    await (await depositFactory.registerVault(vaultId, protocolVault)).wait();
+    console.log('DepositFactory.registerVault(vaultId, protocolVault) done');
+
+    console.log('Deposit-by-transfer configuration completed.');
 }
 
 async function configEVMCrossChainManager(env) {
