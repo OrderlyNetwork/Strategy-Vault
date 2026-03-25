@@ -10,12 +10,12 @@
     "depositBeaconImpl": "0xcA812018F783daA44cEa014baB45d0A38183901E"
   },
   "staging": {
-    "deposit_factory_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",
+    "deposit_factory_salt": "0x0000000000000000000000000000000000000000000000000000000000000024",
     "depositFactory": "",
     "depositBeaconImpl": ""
   },
   "mainnet": {
-    "deposit_factory_salt": "0x000000000000000000000000000000000000000000000000000000000000001b",
+    "deposit_factory_salt": "0x279c89f907e94ccde8a109688a408b324e30bc9d19beefc6bdbe4630f880f3a3",
     "depositFactory": "",
     "depositBeaconImpl": ""
   }

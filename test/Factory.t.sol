@@ -127,7 +127,7 @@ contract Create3FactoryTest is Test {
         );
     }
     function testGetSingleSalt() public pure {
-        bytes32 salt = keccak256(abi.encodePacked("smaug"));
+        bytes32 salt = keccak256(abi.encodePacked("DepositFactory"));
         console.logBytes32(salt);
     }
 }
